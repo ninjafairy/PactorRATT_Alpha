@@ -845,7 +845,7 @@ When PT200 is ON (default), the PK-232 will allow automatic data rate selection.
 
 
 ### PTHUFF “n” 													Default: 0
-**Mode:** Pactor 												Host: pH
+**Mode:** Pactor 												Host: PH
 **Description:**
 "n"   —    0 to 3, specifying a type of compression that may be used in Pactor. 
 To enhance the effective data rate in Pactor, a data compression scheme called may be automatically enabled. 

@@ -1,0 +1,1 @@
+0.1.0 sucessful entry to host mode with firmware and hardware checks, should fail on early non pactor firmware and non pk-232 class hardware

@@ -1,0 +1,166 @@
+package com.pactorratt.alpha.hostmode;
+
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * PK-232 Host Mode block framing: SOH, CTL, DLE-escaped payload, ETB.
+ */
+public final class HostFrameCodec {
+
+    public static final byte SOH = 0x01;
+    public static final byte DLE = 0x10;
+    public static final byte ETB = 0x17;
+    public static final int CTL_GLOBAL = 0x4F;
+
+    private HostFrameCodec() {
+    }
+
+    public static byte[] encodeBlock(int ctl, byte[] payload) {
+        byte[] data = payload == null ? new byte[0] : payload;
+        ByteArrayOutputStream out = new ByteArrayOutputStream(data.length + 4);
+        out.write(SOH);
+        out.write(ctl & 0xFF);
+        for (byte b : data) {
+            if (b == SOH || b == DLE || b == ETB) {
+                out.write(DLE);
+            }
+            out.write(b);
+        }
+        out.write(ETB);
+        return out.toByteArray();
+    }
+
+    public static byte[] encodeGlobalCommand(String mnemonicAndArgs) {
+        String text = mnemonicAndArgs == null ? "" : mnemonicAndArgs;
+        return encodeBlock(CTL_GLOBAL, text.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    public static byte[] encodeOggProbe() {
+        return encodeGlobalCommand("GG");
+    }
+
+    public static byte[] encodeOggResync() {
+        byte[] block = encodeGlobalCommand("GG");
+        byte[] out = new byte[block.length + 1];
+        out[0] = SOH;
+        System.arraycopy(block, 0, out, 1, block.length);
+        return out;
+    }
+
+    public static String toHex(byte[] data) {
+        if (data == null || data.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(data.length * 3 - 1);
+        for (int i = 0; i < data.length; i++) {
+            if (i > 0) {
+                sb.append(' ');
+            }
+            sb.append(String.format("%02X", data[i] & 0xFF));
+        }
+        return sb.toString();
+    }
+
+    public static boolean isOggSuccess(Frame frame) {
+        if (frame == null || frame.ctl != CTL_GLOBAL || frame.payload.length < 3) {
+            return false;
+        }
+        return frame.payload[0] == 'G'
+                && frame.payload[1] == 'G'
+                && frame.payload[2] == 0x00;
+    }
+
+    public static final class Frame {
+        public final int ctl;
+        public final byte[] payload;
+        public final byte[] raw;
+
+        public Frame(int ctl, byte[] payload, byte[] raw) {
+            this.ctl = ctl & 0xFF;
+            this.payload = payload == null ? new byte[0] : payload.clone();
+            this.raw = raw == null ? new byte[0] : raw.clone();
+        }
+    }
+
+    public static final class FrameParser {
+
+        private enum State {
+            WAIT_SOH,
+            AFTER_SOH,
+            READ_PAYLOAD,
+            READ_ESCAPE
+        }
+
+        private State state = State.WAIT_SOH;
+        private int ctl;
+        private final ByteArrayOutputStream payload = new ByteArrayOutputStream();
+        private final ByteArrayOutputStream raw = new ByteArrayOutputStream();
+
+        public void reset() {
+            state = State.WAIT_SOH;
+            ctl = 0;
+            payload.reset();
+            raw.reset();
+        }
+
+        public List<Frame> feed(byte[] data, int off, int len) {
+            List<Frame> frames = new ArrayList<>();
+            if (data == null || len <= 0) {
+                return frames;
+            }
+            int end = off + len;
+            for (int i = off; i < end; i++) {
+                Frame frame = feed(data[i]);
+                if (frame != null) {
+                    frames.add(frame);
+                }
+            }
+            return frames;
+        }
+
+        public Frame feed(byte b) {
+            switch (state) {
+                case WAIT_SOH -> {
+                    if (b == SOH) {
+                        raw.reset();
+                        payload.reset();
+                        raw.write(b);
+                        state = State.AFTER_SOH;
+                    }
+                }
+                case AFTER_SOH -> {
+                    if (b == SOH) {
+                        raw.write(b);
+                    } else {
+                        ctl = b & 0xFF;
+                        raw.write(b);
+                        state = State.READ_PAYLOAD;
+                    }
+                }
+                case READ_PAYLOAD -> {
+                    if (b == DLE) {
+                        raw.write(b);
+                        state = State.READ_ESCAPE;
+                    } else if (b == ETB) {
+                        raw.write(b);
+                        state = State.WAIT_SOH;
+                        return new Frame(ctl, payload.toByteArray(), raw.toByteArray());
+                    } else {
+                        raw.write(b);
+                        payload.write(b);
+                    }
+                }
+                case READ_ESCAPE -> {
+                    raw.write(b);
+                    payload.write(b);
+                    state = State.READ_PAYLOAD;
+                }
+                default -> reset();
+            }
+            return null;
+        }
+    }
+}

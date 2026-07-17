@@ -1,4 +1,5 @@
 /**
- * jSerialComm serial port access owned by {@code hostmode} (Phase 3+).
+ * jSerialComm serial port access for host mode via {@link com.pactorratt.alpha.serial.SerialPortService}
+ * (Phase 3+).
  */
 package com.pactorratt.alpha.serial;

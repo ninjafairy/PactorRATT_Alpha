@@ -128,6 +128,8 @@ Framed on channel 0 data block:
 
 This section covers Host Mode protocol/transport commands and Chapter-4-defined high-impact host operations.
 
+Host arguments are concatenated immediately after the 2-letter mnemonic (**no space**); ON/OFF switches use `Y`/`N` (e.g. `HPN`), though verbose `ON`/`OFF` without space (e.g. `HPOFF`) also work.
+
 ### Command: Data Block to Channel (`CTL = 0x2x`)
 
 | Field | Value |

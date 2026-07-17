@@ -471,7 +471,7 @@ Program settings store reusable strings for “with text” actions (handover wi
 | HPOLL | `HP` | OFF |
 | EAS | `EA` | OFF |
 | PT200 | `PB` | ON |
-| PTHUFF | `pH` | OFF |
+| PTHUFF | `PH` | OFF |
 | WORDOUT | `WO` | OFF |
 | Mode | `Pt` | Pactor standby |
 | MYCALL / MYPTCALL | `ML` / `Mf` | From config |

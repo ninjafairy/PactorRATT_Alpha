@@ -75,8 +75,11 @@ public final class ComPortDialog extends JDialog {
             config.setStopBits((Integer) stopBits.getSelectedItem());
             config.setFlowControl((String) flow.getSelectedItem());
             app.saveConfig();
-            // Phase 1: do not open Host session yet
-            app.setTncConnected(false);
+            if (app.isTncConnected() || app.isTncBusy()) {
+                app.disconnectTnc();
+            } else {
+                app.setTncConnected(false);
+            }
             dispose();
         });
 

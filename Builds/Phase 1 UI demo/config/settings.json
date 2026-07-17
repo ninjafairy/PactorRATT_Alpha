@@ -1,0 +1,18 @@
+{
+  "callsign": "",
+  "comPort": "",
+  "baudRate": 1200,
+  "dataBits": 7,
+  "stopBits": 1,
+  "parity": "NONE",
+  "flowControl": "NONE",
+  "commitMode": "LINE",
+  "listenOnStart": false,
+  "debugLogEnabled": false,
+  "cannedHandoverText": "KKK",
+  "cannedDisconnectText": "SK",
+  "wrapColumns": 80,
+  "buddiesExpanded": true,
+  "heardExpanded": true,
+  "mentionedExpanded": true
+}

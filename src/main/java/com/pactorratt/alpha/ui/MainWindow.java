@@ -53,6 +53,8 @@ public final class MainWindow extends JFrame {
     private final JTextField callsignField = new JTextField(12);
     private final JButton connectButton = new JButton("Connect");
     private final JToggleButton listenToggle = new JToggleButton("Listen");
+    private JMenuItem tncConnectItem;
+    private JMenuItem tncDisconnectItem;
 
     private final DefaultMutableTreeNode root = new DefaultMutableTreeNode("Stations");
     private final DefaultMutableTreeNode buddiesNode = new DefaultMutableTreeNode(NODE_BUDDIES);
@@ -101,9 +103,16 @@ public final class MainWindow extends JFrame {
 
     public void refreshConnectionState() {
         boolean connected = app.isTncConnected();
-        tncLabel.setText(connected ? "TNC: connected" : "TNC: offline");
-        connectButton.setEnabled(connected);
-        listenToggle.setEnabled(true);
+        boolean busy = app.isTncBusy();
+        tncLabel.setText(busy ? "TNC: connecting…" : (connected ? "TNC: connected" : "TNC: offline"));
+        connectButton.setEnabled(connected && !busy);
+        listenToggle.setEnabled(!busy);
+        if (tncConnectItem != null) {
+            tncConnectItem.setEnabled(!connected && !busy);
+        }
+        if (tncDisconnectItem != null) {
+            tncDisconnectItem.setEnabled(connected || busy);
+        }
     }
 
     public void refreshModeLabel() {
@@ -145,6 +154,18 @@ public final class MainWindow extends JFrame {
         settings.add(program);
         settings.add(tnc);
 
+        JMenu tncMenu = new JMenu("TNC");
+        tncConnectItem = new JMenuItem("Connect");
+        tncConnectItem.addActionListener(e -> app.connectTnc());
+        tncDisconnectItem = new JMenuItem("Disconnect");
+        tncDisconnectItem.addActionListener(e -> app.disconnectTnc());
+        tncMenu.add(tncConnectItem);
+        tncMenu.add(tncDisconnectItem);
+        tncMenu.addSeparator();
+        JMenuItem debugMonitor = new JMenuItem("Debug Monitor…");
+        debugMonitor.addActionListener(e -> app.openDebugMonitor());
+        tncMenu.add(debugMonitor);
+
         JMenu help = new JMenu("Help");
         JMenuItem about = new JMenuItem("About");
         about.addActionListener(e -> AboutDialog.show(this));
@@ -152,6 +173,7 @@ public final class MainWindow extends JFrame {
 
         bar.add(file);
         bar.add(settings);
+        bar.add(tncMenu);
         bar.add(help);
         setJMenuBar(bar);
     }

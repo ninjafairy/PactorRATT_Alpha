@@ -2,20 +2,37 @@ package com.pactorratt.alpha.app;
 
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.ConfigStore;
+import com.pactorratt.alpha.hostmode.HostSession;
+import com.pactorratt.alpha.hostmode.TncInitializer;
+import com.pactorratt.alpha.serial.SerialByteListener;
 import com.pactorratt.alpha.ui.ConnectionWindow;
+import com.pactorratt.alpha.ui.DebugMonitorWindow;
 import com.pactorratt.alpha.ui.MainWindow;
+import com.pactorratt.alpha.ui.UiColors;
 import com.pactorratt.alpha.util.DebugLog;
 
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import java.awt.BorderLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Coordinates modes, windows, and TNC connection flag for Phase 1 offline shell.
+ * Coordinates modes, windows, and TNC Host session lifecycle.
  */
 public final class AppController {
 
@@ -23,11 +40,28 @@ public final class AppController {
     private final ConfigStore configStore;
     private final AppConfig config;
     private final DebugLog debugLog;
+    private final TncInitializer tncInitializer;
+    private final CopyOnWriteArrayList<SerialByteListener> serialTaps = new CopyOnWriteArrayList<>();
+    private final SerialByteListener serialTapFanout = (tx, data, off, len) -> {
+        for (SerialByteListener listener : serialTaps) {
+            try {
+                listener.onSerialBytes(tx, data, off, len);
+            } catch (RuntimeException ignored) {
+            }
+        }
+    };
 
     private MainWindow mainWindow;
     private ConnectionWindow listenWindow;
     private ConnectionWindow activeArqWindow;
+    private DebugMonitorWindow debugMonitorWindow;
     private final List<ConnectionWindow> deadArqWindows = new ArrayList<>();
+
+    private volatile HostSession hostSession;
+    private final AtomicBoolean tncBusy = new AtomicBoolean(false);
+    private volatile Thread connectThread;
+    private final AtomicBoolean connectCancelled = new AtomicBoolean(false);
+    private volatile HostSession pendingSession;
 
     private boolean tncConnected;
     private AppMode mode = AppMode.IDLE;
@@ -38,7 +72,77 @@ public final class AppController {
         this.config = configStore.load();
         this.debugLog = new DebugLog(portableRoot);
         this.debugLog.setEnabled(config.isDebugLogEnabled());
+        this.tncInitializer = new TncInitializer(
+                debugLog, serialTapFanout, this::showStartupMessageOnEdt, this::showCompatInfoOnEdt);
         this.tncConnected = false;
+    }
+
+    public void addSerialByteListener(SerialByteListener listener) {
+        if (listener != null) {
+            serialTaps.add(listener);
+        }
+    }
+
+    public void removeSerialByteListener(SerialByteListener listener) {
+        serialTaps.remove(listener);
+    }
+
+    public void openDebugMonitor() {
+        runOnEdt(() -> {
+            if (debugMonitorWindow == null || !debugMonitorWindow.isDisplayable()) {
+                debugMonitorWindow = new DebugMonitorWindow(this);
+                debugMonitorWindow.setVisible(true);
+            } else {
+                debugMonitorWindow.toFront();
+            }
+        });
+    }
+
+    public void onDebugMonitorClosed(DebugMonitorWindow window) {
+        if (debugMonitorWindow == window) {
+            debugMonitorWindow = null;
+        }
+        // After a failed/partial connect we may have kept the serial port open for the monitor.
+        if (!tncConnected) {
+            closeRetainedDebugSession();
+        }
+    }
+
+    private boolean isDebugMonitorOpen() {
+        DebugMonitorWindow w = debugMonitorWindow;
+        return w != null && w.isDisplayable();
+    }
+
+    /**
+     * On connect failure: keep the serial session if Debug Monitor is open; otherwise close it.
+     */
+    private void retainOrCloseOnFailure(HostSession session) {
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        if (isDebugMonitorOpen()) {
+            pendingSession = session;
+            debugLog.info("Keeping serial session open for Debug Monitor after connect failure");
+        } else {
+            tncInitializer.abort(session);
+            if (pendingSession == session) {
+                pendingSession = null;
+            }
+        }
+    }
+
+    private void closeRetainedDebugSession() {
+        HostSession pending = pendingSession;
+        pendingSession = null;
+        if (!tncConnected) {
+            HostSession connected = hostSession;
+            hostSession = null;
+            tncInitializer.abort(pending);
+            tncInitializer.abort(connected);
+            debugLog.info("Closed serial session after Debug Monitor closed");
+        } else {
+            tncInitializer.abort(pending);
+        }
     }
 
     public Path portableRoot() {
@@ -57,12 +161,376 @@ public final class AppController {
         return tncConnected;
     }
 
-    /** Phase 1: no real Host session yet. Kept for UI gating. */
+    public boolean isTncBusy() {
+        return tncBusy.get();
+    }
+
+    public HostSession hostSession() {
+        return hostSession;
+    }
+
+    /** Prefer connected session; else open pending session (mid-init). */
+    public HostSession openHostSessionOrNull() {
+        HostSession s = hostSession;
+        if (s != null && s.isOpen()) {
+            return s;
+        }
+        s = pendingSession;
+        if (s != null && s.isOpen()) {
+            return s;
+        }
+        return null;
+    }
+
+    /**
+     * Fire-and-forget framed Host global command for debug monitor.
+     * Concatenate mnemonic + payload with no space. Does not wait for a response.
+     *
+     * @return null on accepted, or error message string
+     */
+    public String sendDebugHostCommand(String mnemonic, String payload) {
+        String cmd = mnemonic == null ? "" : mnemonic.trim();
+        if (cmd.length() != 2) {
+            return "Host command must be exactly 2 characters.";
+        }
+        String args = payload == null ? "" : payload.trim();
+        String mnemonicAndArgs = cmd + args;
+
+        HostSession session = openHostSessionOrNull();
+        if (session == null) {
+            return "No open TNC serial session.";
+        }
+        try {
+            session.sendHostCommandFireAndForget(mnemonicAndArgs);
+            return null;
+        } catch (IOException e) {
+            return e.getMessage() == null ? "Host command write failed." : e.getMessage();
+        }
+    }
+
+    /** Updates the connected flag and refreshes MainWindow (EDT-safe). */
     public void setTncConnected(boolean connected) {
         this.tncConnected = connected;
+        runOnEdt(() -> {
+            if (mainWindow != null) {
+                mainWindow.refreshConnectionState();
+            }
+        });
+    }
+
+    /**
+     * TNC menu Connect: open COM, enter Host Mode, compat gate, coded init.
+     * Runs off the EDT. Main-window Connect remains ARQ-only ({@link #requestConnect}).
+     */
+    public void connectTnc() {
+        if (tncConnected) {
+            JOptionPane.showMessageDialog(mainWindow,
+                    "TNC is already connected.",
+                    "PactorRATT_Alpha",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (config.getComPort() == null || config.getComPort().isBlank()) {
+            JOptionPane.showMessageDialog(mainWindow,
+                    "Select a COM port under Settings → COM Port before connecting.",
+                    "PactorRATT_Alpha",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!tncBusy.compareAndSet(false, true)) {
+            return;
+        }
+        connectCancelled.set(false);
+        pendingSession = null;
         if (mainWindow != null) {
             mainWindow.refreshConnectionState();
         }
+
+        Thread worker = new Thread(() -> {
+            HostSession localPending = null;
+            try {
+                TncInitializer.InitResult result = tncInitializer.connect(config);
+                if (result.session != null) {
+                    localPending = result.session;
+                    pendingSession = result.session;
+                }
+                if (connectCancelled.get()) {
+                    // Explicit disconnect/cancel — always close.
+                    tncInitializer.abort(result.session != null ? result.session : localPending);
+                    pendingSession = null;
+                    return;
+                }
+                result = handleInitResult(result);
+                if (connectCancelled.get()) {
+                    tncInitializer.abort(result.session != null ? result.session : localPending);
+                    pendingSession = null;
+                    return;
+                }
+                finishConnect(result);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                HostSession toHandle = pendingSession != null ? pendingSession : hostSession;
+                if (connectCancelled.get()) {
+                    tncInitializer.abort(toHandle);
+                    pendingSession = null;
+                    hostSession = null;
+                } else {
+                    retainOrCloseOnFailure(toHandle);
+                    hostSession = null;
+                    runOnEdt(() -> {
+                        setTncConnected(false);
+                        JOptionPane.showMessageDialog(mainWindow,
+                                "TNC connection cancelled.",
+                                "PactorRATT_Alpha",
+                                JOptionPane.INFORMATION_MESSAGE);
+                    });
+                }
+            } finally {
+                // Do not clear pendingSession here — may be retained for Debug Monitor.
+                tncBusy.set(false);
+                connectThread = null;
+                runOnEdt(() -> {
+                    if (mainWindow != null) {
+                        mainWindow.refreshConnectionState();
+                    }
+                });
+            }
+        }, "tnc-connect");
+        connectThread = worker;
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private TncInitializer.InitResult handleInitResult(TncInitializer.InitResult result)
+            throws InterruptedException {
+        if (result.outcome != TncInitializer.Outcome.WARN_NEEDS_CONFIRM) {
+            return result;
+        }
+        pendingSession = result.session;
+        int choice = showConfirmOnEdt(
+                result.message + "\n\nContinue connecting?",
+                "TNC compatibility warning",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (connectCancelled.get() || Thread.interrupted()) {
+            if (connectCancelled.get()) {
+                tncInitializer.abort(result.session);
+                pendingSession = null;
+            } else {
+                retainOrCloseOnFailure(result.session);
+            }
+            throw new InterruptedException("TNC connection cancelled");
+        }
+        if (choice == JOptionPane.YES_OPTION) {
+            return tncInitializer.continueAfterWarn(result.session, config, result.compat);
+        }
+        // User declined warn — still retain session for Debug Monitor if open.
+        return new TncInitializer.InitResult(
+                TncInitializer.Outcome.CANCELLED,
+                result.compat,
+                "Connection cancelled after compatibility warning.",
+                result.session,
+                result.firmwareLabel);
+    }
+
+    private void finishConnect(TncInitializer.InitResult result) {
+        if (connectCancelled.get()) {
+            tncInitializer.abort(result.session);
+            pendingSession = null;
+            return;
+        }
+        if (result.outcome == TncInitializer.Outcome.SUCCESS && result.session != null) {
+            // Publish session on worker thread before EDT update so disconnect can see it.
+            hostSession = result.session;
+            pendingSession = null;
+        } else if (result.session != null && result.session.isOpen()) {
+            retainOrCloseOnFailure(result.session);
+        }
+        runOnEdt(() -> {
+            if (connectCancelled.get()) {
+                HostSession s = hostSession;
+                hostSession = null;
+                pendingSession = null;
+                tncInitializer.abort(s);
+                setTncConnected(false);
+                return;
+            }
+            switch (result.outcome) {
+                case SUCCESS -> {
+                    setTncConnected(true);
+                    String label = result.firmwareLabel == null ? "" : result.firmwareLabel;
+                    debugLog.info("TNC connected" + (label.isEmpty() ? "" : " (" + label + ")"));
+                }
+                case HARD_REFUSE -> {
+                    hostSession = null;
+                    setTncConnected(false);
+                    JOptionPane.showMessageDialog(mainWindow,
+                            result.message,
+                            "Unsupported TNC",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+                case FAILED -> {
+                    hostSession = null;
+                    setTncConnected(false);
+                    JOptionPane.showMessageDialog(mainWindow,
+                            result.message == null || result.message.isBlank()
+                                    ? "TNC connection failed."
+                                    : result.message,
+                            "TNC connection failed",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+                case CANCELLED -> {
+                    hostSession = null;
+                    setTncConnected(false);
+                    debugLog.info("TNC connection cancelled by user");
+                }
+                case WARN_NEEDS_CONFIRM -> {
+                    hostSession = null;
+                    setTncConnected(false);
+                }
+            }
+        });
+    }
+
+    /** TNC menu Disconnect: close Host session and clear connected flag. */
+    public void disconnectTnc() {
+        connectCancelled.set(true);
+        Thread worker = connectThread;
+        if (worker != null && worker.isAlive()) {
+            worker.interrupt();
+        }
+
+        final HostSession session = hostSession;
+        final HostSession pending = pendingSession;
+        hostSession = null;
+        pendingSession = null;
+        setTncConnected(false);
+        tncBusy.set(false);
+        if (mainWindow != null) {
+            mainWindow.refreshConnectionState();
+        }
+        debugLog.info("TNC disconnect requested");
+
+        Thread closer = new Thread(() -> {
+            tncInitializer.abort(session);
+            tncInitializer.abort(pending);
+        }, "tnc-disconnect");
+        closer.setDaemon(true);
+        closer.start();
+    }
+
+    private void showStartupMessageOnEdt(String message) throws InterruptedException {
+        if (SwingUtilities.isEventDispatchThread()) {
+            showStartupMessageDialog(message);
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(() -> showStartupMessageDialog(message));
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new InterruptedException("Startup message dialog failed: " + e.getMessage());
+        }
+    }
+
+    private void showStartupMessageDialog(String message) {
+        String body = message == null ? "" : message.replace("\r\n", "\n").replace('\r', '\n');
+        String html = "<html><div style='text-align:center'>"
+                + escapeHtml(body).replace("\n", "<br>")
+                + "</div></html>";
+        JLabel label = new JLabel(html, SwingConstants.CENTER);
+        label.setOpaque(true);
+        label.setBackground(UiColors.PANEL_BG);
+        label.setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
+        JOptionPane.showMessageDialog(
+                mainWindow,
+                label,
+                "PK-232 Startup Message",
+                JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showCompatInfoOnEdt(String message) throws InterruptedException {
+        if (SwingUtilities.isEventDispatchThread()) {
+            showCompatInfoDialog(message);
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(() -> showCompatInfoDialog(message));
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new InterruptedException("Compat info dialog failed: " + e.getMessage());
+        }
+    }
+
+    private void showCompatInfoDialog(String message) {
+        String body = message == null ? "" : message.replace("\r\n", "\n").replace('\r', '\n');
+        String html = "<html><div style='text-align:center'>"
+                + escapeHtml(body).replace("\n", "<br>")
+                + "</div></html>";
+
+        JDialog dialog = new JDialog(mainWindow, "TNC Firmware / Hardware", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        JLabel label = new JLabel(html, SwingConstants.CENTER);
+        label.setOpaque(true);
+        label.setBackground(UiColors.PANEL_BG);
+        label.setBorder(BorderFactory.createEmptyBorder(12, 20, 8, 20));
+
+        JButton ok = new JButton("OK");
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(UiColors.PANEL_BG);
+        buttonPanel.add(ok);
+
+        JPanel content = new JPanel(new BorderLayout());
+        content.setBackground(UiColors.PANEL_BG);
+        content.add(label, BorderLayout.CENTER);
+        content.add(buttonPanel, BorderLayout.SOUTH);
+        content.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+
+        dialog.getContentPane().add(content);
+        dialog.getContentPane().setBackground(UiColors.PANEL_BG);
+
+        Timer timer = new Timer(4000, e -> dialog.dispose());
+        timer.setRepeats(false);
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                timer.start();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                timer.stop();
+            }
+        });
+        ok.addActionListener(e -> {
+            timer.stop();
+            dialog.dispose();
+        });
+
+        dialog.pack();
+        dialog.setLocationRelativeTo(mainWindow);
+        dialog.setVisible(true);
+    }
+
+    private static String escapeHtml(String text) {
+        return text
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+    private int showConfirmOnEdt(String message, String title, int optionType, int messageType)
+            throws InterruptedException {
+        if (SwingUtilities.isEventDispatchThread()) {
+            return JOptionPane.showConfirmDialog(mainWindow, message, title, optionType, messageType);
+        }
+        final int[] choice = {JOptionPane.CLOSED_OPTION};
+        try {
+            SwingUtilities.invokeAndWait(() ->
+                    choice[0] = JOptionPane.showConfirmDialog(
+                            mainWindow, message, title, optionType, messageType));
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new InterruptedException("Confirm dialog failed: " + e.getMessage());
+        }
+        return choice[0];
     }
 
     public AppMode mode() {
@@ -130,7 +598,7 @@ public final class AppController {
     public void requestConnect(String remoteCallsign) {
         if (!tncConnected) {
             JOptionPane.showMessageDialog(mainWindow,
-                    "TNC is not connected. Configure COM port and open a Host session (Phase 3+).",
+                    "TNC is not connected. Use TNC → Connect after configuring the COM port.",
                     "PactorRATT_Alpha",
                     JOptionPane.WARNING_MESSAGE);
             return;
@@ -224,6 +692,11 @@ public final class AppController {
     }
 
     public void shutdown() {
+        disconnectTnc();
+        if (debugMonitorWindow != null) {
+            debugMonitorWindow.dispose();
+            debugMonitorWindow = null;
+        }
         saveConfig();
         debugLog.close();
         if (listenWindow != null) {
