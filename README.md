@@ -1,3 +1,11 @@
+# This program is AI generated using Cursor with Grok 4.5 High Fast
+
+
+
+
+
+
+
 # PactorRATT_Alpha
 
 Portable Java 21 Swing chat client for **PK-232 Host Mode Pactor**.
