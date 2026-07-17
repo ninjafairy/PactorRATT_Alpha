@@ -1,7 +1,8 @@
 # This program is AI generated using Cursor with Grok 4.5 High Fast
 
+# Try it out
 
-
+## Pick a .jar out of the Builds folder and run it. It will create some folders so place it in an empty folder 
 
 
 
