@@ -12,7 +12,7 @@ When AUTOBAUD is ON (Host `Ab`), the TNC runs autobaud on power-on and on every 
 
 1. Drain inbound
 2. Send `*` (no CR)
-3. Monitor serial RX until **2 seconds of clear air** (no received bytes), capped at 15 s total wait
+3. Monitor serial RX until **500 ms of clear air** (no received bytes), capped at 15 s total wait
 4. Capture startup/sign-on text from RX
 5. If non-empty, show a modal popup (**OK** only) before continuing init
 6. Reset Host frame parser and drain inbound so Host framing starts clean
@@ -44,7 +44,7 @@ Failure → close port; stay offline.
    - `AE` ack: payload `AE` + binary status `0x00` (OK)
    - `MM` response: payload `MM` + `$` + ASCII hex digits (e.g. `MM$93` → byte `0x93`), not binary status + data
 2. Apply policy from [`Compat_Memory_Map.md`](Compat_Memory_Map.md):
-   - Show a modal **TNC Firmware / Hardware** popup with decoded firmware date (`$0006..$0008`) and all hardware bits of `$0009` (**OK** or auto-close after 4 s)
+   - Show a non-blocking **TNC Firmware / Hardware** popup with decoded firmware date (`$0006..$0008`) and all hardware bits of `$0009` (**OK** or auto-close after 4 s); init continues without waiting
    - Listed pre-v7 fingerprints → **hard refuse** (close; no `tncConnected`)
    - Supported v7.x → continue
    - HK / UDC / unknown → **warn** dialog (`KJ7RBS@gmail.com`) + Continue/Cancel

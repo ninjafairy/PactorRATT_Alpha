@@ -193,18 +193,21 @@ public final class ConnectionWindow extends JFrame {
         p.setBorder(BorderFactory.createTitledBorder("Controls"));
 
         if (kind == Kind.ARQ) {
-            addControl(p, "Disc. after TX clear", "Disconnect after TX clear",
-                    () -> stubAction("Disconnect after TX clear"));
+            addControl(p, "Disc. after TX clear", "Disconnect after TX clear (Host RE)",
+                    () -> app.arqDiscAfterTxClear(this));
             addControl(p, "Disconnect now", "Disconnect immediately (deferred until Rcve confirmed)",
                     () -> stubAction("Disconnect now (deferred)"));
-            addControl(p, "Abort", "Abort link (PTL if Listen on, else Pt)", this::abortSession);
-            addControl(p, "Handover", "Handover / PTOver", () -> stubAction("Handover / PTOver"));
-            addControl(p, "HO after TX clear", "Handover after TX clear",
-                    () -> stubAction("Handover after TX clear"));
-            addControl(p, "Seize", "Seize link / ACHG", () -> stubAction("Seize / ACHG"));
-            addControl(p, "HO with text", "Handover with text", () -> stubAction("Handover with text"));
-            addControl(p, "Disc. with text", "Disconnect with text",
-                    () -> stubAction("Disconnect with text"));
+            addControl(p, "Abort", "Abort link (PN if Listen on, else Pt)", this::abortSession);
+            addControl(p, "Handover", "Handover now (stubbed)",
+                    () -> stubAction("Handover now (deferred)"));
+            addControl(p, "HO after TX clear", "Handover after TX clear (Host PV)",
+                    () -> app.arqHoAfterTxClear(this));
+            addControl(p, "Seize", "Seize link / ACHG (Host AG)",
+                    () -> app.arqSeize(this));
+            addControl(p, "HO with text", "Canned handover text then Host PV",
+                    () -> app.arqHoWithText(this));
+            addControl(p, "Disc. with text", "Canned disconnect text then Host RE",
+                    () -> app.arqDiscWithText(this));
             addControl(p, "Simulate ISS flush", "Flush App TX buffer to transcript (offline demo)",
                     this::simulateIssFlush);
         } else {
@@ -350,8 +353,7 @@ public final class ConnectionWindow extends JFrame {
         if (!sessionActive || kind != Kind.ARQ) {
             return;
         }
-        showNotice("Abort — would return to PTL if Listen on, else Pt (Host later).");
-        app.markArqDead(this);
+        app.arqAbort(this);
     }
 
     private void saveChat() {

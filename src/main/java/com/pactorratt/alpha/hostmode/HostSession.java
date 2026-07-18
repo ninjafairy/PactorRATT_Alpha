@@ -328,6 +328,47 @@ public final class HostSession implements AutoCloseable {
     }
 
     /**
+     * Send Host data to channel {@code channel} and wait for a data-ack ({@code CTL $5F … $00}).
+     * With HPOLL OFF the ack is pushed; do not send further data until this returns.
+     */
+    public void sendData(int channel, byte[] payload, long timeoutMs)
+            throws IOException, InterruptedException {
+        Objects.requireNonNull(payload, "payload");
+        if (channel < 0 || channel > 9) {
+            throw new IllegalArgumentException("Host data channel must be 0-9, got " + channel);
+        }
+
+        drainInbound();
+        byte[] tx = HostFrameCodec.encodeData(channel, payload);
+        synchronized (ioLock) {
+            debugLog.host("TX", "DATA ch" + channel + " len=" + payload.length
+                    + " | " + HostFrameCodec.toHex(tx));
+            serial.write(tx);
+        }
+
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        while (System.nanoTime() < deadline) {
+            if (Thread.interrupted()) {
+                throw new InterruptedException("Host data send interrupted (ch" + channel + ")");
+            }
+            long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+            if (remaining <= 0) {
+                break;
+            }
+            HostFrameCodec.Frame frame = inbound.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+            if (frame == null) {
+                continue;
+            }
+            logRx(frame);
+            if (HostFrameCodec.isDataAck(frame)) {
+                return;
+            }
+            // Other pushed frames (monitor/status/data) are ignored while waiting for ack.
+        }
+        throw new IOException("Timeout waiting for Host data-ack (ch" + channel + ")");
+    }
+
+    /**
      * Read {@code count} bytes starting at ROM address via AE + MM (auto-increment).
      * HPOLL may still be ON during early reads (e.g. compat gate); AE/MM are solicited host
      * commands with responses, not async GG polls. HP OFF is applied later in coded init.

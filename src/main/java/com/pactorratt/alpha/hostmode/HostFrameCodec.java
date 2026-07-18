@@ -14,6 +14,10 @@ public final class HostFrameCodec {
     public static final byte DLE = 0x10;
     public static final byte ETB = 0x17;
     public static final int CTL_GLOBAL = 0x4F;
+    /** Host → PK-232 data to channel 0 ({@code $20}). */
+    public static final int CTL_DATA_CH0 = 0x20;
+    /** PK-232 → Host status / data-ack class ({@code $5F}). */
+    public static final int CTL_DATA_ACK = 0x5F;
 
     private HostFrameCodec() {
     }
@@ -36,6 +40,24 @@ public final class HostFrameCodec {
     public static byte[] encodeGlobalCommand(String mnemonicAndArgs) {
         String text = mnemonicAndArgs == null ? "" : mnemonicAndArgs;
         return encodeBlock(CTL_GLOBAL, text.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    /**
+     * Encode Host data to channel {@code channel} (0–9). Non-Packet modes use channel 0.
+     */
+    public static byte[] encodeData(int channel, byte[] payload) {
+        if (channel < 0 || channel > 9) {
+            throw new IllegalArgumentException("Host data channel must be 0-9, got " + channel);
+        }
+        return encodeBlock(0x20 | (channel & 0x0F), payload);
+    }
+
+    /** Ch.4 data-ack: {@code SOH $5F X X $00 ETB}. */
+    public static boolean isDataAck(Frame frame) {
+        if (frame == null || frame.ctl != CTL_DATA_ACK || frame.payload.length < 3) {
+            return false;
+        }
+        return (frame.payload[frame.payload.length - 1] & 0xFF) == 0x00;
     }
 
     public static byte[] encodeOggProbe() {

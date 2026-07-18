@@ -1,0 +1,654 @@
+
+CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+Paragraph Page
+4.1 Introduction to Host Mode ................................................................. 4-1 18
+4.1.1 Why Do We Need a Host Mode ................................................ 4-1 18
+4.1.2 How does Host Mode Help Us? ................................................ 4-1 18
+4.1.3 Entering Host Mode ................................................................ 4-2 19
+4.1.4 Leaving Host Mode ................................................................. 4-2 19
+4.1.5 The Host Mode Dialog ............................................................. 4-2 19
+4.1.6 Host Mode Recovery ............................................................. 4-3 20
+4.2 Host Computer Commands ................................................................ 4-3 20
+4.2.1 Unsupported Commands ......................................................... 4-4 21
+4.2.2 Host Mode Mnemonic Indicators .............................................. 4-4 21
+4.2.3 CONNECT and DISCONNECT ................................................... 4-5 22
+4.2.4 ON/OFF Booleans or Switches ................................................. 4-5 22
+4.2.5 TXDELAY ............................................................................... 4-5 22
+4.2.6 SENDPAC ............................................................................... 4-5 22
+4.2.7 Interrogation or Query Commands ........................................... 4-5 22
+4.3 PK-232 Responses ............................................................................. 4-5 22
+4.3.1 Responses to Interrogation or Query Commands ....................... 4-6 23
+4.3.2 OPMODE Response ................................................................. 4-7 24
+4.3.3 Link Status Request Response ................................................. 4-7 24
+4.3.4 Call Sign Formats ................................................................... 4-7 24
+4.4 Sending Data to the PK-232 ............................................................... 4-8 25
+4.4.1 Data Polling ........................................................................... 4-8 25
+4.4.2 The HPOLL Command ............................................................. 4-8 25
+4.4.3 Special Case in AMTOR ........................................................... 4-9 26
+4.4.4 Link Messages ........................................................................ 4-9 26
+4.5 Host Mode and Special Packet Applications ......................................... 4-9 26
+4.6 Raw HDLC ........................................................................................ 4-9 26
+4.7 "KISS" TNC Asynchronous Packet Protocol .......................................... 4-10 27
+4.7.1 Starting "KISS" TNC Operation ................................................ 4-11 28
+4.7.2 "KISS" TNC Special Characters ................................................. 4-11 28
+4.7.3 "KISS" TNC Frame Structure .................................................... 4-11 28
+4.7.4 "KISS" TNC Commends ........................................................... 4-11 28
+4.7.4.1 TXDELAY: CTL = $01 .................................................... 4-11 28
+4.7.4.2 PERSISTENCE: CTL = $02 ............................................ 4-12 29
+4.7.4.3 SLOTTIME: CTL = $03 .................................................. 4-12 29
+4.7.4.4 TXTAIL: CTL = $04 ...................................................... 4-12 29
+4.7.4.5 FULLDUP: CTL = $05 ................................................... 4-13 30
+4.7.4.6 HOST OFF: CTL = $FF .................................................. 4-13 30
+4.7.4.7 DATA: CTL = $00 ......................................................... 4-13 30
+4.8 Maximum Block Size .......................................................................... 4-14 31
+4.9 MEMORY, I/O and ADDRESS Commands ............................................. 4-14 31
+4.9.1 MEMORY Command ................................................................ 4-14 31
+4.9.2 ADDRESS Command ............................................................... 4-14 31
+4.9.3 I/O Command ........................................................................ 4-15 32
+4.10 Converse and Transparent Modes ....................................................... 4-15 32
+4.11 MHEARD Command in Host Mode ....................................................... 4-15 32
+4.12 Software Release Date Code .............................................................. 4-16 33
+4.13 Product Type Code ............................................................................ 4-16 33
+
+CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+4.1 Introduction to Host Mode
+In conventional AX.25 Packet operation, the PK-232 presents a reasonably 'user-friendly' verbose
+human interface that uses plain-language command words up to eight-letters that actually
+spell out a word.
+The CONNECT command, for example, describes exactly what the command does; the PK-
+232 transmits a Connect Request (SABM) frame. In addition, when you want to know the
+connect path and other connection characteristics, you type CONNECT and the PK-232
+sends your computer the following:
+Link state is: CONNECTED to N6IA via W6AMT; v2; 1 unACKed
+all of which tells you that:
+o you are connected to N6IA through the W6AMT digipeater;
+o you have AX25L2V2 set to ON;
+o you have sent a frame to N6IA which he has not acknowledged yet.
+4.1.1 Why Do We Need a Host Mode ?
+You may wish to write a program that permits your computer to control your PK-232. You
+could write a program that provides a split screen with status windows. You might want to
+include a personal mailbox, a multi-user bulletin board system, an automatic calling routine,
+with tutorials or help screens. you may also wish to experiment with some high-level
+protocols or techniques other than AX.25 Level 2. Your program could be written to take
+much of the burden of operating a data controller and free you from the need to memorize
+the PK-232 commands and possibly permit fully-automatic system operation.
+When working with conventional, human-oriented data controllers and Packet TNCs, your
+hypothetical program must interpret and translate all the verbose, human-interface information
+sent in either direction over the serial interface between your computer and your
+PK-232. All PK-232's command and response features that permit convenient human operating
+unfortunately produce substantive difficulties for a computer. For example, your
+computer and program must:
+o decide if the PK-232 is in command mode or converse mode;
+o sort through status messages in English;
+o accept any data or status from the PK-232 at any time.
+4.1.2 How Does Host Mode Help Us ?
+Host mode does not use human-type dialog. By communication directly with the "host" or
+computer, Host mode provides the computer with much greater direct control over the PK-
+232. Host mode permits programmers to eliminate, reduce or greatly simplify the transfer
+and subsequent encoding and decoding of critical information, eliminating wasteful and
+redundant information. In Host mode, the PK-232 is 'unfriendly'; humans would find it difficult
+to operate the PK-232 in Host mode.
+Host mode uses the normal RS-232 serial link between the PK-232 and the computer, but
+provides a more efficient link with fewer characters necessary.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-2 Page 19
+In Host mode, the PK-232 sends data to the computer only when the computer requests
+data. This feature is selectable by the user (see HPOLL below).
+4.1.3 Entering Host Mode
+Enter Host mode by typing the following commands:
+Type: AWLEN 8<CR>
+PARITY 0<CR>
+8BITCONV ON<CR>
+RESTART<CR>
+Verify that your computer's serial interface driver is also set to eight bits, no parity, and
+that you have set your system for hardware control by disabling XON/XOFF and enabling
+RTS/CTS/DTR.
+Type: HOST ON<CR>
+If you wish to apply power to your computer and Host mode immediately, be aware that
+power transients may cause random data to be sent to the PK-232.
+o To ensure correct entry into Host mode, send XON, CANLINE and COMMAND characters
+first, as shown below with the hexadecimal representation of each character
+listed above each its acronym or literal. Note: 'sp' is the 'space bar' character.
+$11 $18 $03 $48 $4F $53 $54 $20 $59 $0D
+XON CAN COM H O S T sp Y CR
+Follow these steps:
+1. Send $01 [^A] (^ = CTRL)
+2. Send the sequence: $01 $4F $47 $47 $17
+3. If you receive the response: $01 $4F $47 $47 $00 $17
+you have successfully entered the Host mode. If you receive some other response, got to
+Step 2.
+4.1.4 Leaving Host Mode
+To leave the Host mode and return to conventional or verbose mode, type:
+$01 $4F $48 $4F $4E $17
+or ^A O H O N ^W (^ = CTRL)
+or transmit a BREAK signal (reversal to SPACE or START polarity of at least 300 milliseconds)
+on the serial link.
+4.1.5 The Host Mode Dialog
+The host computer and PK-232 communicate in blocks of characters:
+o Each block starts with the SOH (Start of Header) character, which is $01 or ^A.
+o The next character is a special data-type identification byte, called the CTL (control)
+character that indicates whether the following characters are a command, status or
+data.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-3 Page 20
+o Next come the literal command or data characters.
+o Each block end with $17 or ^W, the ETB (End of Transmission Block) character.
+Therefore, in Host mode, each block appears as follows:
+[SOH] [CTL] [data] [ETB]
+In addition, DLE (Data Link Escape), $10 may be used as a pass character.
+o If one of the data field characters is SOH ($01), DLE ($10) or ETB ($17), the pass
+character DLE ($10) is inserted before the data character.
+For example, data consisting of the bytes $04, $01, $05, $10, $12 is sent to channel 0 in
+this block:
+$01 $20 $04 $10 $01 $05 $10 $10 $12 $17
+SOH CTL data DLE data data DLE data data ETB
+This occurs in either direction, from the computer to the PK-232 or from the PK-232 to the
+computer.
+4.1.6 Host Mode Recovery
+If it becomes necessary to quit Host mode because of a problem on the RS-232 link, send
+any command, with TWO SOH characters to start the block. This makes sure the PK-232
+goes to a known state where it is processing commands. A suggestion:
+$01 $01 $4F $47 $47 $17
+SOH SOH O G G ETB
+4.2 Host Computer Commands
+The host computer send blocks to the PK-232 using the CTL bytes:
+$2x: Data to channel x, where x = 0-9
+$4x: Command to channel x
+$4F: Command, no change to input channel
+The computer sends commands to the PK-232 in the following format:
+SOH $4F a b (any data) ETB
+where a and b are the two character Host mode mnemonic or abbreviation for that command.
+o When setting a parameter, do not send the SPACE character between the command
+and the first argument.
+o Arguments are entered just as in the verbose mode, with space characters or commas
+between arguments.
+o The command ends with ETB, without a carriage return before it.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-4 Page 21
+4.2.1 Unsupported Commands
+The PK-232 does not accept these commands in Hoste Mode:
+CALIBRATE – CONVERSE – CSTATUS – DISPLAY – HELP – TRANS
+4.2.2 Host Mode Mnemonic Indicators
+Each command in the Host mode can be sent by issuing a unique mnemonic or abbreviation
+in the form of a two-letter character group. These mnemonics are shown in the following
+list before each command.
+8B 8BITCONV AU AAB AB ABAUD AG ACHG AA ACRDISP
+AK ACRPACK AT ACRRTTY AE ADDRESS AD ADELAY AI ALFDISP
+AP ALFPACK AR ALFRTTY AL ALIST AM AMOTR AC ARQ
+AO ARQTMO AS ASCII AY ASPECT AW AWLEN AV AX25L2V2
+AX AXDELAY AH AXHANG BA BAUDOT BE BEACON BI BITINV
+BK BKONDEL BT BTEXT CL CANLINE CP CANPAC CX CASEDISP
+CU CBELL CC CCITT CF CFROM CB CHCALL CD CHDOUBLE
+CH CHSWITCH CK CHECK CQ CMDTIME CM CMSG CI CODE
+CN COMMAND CE CONMODE CO CONNECT CY CONPERM CG CONSTAMP
+CI CPACTIME CR CRADD CT CTEXT CW CWID DS DAYSTAMP
+DA DAYTIME DC DCDCONN DL DELETE DF DFROM DI DISCONNE
+DW DWAIT EA EAS EC ECHO ES ESCAPE FA FAX
+FN FAXNEG FE FEC FL FLOW FR FRACK FS FSPEED
+FU FULLDUP GR GRAPHICS HB HBAUD HD HEADERLN HI HID
+HO HOST HP HPOLL ID ID IL ILFPAK IO IO
+JU JUSTIFY KI KISS LR LEFTRITE LO LOCK MX MAXFRAME
+MB MBX MC MCON MD MDIGI MM MEMORY MI MFILTER
+MF MFROM MH MHEARD MN MONITOR MO MORSE MP MSPEED
+MR MRPT MS MSTAMP MT MTO MA MYALIAS ML MYCALL
+MG MYSELCAL MK MYALTCAL NE NEWMODE NO NOMODE NR NUCR
+NF NULF NU NULLS OK OK OP OPMODE PA PACKET
+PL PACLEN PT PACTIME PR PARITY PS PASS PX PASSALL
+PE PERSIST PP PPERSIST PC PRCON PF PRFAX PO PROUT
+PY PRTYPE RW RAWHDLC RB RBAUD RC REVE RE RECEIVE
+RX RXREV RD REDISPLA RL RELINK RS RESET RP RESPTIME
+RT RESTART RY RETRY RF RFEC SE SELFEC SP SENDPAC
+SI SIGNAL SL SLOTIME SQ SQELCH SR SRXALL ST START
+SO STOP TB TBAUD TC TCLEAR TM TIME TR TRACE
+TW TRFLOW TI TRIES TD TXDELAY TF TXFLOW TX TXREV
+UN UNPROTO UR USERS US USOS VH VHF WI WIDESHFT
+WO WORDOUT WR WRU XW XFLOW XM XMIT XO XMITOK
+XF XOFF XN XON
+For example, whereas in verbose mode, the human operator types:
+MFILTER 7, 19
+in Hoste mode the computer sends the same command as:
+$01 $4F $4D $49 $37 $2C $31 $39 $17
+SOH CTL M I 7 , 1 9 ETB
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-5 Page 22
+4.2.3 CONNECT and DISCONNECT
+Send the CONNECT (CO) and DISCONNECT (DI) commands with:
+CTL byte = $4x, where x is the channel 0-9.
+4.2.4 ON/OFF Booleans or Switches
+To set ON/OFF switch, the only argument is an ASCII Y or N for YES or NO respectively.
+o Y or N is returned in response to a query command.
+For example, to set MRPT ON, send:
+SOH $4F M R Y ETB
+o To set a numerical value, the value must be in ASCII, not binary.
+4.2.5 TXDELAY
+To set TXDELAY to 40, send:
+$01 $4F $54 $44 $34 $30 $17
+SOH CTL T D 4 0 ETB
+4.2.6 SENDPAC
+To set SENDPAC to $0D, send:
+$01 $4F $53 $50 $24 $30 $44 $17
+SOH CTL S P $ 0 D ETB
+4.2.7 Interrogation or Querry Commands
+Querry commands are similar to the human or verbose mode in that the two-letter command
+to the PK-232 is not followed by arguments, that is, the command is followed by
+ETB.
+4.3 PK-232 Responses
+The PK-232 always issues a response to each command.
+o The computer should always wait for the response before issuing another command.
+The PK-232 sends blocks to the computer using these CTL bytes:
+$2F: Echoed data in Morse, Baudot ASCII and AMTOR,
+$3x: Data from channel x.
+$3F: Monitored frames.
+$4x: Link status from channel x (response to CONNECT command).
+$4F: Response to command.
+$5x: Link messages from channel x.
+$5F: Status errors.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-6 Page 23
+NOTE: Channel 'x' (0-9) refers to the Packet multi-connect channel that would be available
+in verbose (human) mode by using the CSWITCH character. Only channel 0 is used
+in all communications mode other than Packet mode.
+The PK-232's response structure is:
+SOH $4F a b c ETB
+where a and b are the two-letter host command received from the computer, and c is:
+$00 acknowledge, no error
+$01 bad
+$02 too many
+$03 not enough
+$04 too long
+$05 range
+$06 callsign
+$07 unknown command
+$08 VIA
+$09 not while connected
+$0A need MYCALL
+$0B need MYSELCAL
+$0C already connected
+$0D not while disconnected
+$0E different connects
+$0F too many packets outstanding
+$10 clock not set
+$11 need ALL/NONE/YES/NO
+$15 not in this mode
+Other errors are: SOH $5F X X W ETB bad block
+SOH $5F X X Y ETB bad CTL in block
+4.3.1 Responses to Interrogation or Querry Commands
+Responses to query commands consist of the following block:
+SOH $4F a b (value) ETB
+where the value is:
+for a switch: Y or N
+for a BEACON or PACTIME: E or A, space, and a number
+for CONMODE: C or T
+for all other commands: the same as in the verbose mode, except for CONNECT,
+which is discussed in this chapter.
+For example, to read the state of MRPT, send:
+SOH $4F M R ETB
+The reply should be:
+SOH $4F M R Y ETB
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-7 Page 24
+4.3.2 OPMODE Response
+The computer can use the OPMODE command to interrogate the PK-232 for information
+on its current operating mode. The PK-232 sends one of the following responses:
+Packet: SOH $4F O P P A ETB
+Morse: SOH $4F O P M O x y z ETB
+Baudot: SOH $4F O P B A x ETB
+ASCII: SOH $4F O P A S x ETB
+AMTOR Standby SOH $4F O P A M $30 x ETB
+ARQ: SOH $4F O P A C v x ETB
+ARQ Listen: SOH $4F O P A L v R ETB
+FEC: SOH $4F O P F E v x ETB
+SELFEC: SOH $4F O P S E v x ETB
+FAX: SOH $4F O P F A v x ETB
+where v = $30 if Standby x = S if transmit
+$31 if Phasing R if receive
+$32 if Change-over
+$33 if Idle
+$34 if Traffic
+$35 if Error
+$36 if RQ
+$37 if Sync
+yz = present receive Morse code speed in words per minute
+4.3.3 Link Status Request Response
+Use the CONNECT command to query the link state of channel x:
+SOH $4x C O ETB
+The PK-232 response is:
+SOH $4x C O a b c d e path ETB
+where a, b, c, d and e are values $0-$F, ORed with $30:
+a = the link state -1, e.g., S05 is sent as $34
+b = $31 if the link is AX.25 L2 version 2, $30 if pre-v2
+c = the number of outstanding (unacknowledged) packets
+d = the number of retries done at this time
+e = $31 if CONPERMed, $30 otherwise
+path = the callsign of the connects, followed by the digipeater callsigns
+4.3.4 Callsign Formats
+Examples of the callsign format are:
+WA2DFI
+W6CUS-1 via K6LLK, WD6CMU-1
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-8 Page 25
+4.4 Sending Data to the PK-232
+Send data to channel 'x' (all modes except Packet assume channel 0) as follows:
+SOH $2x (data) ETB
+This type of block does not produce an immediate acknowledgement as does a command
+block. The data acknowledgement from the PK-232 is sent as a result of a data poll (see below)
+and produces the following response when the PK-232 can process the data:
+SOH $5F X X $00 ETB
+If the PK-232 is busy, the response is delayed until the data can be processed. The host
+computer should wait for each data ack before sending more data.
+4.4.1 Data Polling
+The computer can poll the PK-232 for information such as channel data or status, link
+messages, data acknowledgements or monitored frames. To poll the PK-232, send the poll
+command as follows:
+SOH $4F G G ETB
+If the PK-232 has nothing to send to the computer, the response is:
+SOH $4F G G $00 ETB
+If the PK-232 has data to send and information is waiting to be sent, the response is
+shown below. Only one block is sent for each poll.
+SOH $2F ............... ETB echoed data
+SOH $3x ............... ETB data
+SOH $3F ............... ETB monitored data
+SOH $4x ............... ETB link status
+SOH $5x ............... ETB link messages
+SOH $5x X X ..... ETB status errors
+SOH $5F X X $00 ETB data acknowledgement
+Here is an example of the Host mode dialog between the computer and the PK-232:
+Computer: SOH $30 (data) ETB data sent
+Computer: SOH $4F G G ETB poll
+PK-232: SOH $4F G G $00 ETB nothing yet
+Computer: SOH $4F G G ETB poll
+PK-232: SOH $5F X X $00 data acknowledged
+4.4.2 The HPOLL Command
+The HPOLL command determines whether the host computer must constantly poll the PK-
+232.
+o If HPOLL is ON, the host must poll for everything, as described above.
+o If HPOLL is OFF, the PK-232 sends all blocks to the host computer when they are
+formed and the data poll ($4F G G) is not needed.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-9 Page 26
+In communications mode other than Packet, received data is formed into blocks one character
+at a time, for total of four bytes per block (SOH, CTL, data, ETB).
+4.4.3 Special Case in AMTOR
+AMTOR operation produces some special responses.
+o When the PK-232 is in Mode A (ARQ), data received from another station is block
+type $30.
+o When the PK-232 is in Mode B (FEC), S (SELFEC) or L (ALIST) block type $3F is
+used.
+4.4.4 Link Messages
+Link messages have the following format:
+SOH $5x (message) ETB
+Some of these link messages are:
+CONNECTED to <callsign>
+<callsign> busy
+Connect request: <callsign>
+FRMR sent: xx yy zz
+FRMR rcvd: xx yy zz
+Retry count exceeded
+DISCONNECTED: <callsign>
+LINK OUT OF ORDER, possible data loss
+(3 bell characters, output from CBELL)
+Transmit data remaining
+4.5 Host Mode and Special Packet Applications
+Certain differences exist when operating in Packet mode using the Host mode.
+o Data is packetized only after the ETB character.
+o PACTIME and CPACTIME are ignored.
+The Host mode permits the use of special machine-oriented interfaces that are inappropriate
+for direct interpretation by human users.
+4.6 Raw HDLC
+Raw HDLC is available only in Host mode. When RAWHDLC is set to ON, data sent from the
+computer to the PK-232 is converted to pure Packet frames without adding headers or protocol
+bytes.
+In RAW HDLC, the host computer must provide the AX.25 header with each outgoing frame.
+Raw HDLC moves the AX.25 protocol from the PK-232 to the host computer, permitting the
+system operator to create his own version of AX.25, with possible inclusion of layer 3 and
+higher-level protocols, as well as protocols other than AX.25.
+Data from the PK-232 to the computer included every byte in the received frame, minus
+flags and checksum.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-10 Page 27
+In Raw HDLC, data is sent from the computer to the PK-232 using a CTL byte of $20 (data
+to channel 0); received data from the PK-232 uses $3F (monitored data).
+Very little error checking is done in the RAWHDLC mode. Do not send commands such as
+CONNECT and DISCONNECT that could possible create problems. Assume that all frames
+are being sent in the UNPROTO state.
+Enter Raw HDLC from the human or verbose mode by typing the following commands and
+parameter values:
+AWLEN 8
+PARITY 0
+RESTART
+TRACE OFF
+CONMODE TRANS
+HID OFF
+BEACON EVERY 0
+PACKET
+RAWHDLC ON
+KISS OFF
+HOST ON
+From the Host mode, send the Host mode equivalents.
+For details on implementing AX.25, see the "AX.25 Link Layer Protocol" document, available
+from the ARRL Publications Department foe $10.
+4.7 "KISS" TNC Asynchronous Packet Protocol
+The PK-232 provides a simple, asynchronous, computer-to-TNC protocol for a Raw HDLC or
+"KISS" TNC developed by Phil Karn, KA9Q. The computer must again provide all AX.25
+headers and timing functions. KISS protocol is similar to the Raw HDLC protocol described
+earlier, with a few exception:
+o The frame delimiter characters.
+o The commands available.
+o The method of determining the proper time to transmit.
+o The KISS protocol does not use the Host mode [SOH CTL ... ETB] described earlier.
+Host mode commands and responses described before this KISS section do not apply
+when KISS is active.
+4.7.1 Starting "KISS" TNC Operation
+Before entering the KISS mode, set the PK-232 for hardware flow control on the host side
+of the RS-232 link.
+Type the following parameter values from the human or verbose mode:
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-11 Page 28
+AWLEN 8
+PARITY 0
+RESTART
+CONMODE TRANS
+TRACE OFF
+HID OFF
+BEACON EVERY 0
+PACKET
+RAWHDLC ON
+HPOLL OFF
+PPERSIST ON
+KISS ON
+HOST ON
+4.7.2 "KISS" TNC Special Characters
+The special "KISS" TNC characters are:
+FEND (frame End) $C0
+FESC (Frame Escape) $DB
+TFEND (Transposed Frame End) $DC
+TFESC (Transposed Frame Escape) $DD
+4.7.3 "KISS" TNC Frame Structure
+Each KISS frame or block of characters begins with a FEND (Frame End) character.
+o The next character is like the original PK-232 CTL character in that it defines
+whether the following characters are data or commands.
+o The literal data or parameter value follows the CTL character.
+o Each block ends with another FEND character.
+The FESC (Frame Escape) character is the pass character.
+o If any data character is a FEND, that character is translated into the two-byte sequence
+FESC TFEND (Frame Escape, Transposed Frame End).
+o If any data character is a FESC, that character is replaced by the two-byte sequence
+FESC TFESC (Frame Escape, Transposed Frame Escape).
+o If any data character is a TFEND or TFESC, that character is not changed.
+4.7.4 "KISS" TNC Commands
+There are only six commands in the "KISS" TNC protocol.
+4.7.4.1 TXDELAY: CTL = $01
+TXDELAY in the "KISS" TNC protocol has the same meaning as traditional TNCs: it determines
+how long the TNC waits between activating the PTT line and the start of HDLC
+data.
+The KISS command is: $C0 $01 n $C0
+FEND CTL TXD FEND
+where n is a binary number expressing TXDELAY in units of 10 milliseconds.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-12 Page 29
+4.7.4.2 Persistence: CTL = $02
+PERSISTENCE (P) and SLOTTIME work together to establish the time at which the PK-
+232 will transmit.
+OERSICTENCE is best dexcribed by quoting Phil Karn, KA9Q, directly from his "Raw TNC
+Functional Spec".
+"Whenever the host has queued data for transmission, the TNC begins monitoring the
+carrier detect signal from the modem. It waits indefinitely for this signal to go inactive.
+Once the channel is clear, the TNC generates a random number between 0 and 255. If
+this number is less than or equal to P, the TNC asserts the transmitter PTT line, waits
+.01 # TXDELAY seconds, and transmits all frames in its queue. The TNC then releases
+PTT and goes back to the idle state. If the random number is greater than P, the TNC
+delays .01 # SLOTTIME seconds and repeats the procedure. If the carrier detect signal
+has gone active in the meantime, the TNC again waits for it to clear before continuing.
+Note that P=255 means always transmit as soon as possible, regardless of the random
+number.
+The result is that the TNC waits for an exponentially-distributed random interval afr
+sensing that the channel has gone clear before attempting to transmit. The idea here is
+that with proper tuning of the parameters P and SLOTTIME, several stations with traffic
+to send are much less likely to collide with each other when they simultaneously see
+the channel go clear."
+The form of the command is:
+$C0 $02 n $C0
+FEND CTL p FEND
+where n can be 0-255; the persistence parameter p is the fraction: (n + 1)/256
+If n = 0, p = 1/256 (lowest value)
+If n = 255, p = (155 + 1)/256 = 1.0 (highest value)
+4.7.4.3 SLOTTIME: CTL = $03
+The SLOTTIME command controls the slot interval as described above in the PERSISTENCE
+command.
+The form of the command is:
+$C0 $03 n $C0
+FEND CTL SLO FEND
+where n is the slot interval in units of 10 milliseconds.
+4.7.4.4 TXTAIL: CTL = $04
+In both the PK-232's human or verbose mode and the original Host mode, the length of
+time between the end of data and the release of the PTT line is determined automatically
+by the baud rate (HBAUD).
+In the KISS protocol, the computer controls this interval.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-13 Page 30
+The form of the command is:
+$C0 $04 n $C0
+FEND CTL TXT FEND
+where n is the binary value of "TX Tail" time in units of 10 milliseconds.
+4.7.4.5 FULLDUP: CTL = $05
+The FULLDUD command has the same meaning as in conventional TNCs, that of full duplex
+operation.
+When FULLDUP is ON, the PK-232 transmits without checking to see if the channel is
+clear.
+$C0 $05 n $C0
+FEND CTL FUL FEND
+where n is $00 for FULLDUP OFF, and $01 for FULLDUP ON.
+4.7.4.6 HOST OFF: CTL = $FF
+The HOST OFF command returns the PK-232 to the human or verbose mode. HOST
+OFF has no arguments.
+$C0 $FF $C0
+FEND CTL FEND
+4.7.4.7 DATA: CTL = $00
+The DATA block is used to send data from the computer to the PK-232, or from the PK-
+232 to the computer. There is no data acknowledgement.
+$C0 $00 (data) $C0
+FEND CTL FEND
+NOTE: Data characters that are FEND or FESC characters must be translated to twobyte
+sequences.
+The data must include all AX.25 headers and control bytes. Except for HDLC flags at the
+beginning and end of the frame and the SDLC checksum, the PK-232 adds nothing to
+the data transmitted.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-14 Page 31
+4.8 Maximum Block Size
+For blocks sent by the host computer to the PK-232, maximum block size is 330 characters,
+not including SOH, CTL, DLE and ETB.
+For blocks sent by the PK-232 to the host, maximum block size depends on the communications
+mode.
+o In Morse, Baudot ASCII and AMTOR, the received and echoed data is divided into
+blocks containing a maximum of 256 bytes, not including SOH, CTL, DLE and ETB.
+o In Packet, the worst-case is a monitored frame containing the addresses of eight
+digipeaters and 256 bytes of data, with the PK-232's MSTAMP, DAYSTAMP and MRPT
+parameters all set to ON, and MONTITOR set to 6.
+This worst-case configration produces a maximum of 136 + 256, or 392 bytes, not
+including SOH, CTL, DLE and ETB. By stuffing couls add as many as 256 additional
+DLE characters, for a total of 648 bytes.
+If CONMODE is CONVERSE, linefeed characters may be appended to carriage returns
+because ALFDISP is active. Theoretically, a packet contains 256 carriage returns
+would result in a block of 136 + 256 + 256, or 648 bytes, plus SOH, CTL and
+ETB.
+4.9 MEMORY, I/O and ADDRESS Commands
+The Memory and I/O commands work with the ADDRESS command to permit host access to
+the PK-232's mmory an I/O locations.
+4.9.1 MEMORY Command
+To use the Memory command:
+o Set the memory address into the ADDRESS command.
+o Use the MEMORY command without arguments to read memory locations one after
+another.
+o Use MEMORY with one argument 0-$FF to write to memory locations. After each
+MEMORY command, the PK-232 adds 1 to the value of the ADDRESS.
+PK-232 RAM locations are $C0000-$FFFF. ROM begins at $0000.
+4.9.2 ADDRESS Command
+To access I/O locations, set ADDRESS as follows:
+ADDRESS $aabb or SOH $4F A E $ a a b b ETB (host mode)
+where aa is the device address: 7C = 8530 terminal CTRL port
+7E = 8530 HDLC CTRL port
+BF = 8536 timer/parallel CTRL port
+and bb is the register address on the device.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-15 Page 32
+4.9.3 I/O Command
+Use the I/O command without arguments to read an I/O location and with one argument
+0-FF to write to an I/O location. The value in ADDRESS is not incremented after using the
+I/O command.
+Load ADDRESS with these values for easy access:
+$BF0D Parallel port A
+$BF0E Parallel port B
+$BF0F Parallel port C
+$7C08 Terminal data
+$7E08 HDLC data
+$7E00 HDLC RR0
+HDLC RR0 is the status register of the radio interface. The following information can be
+read from RR00:
+bit 7 Break/Abort
+bit 6 TX Underrun/End of message
+bit 5 CTS (Read data)
+bit 4 Sync/Hunt
+bit 3 DCD
+bit 2 Transmit buffer empty
+bit 1 Zero count
+bit 0 Receive character available
+4.10 Converse and Transparent Modes
+In Host mode, data is sent using the setting of CONMODE.
+o Do not send the CONVERSE or TRANS commands to the PK-232.
+o If CONMODE is CONV, the parameters 8BITCONV, ALFPACK, ALFDISP, LCOK and
+ESCAPE are active.
+o If CONMODE is TRANS, all characters are passed without modification.
+These are the only differences between CONV and TRANS while in Host mode.
+4.11 MHEARD Command in Host mode
+The MH command has been altered in Host mode because the verbose mode MHEARD response
+is potentially too long for the limited Host mode response buffer.
+The MHEARD response is divided into lines numbered 0-17. The MHEARD list must be polled
+on a line-by-line basis.
+o Use the host command MH0 (SOH $4F M H $30 ETB), then MH1, MH2, etc. until
+you get an empty response (SOH $4F M H $00 ETB), or until you reach the last
+(MH17) line.
+CAUTION: If the PK-232 receives a Packet frame while the computer is polling the middle
+of the MHEARD list, the list entries may be garbled. One possible solution
+would be to temporarily set HBAUD to 110 to disable Packet, poll the 18
+MHEARD lines, then set HBAUD back to 1200.
+PK-232 TECHNICAL MANUAL CHAPTER 4 – HOST MODE AND SPECIAL APPLICATIONS
+PK232TM Rev. A 5/87 4-16 Page 33
+4.12 Software Release Data Code
+The PK-232's software version (date code) can be read from memory locations $0006-
+$0008.
+For the 29. JUL. 86 release, the contents are:
+$86 $07 $29
+4.13 Product Type Code
+The product type is available at EPROM location $0009. The byte return is:
+bits 7 6 5 device bits 4 3 2 1 0 product
+0 0 1 PK-80 0 0 0 0 1 PK-87
+0 1 0 PK-87 0 0 0 1 0 PK-232
+0 1 1 PK-232 0 0 0 1 1 PK-81T
+1 0 0 UDC-232 0 0 1 0 0 PK-90
+0 0 1 0 1 PK-80E
+0 0 1 1 0 PK-87J
+0 0 1 1 1 SPR-10A
+0 1 0 0 0 PK-80I
+0 1 0 0 1 HK-232
+Previous software versions arre identifiable by a value of $C3.

@@ -24,6 +24,7 @@ import java.awt.BorderLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +36,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Coordinates modes, windows, and TNC Host session lifecycle.
  */
 public final class AppController {
+
+    private static final long ARQ_HOST_TIMEOUT_MS = 2000;
 
     private final Path portableRoot;
     private final ConfigStore configStore;
@@ -59,6 +62,8 @@ public final class AppController {
 
     private volatile HostSession hostSession;
     private final AtomicBoolean tncBusy = new AtomicBoolean(false);
+    /** Guards overlapping main-window Connect → PTConn ({@code PG}) attempts. */
+    private final AtomicBoolean arqConnectBusy = new AtomicBoolean(false);
     private volatile Thread connectThread;
     private final AtomicBoolean connectCancelled = new AtomicBoolean(false);
     private volatile HostSession pendingSession;
@@ -149,6 +154,10 @@ public final class AppController {
         return portableRoot;
     }
 
+    public ConfigStore configStore() {
+        return configStore;
+    }
+
     public AppConfig config() {
         return config;
     }
@@ -208,6 +217,145 @@ public final class AppController {
         }
     }
 
+    /** Disc. after TX clear — Host {@code RE} (RECeive). */
+    public void arqDiscAfterTxClear(ConnectionWindow window) {
+        runArqHostAction(window, "Disc. after TX clear", session -> sendHostOk(session, "RE"));
+    }
+
+    /** HO after TX clear — Host {@code PV} (PTOver). */
+    public void arqHoAfterTxClear(ConnectionWindow window) {
+        runArqHostAction(window, "HO after TX clear", session -> sendHostOk(session, "PV"));
+    }
+
+    /** Seize — Host {@code AG} (AChg). */
+    public void arqSeize(ConnectionWindow window) {
+        runArqHostAction(window, "Seize", session -> sendHostOk(session, "AG"));
+    }
+
+    /**
+     * Abort — Listen checkbox on → {@code PN}, else {@code Pt}; then {@link #markArqDead}.
+     */
+    public void arqAbort(ConnectionWindow window) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ) {
+            return;
+        }
+        if (!window.isSessionActive()) {
+            return;
+        }
+        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
+        String mnemonic = listenOn ? "PN" : "Pt";
+
+        if (!tncConnected) {
+            noticeArq(window, "Abort — TNC not connected; closing ARQ window.");
+            markArqDead(window);
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            noticeArq(window, "Abort — no open Host session; closing ARQ window.");
+            markArqDead(window);
+            return;
+        }
+
+        Thread worker = new Thread(() -> {
+            String resultNotice;
+            try {
+                sendHostOk(session, mnemonic);
+                resultNotice = "Abort — sent " + mnemonic
+                        + (listenOn ? " (Listen on)" : " (Idle)");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                resultNotice = "Abort — interrupted; closing ARQ window.";
+                debugLog.info("ARQ Abort interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                resultNotice = "Abort — " + msg + "; closing ARQ window.";
+                debugLog.info("ARQ Abort failed: " + msg);
+            }
+            final String notice = resultNotice;
+            runOnEdt(() -> {
+                markArqDead(window);
+                noticeArq(window, notice);
+            });
+        }, "arq-abort");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** HO with text — canned handover as ch0 data, then Host {@code PV}. */
+    public void arqHoWithText(ConnectionWindow window) {
+        runArqHostAction(window, "HO with text", session -> {
+            sendCannedDataIfPresent(session, config.getCannedHandoverText());
+            sendHostOk(session, "PV");
+        });
+    }
+
+    /** Disc. with text — canned disconnect as ch0 data, then Host {@code RE}. */
+    public void arqDiscWithText(ConnectionWindow window) {
+        runArqHostAction(window, "Disc. with text", session -> {
+            sendCannedDataIfPresent(session, config.getCannedDisconnectText());
+            sendHostOk(session, "RE");
+        });
+    }
+
+    private void sendCannedDataIfPresent(HostSession session, String text)
+            throws IOException, InterruptedException {
+        String canned = text == null ? "" : text;
+        if (canned.isEmpty()) {
+            return;
+        }
+        session.sendData(0, canned.getBytes(StandardCharsets.US_ASCII), ARQ_HOST_TIMEOUT_MS);
+    }
+
+    private void sendHostOk(HostSession session, String mnemonic)
+            throws IOException, InterruptedException {
+        HostSession.CommandResponse response = session.sendCommand(mnemonic, ARQ_HOST_TIMEOUT_MS);
+        if (!response.ok()) {
+            throw new IOException(mnemonic + " failed, status=0x"
+                    + Integer.toHexString(response.statusCode));
+        }
+    }
+
+    @FunctionalInterface
+    private interface ArqHostWork {
+        void run(HostSession session) throws IOException, InterruptedException;
+    }
+
+    private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work) {
+        if (!tncConnected) {
+            noticeArq(window, actionName + " — TNC not connected.");
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            noticeArq(window, actionName + " — no open Host session.");
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                work.run(session);
+                runOnEdt(() -> noticeArq(window, actionName + " — sent."));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("ARQ " + actionName + " interrupted");
+                runOnEdt(() -> noticeArq(window, actionName + " — interrupted."));
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("ARQ " + actionName + " failed: " + msg);
+                runOnEdt(() -> noticeArq(window, actionName + " — " + msg));
+            }
+        }, "arq-" + actionName.replaceAll("\\s+", "-").toLowerCase());
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void noticeArq(ConnectionWindow window, String text) {
+        if (window != null) {
+            window.showNotice(text);
+        }
+        debugLog.info("ARQ: " + text);
+    }
+
     /** Updates the connected flag and refreshes MainWindow (EDT-safe). */
     public void setTncConnected(boolean connected) {
         this.tncConnected = connected;
@@ -220,7 +368,7 @@ public final class AppController {
 
     /**
      * TNC menu Connect: open COM, enter Host Mode, compat gate, coded init.
-     * Runs off the EDT. Main-window Connect remains ARQ-only ({@link #requestConnect}).
+     * Runs off the EDT. Main-window Connect issues Host PTConn ({@link #requestConnect}).
      */
     public void connectTnc() {
         if (tncConnected) {
@@ -447,16 +595,12 @@ public final class AppController {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void showCompatInfoOnEdt(String message) throws InterruptedException {
+    private void showCompatInfoOnEdt(String message) {
         if (SwingUtilities.isEventDispatchThread()) {
             showCompatInfoDialog(message);
             return;
         }
-        try {
-            SwingUtilities.invokeAndWait(() -> showCompatInfoDialog(message));
-        } catch (java.lang.reflect.InvocationTargetException e) {
-            throw new InterruptedException("Compat info dialog failed: " + e.getMessage());
-        }
+        SwingUtilities.invokeLater(() -> showCompatInfoDialog(message));
     }
 
     private void showCompatInfoDialog(String message) {
@@ -465,7 +609,7 @@ public final class AppController {
                 + escapeHtml(body).replace("\n", "<br>")
                 + "</div></html>";
 
-        JDialog dialog = new JDialog(mainWindow, "TNC Firmware / Hardware", true);
+        JDialog dialog = new JDialog(mainWindow, "TNC Firmware / Hardware", false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
         JLabel label = new JLabel(html, SwingConstants.CENTER);
@@ -595,6 +739,10 @@ public final class AppController {
         }
     }
 
+    /**
+     * Main-window Connect / buddy double-click: Host {@code PG}+callsign (PTConn), then ARQ window.
+     * Success is command ACK only ({@code status 0x00}); link-status / call-timeout later.
+     */
     public void requestConnect(String remoteCallsign) {
         if (!tncConnected) {
             JOptionPane.showMessageDialog(mainWindow,
@@ -618,6 +766,68 @@ public final class AppController {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            JOptionPane.showMessageDialog(mainWindow,
+                    "No open Host session.",
+                    "PactorRATT_Alpha",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (!arqConnectBusy.compareAndSet(false, true)) {
+            return;
+        }
+
+        // Host wire: no space — PG + callsign (leading ! preserved for long path).
+        final String hostCmd = "PG" + call;
+        Thread worker = new Thread(() -> {
+            try {
+                HostSession.CommandResponse response =
+                        session.sendCommand(hostCmd, ARQ_HOST_TIMEOUT_MS);
+                if (!response.ok()) {
+                    throw new IOException("PG failed, status=0x"
+                            + Integer.toHexString(response.statusCode));
+                }
+                runOnEdt(() -> {
+                    try {
+                        openArqWindowForConnect(call);
+                    } finally {
+                        arqConnectBusy.set(false);
+                    }
+                });
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("PTConn interrupted for " + call);
+                runOnEdt(() -> {
+                    try {
+                        showConnectError("Connect interrupted.");
+                    } finally {
+                        arqConnectBusy.set(false);
+                    }
+                });
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("PTConn failed for " + call + ": " + msg);
+                // TODO: Later detect call timeout / "did not answer" (OPMODE/link status);
+                // close ARQ window if open and show a "did not answer" popup.
+                runOnEdt(() -> {
+                    try {
+                        showConnectError("Connect failed: " + msg);
+                    } finally {
+                        arqConnectBusy.set(false);
+                    }
+                });
+            }
+        }, "arq-ptconn");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Opens the active ARQ UI after a successful PTConn ({@code PG}) command ACK. */
+    private void openArqWindowForConnect(String call) {
+        if (activeArqWindow != null) {
+            return;
+        }
         mode = AppMode.ARQ;
         if (listenWindow != null) {
             listenWindow.setSessionActive(false);
@@ -628,8 +838,14 @@ public final class AppController {
         if (mainWindow != null) {
             mainWindow.refreshModeLabel();
         }
-        // Host PTConn will be issued in a later phase.
-        debugLog.info("ARQ window opened for " + call + " (Host connect not yet implemented)");
+        debugLog.info("ARQ window opened after PTConn ACK for " + call);
+    }
+
+    private void showConnectError(String message) {
+        JOptionPane.showMessageDialog(mainWindow,
+                message,
+                "PactorRATT_Alpha",
+                JOptionPane.ERROR_MESSAGE);
     }
 
     /** Offline UI helper: open a dead/preview ARQ window for layout testing. */

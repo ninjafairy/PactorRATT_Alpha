@@ -14,11 +14,11 @@ import java.util.Objects;
  */
 public final class TncInitializer {
 
-    private static final long PROBE_TIMEOUT_MS = 1500;
-    private static final long COMMAND_TIMEOUT_MS = 2000;
+    private static final long PROBE_TIMEOUT_MS = 250;
+    private static final long COMMAND_TIMEOUT_MS = 250;
     private static final long ASCII_SETTLE_MS = 300;
     private static final long RESTART_SETTLE_MS = 500;
-    private static final long STARTUP_QUIET_MS = 2000;
+    private static final long STARTUP_QUIET_MS = 500;
     private static final long STARTUP_MAX_WAIT_MS = 15000;
 
     public enum Outcome {

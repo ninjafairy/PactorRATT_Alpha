@@ -313,10 +313,12 @@ public final class MainWindow extends JFrame {
 
     private void loadBuddies() {
         buddiesNode.removeAllChildren();
-        Path file = app.portableRoot().resolve("buddies.json");
+        Path file = app.configStore().buddiesFile();
         List<String> calls = new ArrayList<>();
-        if (!Files.isRegularFile(file)) {
-            buddiesNode.add(new DefaultMutableTreeNode("(no buddies yet — edit buddies.json)"));
+        try {
+            app.configStore().ensureBuddiesFile();
+        } catch (Exception e) {
+            buddiesNode.add(new DefaultMutableTreeNode("(failed to create buddies.json)"));
             treeModel.reload(buddiesNode);
             return;
         }

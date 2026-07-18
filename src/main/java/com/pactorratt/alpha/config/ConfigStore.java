@@ -13,14 +13,28 @@ import java.util.Map;
  */
 public final class ConfigStore {
 
+    private static final String DEFAULT_BUDDIES_JSON = """
+            [
+              "N0CALL",
+              "KJ7RBS"
+            ]
+            """;
+
     private final Path settingsFile;
+    private final Path buddiesFile;
 
     public ConfigStore(Path portableRoot) {
-        this.settingsFile = portableRoot.resolve("config").resolve("settings.json");
+        Path configDir = portableRoot.resolve("config");
+        this.settingsFile = configDir.resolve("settings.json");
+        this.buddiesFile = configDir.resolve("buddies.json");
     }
 
     public Path settingsFile() {
         return settingsFile;
+    }
+
+    public Path buddiesFile() {
+        return buddiesFile;
     }
 
     public AppConfig load() {
@@ -41,6 +55,15 @@ public final class ConfigStore {
     public void save(AppConfig config) throws IOException {
         Files.createDirectories(settingsFile.getParent());
         Files.writeString(settingsFile, toJson(config), StandardCharsets.UTF_8);
+    }
+
+    /** Creates {@code config/buddies.json} with defaults if the file is missing. */
+    public void ensureBuddiesFile() throws IOException {
+        if (Files.isRegularFile(buddiesFile)) {
+            return;
+        }
+        Files.createDirectories(buddiesFile.getParent());
+        Files.writeString(buddiesFile, DEFAULT_BUDDIES_JSON, StandardCharsets.UTF_8);
     }
 
     private static String toJson(AppConfig c) {
