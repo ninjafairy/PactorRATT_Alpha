@@ -11,7 +11,9 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JSpinner;
 import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
@@ -37,6 +39,16 @@ public final class ProgramSettingsDialog extends JDialog {
         JTextField disconnect = new JTextField(config.getCannedDisconnectText(), 20);
         JTextField wrap = new JTextField(Integer.toString(config.getWrapColumns()), 4);
 
+        JCheckBox fec200 = new JCheckBox("FEC 200", config.isFec200());
+        fec200.setToolTipText("PTSend baud: checked = 200 (n=2), unchecked = 100 (n=1)");
+        JSpinner fecRetries = new JSpinner(new SpinnerNumberModel(config.getFecRetries(), 1, 5, 1));
+        fecRetries.setToolTipText("PTSend unproto repeats (x), 1–5");
+        JPanel fecRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        fecRow.setOpaque(false);
+        fecRow.add(fec200);
+        fecRow.add(new JLabel("Retries"));
+        fecRow.add(fecRetries);
+
         JPanel form = new JPanel(new GridLayout(0, 1, 4, 4));
         form.setBorder(new EmptyBorder(10, 10, 10, 10));
         form.add(labeled("Local callsign", callsign));
@@ -47,6 +59,7 @@ public final class ProgramSettingsDialog extends JDialog {
         form.add(labeled("Canned handover text", handover));
         form.add(labeled("Canned disconnect text", disconnect));
         form.add(labeled("Wrap columns", wrap));
+        form.add(fecRow);
 
         JButton save = new JButton("Save");
         save.addActionListener(e -> {
@@ -61,6 +74,8 @@ public final class ProgramSettingsDialog extends JDialog {
             } catch (NumberFormatException ignored) {
                 config.setWrapColumns(80);
             }
+            config.setFec200(fec200.isSelected());
+            config.setFecRetries((Integer) fecRetries.getValue());
             app.saveConfig();
             dispose();
         });

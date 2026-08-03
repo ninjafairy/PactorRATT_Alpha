@@ -377,7 +377,8 @@ Close all connection windows (dead ones included) and exit. Unsaved transcripts 
 
 - Host data blocks use CTL `0x20` (channel 0).
 - After each data block, wait for data acknowledgment `01 5F … 00 17` (per Host Mode reference) before sending the next data block.
-- Respect Host max payload sizing (330 chars host→TNC excluding framing/escapes).
+- **Ch. 4 §4.8 Maximum Block Size:** Host→PK-232 blocks are limited to **330 characters** of payload, not including SOH, CTL, DLE, or ETB. Implementation must chunk (or otherwise split) larger outbound text so each framed data block stays within that limit; DLE escaping can increase on-wire size for SOH/DLE/ETB bytes inside the payload, so count payload characters before escape for the 330 limit (as the manual states), and keep escape handling correct per frame.
+- **Status:** implemented in `HostSession.sendData` via `HostFrameCodec.MAX_HOST_TO_TNC_PAYLOAD` (shared by ISS flush, with-text, and any other Host data path).
 
 ---
 
@@ -391,13 +392,22 @@ Normative reference: `docs/PK232_HostMode_Reference.md`.
 - Escape: if payload contains `SOH`, `DLE (0x10)`, or `ETB`, prefix that byte with `DLE`.
 - No CR required inside Host blocks; `ETB` ends the block.
 
-### 9.2 Polling policy
+### 9.2 Command / response pacing (Ch. 4 §4.3)
+
+From PK-232 Chapter 4 Host Mode:
+
+- The PK-232 **always** issues a response to each command.
+- The computer **must wait** for that response before issuing another command.
+
+Product/init Host I/O uses `sendCommand` (wait for matching CTL `0x4F` response). Do not pipeline Host commands. (Debug Monitor manual Send may fire-and-forget for probing only — not a model for application command paths.)
+
+### 9.3 Polling policy
 
 - **`HPOLL OFF`** for Alpha normal operation.
 - Continuous serial reader consumes pushed blocks.
 - Use `GG` primarily for Host-entry verification / recovery, not as the steady-state data pump.
 
-### 9.3 Host entry (conceptual sequence)
+### 9.4 Host entry (conceptual sequence)
 
 Before Host:
 
@@ -407,13 +417,13 @@ Before Host:
 
 Exact ordered init list should be maintained as implementation proceeds against hardware; see also command encyclopedia.
 
-### 9.4 Case sensitivity
+### 9.5 Case sensitivity
 
 Host two-letter mnemonics are **case-sensitive**.  
 Example: Pactor standby is `Pt`, not `PT`.  
 See header in `docs/HostCommands - Trimmed.md`.
 
-### 9.5 CTL demux (receiver)
+### 9.6 CTL demux (receiver)
 
 | CTL class | Meaning |
 |---|---|
@@ -427,7 +437,7 @@ See header in `docs/HostCommands - Trimmed.md`.
 
 Parse command response code `c` for errors (`0x00` ack, `0x0A` need MYCALL, etc.).
 
-### 9.6 Debug logging
+### 9.7 Debug logging
 
 - Toggle in Settings → Program.
 - New log file each program launch.

@@ -2,6 +2,8 @@ package com.pactorratt.alpha.app;
 
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.ConfigStore;
+import com.pactorratt.alpha.hostmode.HostEvent;
+import com.pactorratt.alpha.hostmode.HostFrameCodec;
 import com.pactorratt.alpha.hostmode.HostSession;
 import com.pactorratt.alpha.hostmode.TncInitializer;
 import com.pactorratt.alpha.serial.SerialByteListener;
@@ -31,6 +33,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * Coordinates modes, windows, and TNC Host session lifecycle.
@@ -38,6 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class AppController {
 
     private static final long ARQ_HOST_TIMEOUT_MS = 2000;
+    /** Default RECeive character (CTRL-D) — ends PTSend / unproto after TNC TX clears. */
+    private static final byte RECEIVE_CHAR_CTRL_D = 0x04;
 
     private final Path portableRoot;
     private final ConfigStore configStore;
@@ -53,6 +58,7 @@ public final class AppController {
             }
         }
     };
+    private final Consumer<HostEvent> hostEventListener = this::onHostEvent;
 
     private MainWindow mainWindow;
     private ConnectionWindow listenWindow;
@@ -64,6 +70,8 @@ public final class AppController {
     private final AtomicBoolean tncBusy = new AtomicBoolean(false);
     /** Guards overlapping main-window Connect → PTConn ({@code PG}) attempts. */
     private final AtomicBoolean arqConnectBusy = new AtomicBoolean(false);
+    /** Guards overlapping Listen FEC / End TX ({@code PD} + data + CTRL-D) attempts. */
+    private final AtomicBoolean fecBusy = new AtomicBoolean(false);
     private volatile Thread connectThread;
     private final AtomicBoolean connectCancelled = new AtomicBoolean(false);
     private volatile HostSession pendingSession;
@@ -304,7 +312,144 @@ public final class AppController {
         if (canned.isEmpty()) {
             return;
         }
-        session.sendData(0, canned.getBytes(StandardCharsets.US_ASCII), ARQ_HOST_TIMEOUT_MS);
+        sendHostData(session, canned);
+    }
+
+    /**
+     * ISS chat / App TX flush: send text as Host channel-0 data (CR line endings), chunked per
+     * Ch. 4 §4.8 inside {@link HostSession#sendData}. Runs off the EDT.
+     * Offline / no session: notice only (caller already painted grey transcript).
+     */
+    public void sendOutboundChat(ConnectionWindow window, String text) {
+        if (window == null) {
+            return;
+        }
+        String payloadText = text == null ? "" : text;
+        if (payloadText.isEmpty()) {
+            return;
+        }
+        if (!tncConnected) {
+            noticeWindow(window, "ISS outbound — TNC not connected (transcript only).");
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            noticeWindow(window, "ISS outbound — no open Host session (transcript only).");
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                byte[] bytes = toHostDataBytes(payloadText);
+                session.sendData(0, bytes, ARQ_HOST_TIMEOUT_MS);
+                int chars = bytes.length;
+                runOnEdt(() -> noticeWindow(window,
+                        "ISS outbound — sent " + chars + " char(s) to TNC (grey until TX-empty)."));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("ISS outbound interrupted");
+                runOnEdt(() -> noticeWindow(window, "ISS outbound — interrupted."));
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("ISS outbound failed: " + msg);
+                runOnEdt(() -> noticeWindow(window, "ISS outbound — " + msg));
+            }
+        }, "iss-outbound");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Listen FEC / End TX: Host {@code PD} (PTSend), then App TX text as ch0 data (chunked §4.8),
+     * then CTRL-D ({@code $04}) so the TNC returns to receive after TX clear.
+     * Caller paints grey transcript and clears the App TX buffer before calling.
+     */
+    public void listenFecEndTx(ConnectionWindow window, String text) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
+            return;
+        }
+        String payloadText = text == null ? "" : text;
+        if (payloadText.isBlank()) {
+            noticeWindow(window, "FEC / End TX — nothing to send.");
+            return;
+        }
+        if (!tncConnected) {
+            noticeWindow(window, "FEC / End TX — TNC not connected (transcript only).");
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            noticeWindow(window, "FEC / End TX — no open Host session (transcript only).");
+            return;
+        }
+        if (!fecBusy.compareAndSet(false, true)) {
+            noticeWindow(window, "FEC / End TX — already in progress.");
+            return;
+        }
+
+        Thread worker = new Thread(() -> {
+            String resultNotice;
+            try {
+                runOnEdt(() -> {
+                    mode = AppMode.UNPROTO;
+                    if (mainWindow != null) {
+                        mainWindow.refreshModeLabel();
+                    }
+                });
+                String pdCmd = config.ptSendHostCommand();
+                sendHostOk(session, pdCmd);
+                byte[] body = toHostDataBytes(payloadText);
+                byte[] withEnd = new byte[body.length + 1];
+                System.arraycopy(body, 0, withEnd, 0, body.length);
+                withEnd[body.length] = RECEIVE_CHAR_CTRL_D;
+                session.sendData(0, withEnd, ARQ_HOST_TIMEOUT_MS);
+                resultNotice = "FEC / End TX — sent " + pdCmd + " + " + body.length
+                        + " char(s) + CTRL-D (grey until TX-empty).";
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                resultNotice = "FEC / End TX — interrupted.";
+                debugLog.info("FEC / End TX interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                resultNotice = "FEC / End TX — " + msg;
+                debugLog.info("FEC / End TX failed: " + msg);
+            } finally {
+                fecBusy.set(false);
+                runOnEdt(() -> {
+                    if (mode == AppMode.UNPROTO) {
+                        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
+                        mode = listenOn ? AppMode.LISTEN : AppMode.IDLE;
+                    }
+                    if (mainWindow != null) {
+                        mainWindow.refreshModeLabel();
+                    }
+                });
+            }
+            final String notice = resultNotice;
+            runOnEdt(() -> noticeWindow(window, notice));
+        }, "listen-fec-end-tx");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Encode chat/canned text and send as Host ch0 data (waits data-ack; chunks at 330). */
+    private void sendHostData(HostSession session, String text)
+            throws IOException, InterruptedException {
+        session.sendData(0, toHostDataBytes(text), ARQ_HOST_TIMEOUT_MS);
+    }
+
+    /**
+     * Normalize to Host data bytes: {@code \r\n}/{@code \n} → {@code \r}, US-ASCII.
+     * Appends a trailing CR if the text is non-empty and does not already end with one.
+     */
+    static byte[] toHostDataBytes(String text) {
+        if (text == null || text.isEmpty()) {
+            return new byte[0];
+        }
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n').replace('\n', '\r');
+        if (normalized.charAt(normalized.length() - 1) != '\r') {
+            normalized = normalized + '\r';
+        }
+        return normalized.getBytes(StandardCharsets.US_ASCII);
     }
 
     private void sendHostOk(HostSession session, String mnemonic)
@@ -323,26 +468,26 @@ public final class AppController {
 
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work) {
         if (!tncConnected) {
-            noticeArq(window, actionName + " — TNC not connected.");
+            noticeWindow(window, actionName + " — TNC not connected.");
             return;
         }
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
-            noticeArq(window, actionName + " — no open Host session.");
+            noticeWindow(window, actionName + " — no open Host session.");
             return;
         }
         Thread worker = new Thread(() -> {
             try {
                 work.run(session);
-                runOnEdt(() -> noticeArq(window, actionName + " — sent."));
+                runOnEdt(() -> noticeWindow(window, actionName + " — sent."));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("ARQ " + actionName + " interrupted");
-                runOnEdt(() -> noticeArq(window, actionName + " — interrupted."));
+                runOnEdt(() -> noticeWindow(window, actionName + " — interrupted."));
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
                 debugLog.info("ARQ " + actionName + " failed: " + msg);
-                runOnEdt(() -> noticeArq(window, actionName + " — " + msg));
+                runOnEdt(() -> noticeWindow(window, actionName + " — " + msg));
             }
         }, "arq-" + actionName.replaceAll("\\s+", "-").toLowerCase());
         worker.setDaemon(true);
@@ -350,10 +495,57 @@ public final class AppController {
     }
 
     private void noticeArq(ConnectionWindow window, String text) {
+        noticeWindow(window, text);
+    }
+
+    private void noticeWindow(ConnectionWindow window, String text) {
         if (window != null) {
             window.showNotice(text);
         }
-        debugLog.info("ARQ: " + text);
+        debugLog.info((window != null ? window.kind() : "HOST") + ": " + text);
+    }
+
+    private void attachHostEventListener(HostSession session) {
+        if (session != null) {
+            session.addListener(hostEventListener);
+        }
+    }
+
+    private void detachHostEventListener(HostSession session) {
+        if (session != null) {
+            session.removeListener(hostEventListener);
+        }
+    }
+
+    private void onHostEvent(HostEvent event) {
+        if (event == null || event.type() != HostEvent.Type.INBOUND_DATA) {
+            return;
+        }
+        HostFrameCodec.Frame frame = event.frame();
+        if (frame == null || frame.payload.length == 0) {
+            return;
+        }
+        String text = new String(frame.payload, StandardCharsets.ISO_8859_1);
+        runOnEdt(() -> {
+            ConnectionWindow target = inboundTranscriptTarget();
+            if (target != null) {
+                target.appendRemoteText(text);
+            } else {
+                debugLog.info("INBOUND_DATA (no active window) CTL=0x"
+                        + String.format("%02X", frame.ctl) + " len=" + frame.payload.length);
+            }
+        });
+    }
+
+    /** ARQ active wins; else active Listen window. */
+    private ConnectionWindow inboundTranscriptTarget() {
+        if (activeArqWindow != null && activeArqWindow.isSessionActive()) {
+            return activeArqWindow;
+        }
+        if (listenWindow != null && listenWindow.isSessionActive()) {
+            return listenWindow;
+        }
+        return null;
     }
 
     /** Updates the connected flag and refreshes MainWindow (EDT-safe). */
@@ -491,12 +683,14 @@ public final class AppController {
             // Publish session on worker thread before EDT update so disconnect can see it.
             hostSession = result.session;
             pendingSession = null;
+            attachHostEventListener(result.session);
         } else if (result.session != null && result.session.isOpen()) {
             retainOrCloseOnFailure(result.session);
         }
         runOnEdt(() -> {
             if (connectCancelled.get()) {
                 HostSession s = hostSession;
+                detachHostEventListener(s);
                 hostSession = null;
                 pendingSession = null;
                 tncInitializer.abort(s);
@@ -550,6 +744,8 @@ public final class AppController {
 
         final HostSession session = hostSession;
         final HostSession pending = pendingSession;
+        detachHostEventListener(session);
+        detachHostEventListener(pending);
         hostSession = null;
         pendingSession = null;
         setTncConnected(false);

@@ -18,8 +18,42 @@ public final class HostFrameCodec {
     public static final int CTL_DATA_CH0 = 0x20;
     /** PK-232 → Host status / data-ack class ({@code $5F}). */
     public static final int CTL_DATA_ACK = 0x5F;
+    /**
+     * Ch. 4 §4.8: max payload characters Host→PK-232, not counting SOH, CTL, DLE, or ETB.
+     * Count payload bytes <em>before</em> DLE escaping.
+     */
+    public static final int MAX_HOST_TO_TNC_PAYLOAD = 330;
 
     private HostFrameCodec() {
+    }
+
+    /** Pactor inbound text: any CTL {@code 0x30}–{@code 0x3F} (channel data or monitor). */
+    public static boolean isInboundDataCtl(int ctl) {
+        int c = ctl & 0xFF;
+        return c >= 0x30 && c <= 0x3F;
+    }
+
+    public static HostEvent.Type classifyCtl(int ctl) {
+        int c = ctl & 0xFF;
+        if (c == CTL_GLOBAL) {
+            return HostEvent.Type.COMMAND_RESPONSE;
+        }
+        if (c == CTL_DATA_ACK) {
+            return HostEvent.Type.DATA_ACK_OR_STATUS;
+        }
+        if (isInboundDataCtl(c)) {
+            return HostEvent.Type.INBOUND_DATA;
+        }
+        if (c == 0x2F) {
+            return HostEvent.Type.ECHO;
+        }
+        if (c >= 0x40 && c <= 0x49) {
+            return HostEvent.Type.LINK_STATUS;
+        }
+        if (c >= 0x50 && c <= 0x5E) {
+            return HostEvent.Type.LINK_MESSAGE;
+        }
+        return HostEvent.Type.UNKNOWN_FRAME;
     }
 
     public static byte[] encodeBlock(int ctl, byte[] payload) {
@@ -126,6 +160,11 @@ public final class HostFrameCodec {
             ctl = 0;
             payload.reset();
             raw.reset();
+        }
+
+        /** True when the next byte must be SOH to begin a block (idle / between frames). */
+        public boolean awaitingSoh() {
+            return state == State.WAIT_SOH;
         }
 
         public List<Frame> feed(byte[] data, int off, int len) {

@@ -103,6 +103,20 @@ public final class ConnectionWindow extends JFrame {
         noticeLabel.setText(text == null || text.isBlank() ? " " : text);
     }
 
+    /** Append remote (inbound Host) text to the transcript. EDT-safe. */
+    public void appendRemoteText(String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        Runnable r = () -> appendTranscript(normalized, UiColors.REMOTE_TEXT);
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
     private void buildUi() {
         getContentPane().setBackground(UiColors.WINDOW_BG);
         setLayout(new BorderLayout(4, 4));
@@ -208,13 +222,11 @@ public final class ConnectionWindow extends JFrame {
                     () -> app.arqHoWithText(this));
             addControl(p, "Disc. with text", "Canned disconnect text then Host RE",
                     () -> app.arqDiscWithText(this));
-            addControl(p, "Simulate ISS flush", "Flush App TX buffer to transcript (offline demo)",
-                    this::simulateIssFlush);
+            addControl(p, "Flush ISS", "Flush App TX buffer to TNC (Host data ch0); mark local ISS",
+                    this::flushIss);
         } else {
-            addControl(p, "FEC / End TX", "PTSend / CTRL-D end (Phase 5)",
-                    () -> stubAction("PTSend / CTRL-D end (Phase 5)"));
-            addControl(p, "Simulate ISS flush", "Flush App TX buffer to transcript (offline demo)",
-                    this::simulateIssFlush);
+            addControl(p, "FEC / End TX", "PTSend from Program settings (FEC 200 / Retries) → buffer → CTRL-D end",
+                    this::fecEndTx);
         }
 
         JButton save = new JButton("Save chat");
@@ -290,28 +302,56 @@ public final class ConnectionWindow extends JFrame {
                 appTxBuffer.append("\n");
             }
             appTxBuffer.append(line);
-        } else {
-            appendTranscript(line + "\n", UiColors.LOCAL_PENDING);
+            return;
+        }
+        // ISS: grey transcript immediately; Host data when TNC connected (ARQ only).
+        String forTranscript = line.endsWith("\n") ? line : line + "\n";
+        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        if (kind == Kind.ARQ) {
+            app.sendOutboundChat(this, line);
         }
     }
 
-    /** Offline helper: flush App TX buffer into transcript as grey (ISS). */
-    private void simulateIssFlush() {
-        if (!sessionActive) {
+    /**
+     * Listen: one-shot unproto — grey transcript, then Host {@code PD} + ch0 data + CTRL-D.
+     * Does not flip IRS/ISS; further commits stay in App TX buffer until the next press.
+     */
+    private void fecEndTx() {
+        if (!sessionActive || kind != Kind.LISTEN) {
             return;
         }
         String pending = appTxBuffer.getText();
+        if (pending == null || pending.isBlank()) {
+            showNotice("FEC / End TX — App TX buffer empty; commit text first.");
+            return;
+        }
+        String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
+        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        appTxBuffer.setText("");
+        refreshStatus();
+        app.listenFecEndTx(this, pending);
+    }
+
+    /**
+     * ARQ: become ISS — drain App TX buffer to transcript (grey) and Host ch0 data.
+     * Empty buffer still flips IRS→ISS so later commits go outbound.
+     */
+    private void flushIss() {
+        if (!sessionActive || kind != Kind.ARQ) {
+            return;
+        }
+        String pending = appTxBuffer.getText();
+        localIsIrs = false;
         if (pending.isBlank()) {
-            localIsIrs = false;
-            showNotice("Now ISS (simulated). New commits go to transcript as grey.");
+            showNotice("Now ISS. New commits go to TNC (grey in transcript).");
             refreshStatus();
             return;
         }
-        localIsIrs = false;
-        appendTranscript(pending.endsWith("\n") ? pending : pending + "\n", UiColors.LOCAL_PENDING);
+        String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
+        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
         appTxBuffer.setText("");
-        showNotice("Flushed App TX buffer to transcript (grey). Confirmation→green is Phase 6.");
         refreshStatus();
+        app.sendOutboundChat(this, pending);
     }
 
     private void editAppTxBuffer() {

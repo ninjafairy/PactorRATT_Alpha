@@ -158,9 +158,11 @@ Naming: always **App TX buffer** vs **TNC TX buffer**.
 Reference: [`docs/PK232_HostMode_Reference.md`](docs/PK232_HostMode_Reference.md).
 
 - Framing: `SOH CTL payload ETB` with `DLE` escape for `SOH`/`DLE`/`ETB`.
+- **Command pacing (Ch. 4 §4.3):** The PK-232 always issues a response to each command; the host **must wait** for that response before issuing another command. Use `sendCommand` (not fire-and-forget) on product/init paths.
 - **`HPOLL OFF`:** continuous serial read; PK-232 pushes blocks; no periodic `GG` flood. Keep `GG` for Host entry probe / recovery only.
 - Channel **0** for Pactor.
-- After data send (`CTL 0x2x`), wait for data-ack `0x5F â€¦ 00` before next data block (pacing).
+- After data send (`CTL 0x2x`), wait for data-ack `0x5F … 00` before next data block (pacing).
+- **Max Host→TNC block size (Ch. 4 §4.8): 330 payload characters** excluding SOH/CTL/DLE/ETB — enforced by chunking inside `HostSession.sendData`.
 - Demux by CTL: data `0x3x`, monitor `0x3F`, echo `0x2F`, link status `0x4x`, link msg `0x5x`, status/error `0x5F`, command rsp `0x4F`.
 - **Mnemonics are case-sensitive** (see HostCommands header).
 
@@ -229,16 +231,16 @@ GUI remains usable when TNC is disconnected or compat hard-fails (`tncConnected 
 
 ---
 
-## 10. Explicit stubs (do not invent bytes)
+## 10. Explicit stubs / deferred features
 
 Defer implementation details until docs/hardware trials exist:
 
 - OPMODE / status field parsing for status bar
 - Link block text for incoming ARQ detect
-- TNC TX-empty + idle signal for greyâ†’green
+- TNC TX-empty + idle signal for grey→green
 - `Rcve` (`RC`) = disconnect-now?
 - Monitor regex samples beyond ` de` for Heard; Mentioned patterns
-- Full Settingsâ†’TNC parameter push UI
+- Full Settings→TNC parameter push UI
 
 Skeleton may show placeholder status values and leave grey text grey until confirmation logic exists.
 

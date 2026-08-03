@@ -60,6 +60,7 @@ Case-sensitive Host mnemonics.
 - Some parameters take **integers**, not `Y`/`N` — e.g. PTHUFF Host `PH` uses a decimal level (`PH0` = off), not `PHN`.
 - `ADDRESS` (`AE`) takes decimal digits after the mnemonic (`AE6` for `$0006`).
 - `MEMORY` read response is `MM$hh` (ASCII hex after `$`); see step 5.
+- **Command pacing (Ch. 4 §4.3):** The PK-232 always issues a response to each command; wait for that response before issuing another command.
 
 | Command | Purpose |
 |---|---|

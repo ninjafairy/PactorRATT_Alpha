@@ -1,12 +1,25 @@
 package com.pactorratt.alpha.hostmode;
 
 /**
- * Minimal Host Mode event for session lifecycle. Pactor data/status demux comes later.
+ * Typed Host Mode events after CTL demux.
  */
 public final class HostEvent {
 
     public enum Type {
-        FRAME,
+        /** CTL {@code 0x4F} command response. */
+        COMMAND_RESPONSE,
+        /** CTL {@code 0x5F} data-ack / status. */
+        DATA_ACK_OR_STATUS,
+        /** CTL {@code 0x30}–{@code 0x3F} inbound text (Pactor ch0 / monitor). */
+        INBOUND_DATA,
+        /** CTL {@code 0x2F} echoed data. */
+        ECHO,
+        /** CTL {@code 0x40}–{@code 0x49} link status. */
+        LINK_STATUS,
+        /** CTL {@code 0x50}–{@code 0x5E} link messages. */
+        LINK_MESSAGE,
+        /** Unclassified CTL. */
+        UNKNOWN_FRAME,
         DISCONNECTED,
         ERROR
     }
@@ -21,8 +34,8 @@ public final class HostEvent {
         this.message = message;
     }
 
-    public static HostEvent frame(HostFrameCodec.Frame frame) {
-        return new HostEvent(Type.FRAME, frame, null);
+    public static HostEvent of(Type type, HostFrameCodec.Frame frame) {
+        return new HostEvent(type, frame, null);
     }
 
     public static HostEvent disconnected(String message) {

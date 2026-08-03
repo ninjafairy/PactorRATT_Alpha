@@ -1,6 +1,7 @@
 package com.pactorratt.alpha.app;
 
 import com.pactorratt.alpha.ui.MainWindow;
+import com.pactorratt.alpha.ui.StartupWarningDialog;
 
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -19,6 +20,10 @@ public final class PactorRattAlphaApp {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception ignored) {
                 // Keep default L&F.
+            }
+            if (!StartupWarningDialog.confirmContinue()) {
+                System.exit(0);
+                return;
             }
             AppController controller = new AppController(portableRoot);
             MainWindow main = new MainWindow(controller);

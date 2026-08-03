@@ -110,7 +110,8 @@ Framed on channel 0 data block:
 | `0x5F` | PK-232 -> Host | Status/errors |
 
 ### Length and size notes (non-RawHDLC/KISS context)
-- Host -> PK-232 block max: **330 chars** (excluding SOH/CTL/DLE/ETB).
+- Host -> PK-232 block max: **330 chars** (excluding SOH/CTL/DLE/ETB). See Ch. 4 §4.8.
+- **Implementation status:** documented limit; **feature to implement** — application must chunk outbound Host data so each block stays ≤330 payload characters (`sendData` does not enforce this yet).
 - PK-232 -> Host max depends on mode:
   - Text modes may segment to <=256-byte chunks (payload basis).
   - Packet monitored worst case may be substantially larger due to stamp/options + escaping (documented up to 648 payload bytes in extreme case).
@@ -156,7 +157,7 @@ Example:
 | Parameters | Two-letter mnemonic + optional ASCII args |
 | Response format | `01 4F a b c 17` |
 | Description | Primary host command transport (no channel switch side effect). |
-| Notes / errors | `c` is command completion/error code (table below). |
+| Notes / errors | `c` is command completion/error code (table below). **Ch. 4 §4.3:** The PK-232 always issues a response to each command; the computer must wait for that response before issuing another command. |
 
 Command response `c` values:
 
@@ -324,6 +325,11 @@ The manual provides the full mnemonic index in section 4.2.2 (used by Host-mode 
 
 ## Flow Control & State Handling
 
+### Command pacing (Ch. 4 §4.3)
+- The PK-232 **always** issues a response to each Host command.
+- The computer **must wait** for that response before issuing another command.
+- Do not pipeline global command blocks (`CTL 0x4F`) on product/init paths.
+
 ### Poll-driven flow
 - With `HPOLL ON`:
   - Host drives output retrieval using `GG` poll blocks.
@@ -353,6 +359,7 @@ The manual provides the full mnemonic index in section 4.2.2 (used by Host-mode 
 
 ### Command/parse errors
 - Always parse `0x4F` response code `c`.
+- Wait for each command's response before sending the next command (Ch. 4 §4.3).
 - Handle parser-level bad-block and bad-CTL (`0x5F ... W/Y`) separately from command errors.
 
 ### Host parser resynchronization

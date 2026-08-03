@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -51,10 +52,15 @@ public final class HostSession implements AutoCloseable {
     private final SerialPortService serial = new SerialPortService();
     private final DebugLog debugLog;
     private final HostFrameCodec.FrameParser parser = new HostFrameCodec.FrameParser();
-    private final LinkedBlockingQueue<HostFrameCodec.Frame> inbound = new LinkedBlockingQueue<>();
+    /** Waiter queue for CTL {@code 0x4F} command responses (incl. OGG / MM). */
+    private final LinkedBlockingQueue<HostFrameCodec.Frame> commandQueue = new LinkedBlockingQueue<>();
+    /** Waiter queue for CTL {@code 0x5F} data-ack / status. */
+    private final LinkedBlockingQueue<HostFrameCodec.Frame> statusQueue = new LinkedBlockingQueue<>();
     private final List<Consumer<HostEvent>> listeners = new CopyOnWriteArrayList<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final Object ioLock = new Object();
+    /** Serializes Host data sends so concurrent callers cannot steal each other's data-acks. */
+    private final Object dataSendLock = new Object();
 
     private Thread readerThread;
     private volatile TncState state = TncState.UNKNOWN;
@@ -97,7 +103,7 @@ public final class HostSession implements AutoCloseable {
         close();
         serial.open(config);
         parser.reset();
-        inbound.clear();
+        drainWaiterQueues();
         state = TncState.UNKNOWN;
         running.set(true);
         readerThread = new Thread(this::readerLoop, "hostmode-reader");
@@ -120,15 +126,20 @@ public final class HostSession implements AutoCloseable {
             readerThread = null;
         }
         parser.reset();
-        inbound.clear();
+        drainWaiterQueues();
         state = TncState.UNKNOWN;
         fire(HostEvent.disconnected("Host session closed"));
         debugLog.info("HostSession closed");
     }
 
-    /** Drain any pending frames without waiting. */
+    /** Drain command/status waiter queues only (does not drop UI-bound demux events). */
     public void drainInbound() {
-        inbound.clear();
+        drainWaiterQueues();
+    }
+
+    private void drainWaiterQueues() {
+        commandQueue.clear();
+        statusQueue.clear();
     }
 
     /**
@@ -230,7 +241,7 @@ public final class HostSession implements AutoCloseable {
     }
 
     private boolean probeOgg(boolean resync, long timeoutMs) throws IOException, InterruptedException {
-        drainInbound();
+        drainWaiterQueues();
         byte[] tx = resync ? HostFrameCodec.encodeOggResync() : HostFrameCodec.encodeOggProbe();
         synchronized (ioLock) {
             debugLog.host("TX", (resync ? "OGG-resync " : "OGG ") + HostFrameCodec.toHex(tx));
@@ -245,7 +256,7 @@ public final class HostSession implements AutoCloseable {
             if (remaining <= 0) {
                 break;
             }
-            HostFrameCodec.Frame frame = inbound.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+            HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
             if (frame == null) {
                 continue;
             }
@@ -254,7 +265,6 @@ public final class HostSession implements AutoCloseable {
                 state = TncState.HOST_MODE;
                 return true;
             }
-            // Other frames while probing are ignored for success check.
         }
         return false;
     }
@@ -274,7 +284,7 @@ public final class HostSession implements AutoCloseable {
         byte expect0 = (byte) mnemonicAndArgs.charAt(0);
         byte expect1 = (byte) mnemonicAndArgs.charAt(1);
 
-        drainInbound();
+        drainWaiterQueues();
         byte[] tx = HostFrameCodec.encodeGlobalCommand(mnemonicAndArgs);
         synchronized (ioLock) {
             debugLog.host("TX", "CMD " + mnemonicAndArgs + " | " + HostFrameCodec.toHex(tx));
@@ -290,7 +300,7 @@ public final class HostSession implements AutoCloseable {
             if (remaining <= 0) {
                 break;
             }
-            HostFrameCodec.Frame frame = inbound.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+            HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
             if (frame == null) {
                 continue;
             }
@@ -328,8 +338,13 @@ public final class HostSession implements AutoCloseable {
     }
 
     /**
-     * Send Host data to channel {@code channel} and wait for a data-ack ({@code CTL $5F … $00}).
-     * With HPOLL OFF the ack is pushed; do not send further data until this returns.
+     * Send Host data to channel {@code channel} and wait for a data-ack ({@code CTL $5F … $00})
+     * after each framed block. With HPOLL OFF the ack is pushed; do not send further data until
+     * this returns.
+     * <p>
+     * Ch. 4 §4.8: payloads larger than {@link HostFrameCodec#MAX_HOST_TO_TNC_PAYLOAD} (330)
+     * payload characters are split into multiple blocks. The limit counts pre-escape payload
+     * bytes only (SOH/CTL/DLE/ETB excluded). Empty payload is a no-op.
      */
     public void sendData(int channel, byte[] payload, long timeoutMs)
             throws IOException, InterruptedException {
@@ -337,12 +352,33 @@ public final class HostSession implements AutoCloseable {
         if (channel < 0 || channel > 9) {
             throw new IllegalArgumentException("Host data channel must be 0-9, got " + channel);
         }
+        if (payload.length == 0) {
+            return;
+        }
 
-        drainInbound();
-        byte[] tx = HostFrameCodec.encodeData(channel, payload);
+        synchronized (dataSendLock) {
+            int offset = 0;
+            int chunkIndex = 0;
+            boolean multi = payload.length > HostFrameCodec.MAX_HOST_TO_TNC_PAYLOAD;
+            while (offset < payload.length) {
+                int len = Math.min(HostFrameCodec.MAX_HOST_TO_TNC_PAYLOAD, payload.length - offset);
+                byte[] chunk = Arrays.copyOfRange(payload, offset, offset + len);
+                sendDataBlock(channel, chunk, timeoutMs, chunkIndex, multi);
+                offset += len;
+                chunkIndex++;
+            }
+        }
+    }
+
+    private void sendDataBlock(int channel, byte[] chunk, long timeoutMs, int chunkIndex, boolean multi)
+            throws IOException, InterruptedException {
+        drainWaiterQueues();
+        byte[] tx = HostFrameCodec.encodeData(channel, chunk);
         synchronized (ioLock) {
-            debugLog.host("TX", "DATA ch" + channel + " len=" + payload.length
-                    + " | " + HostFrameCodec.toHex(tx));
+            String label = multi
+                    ? "DATA ch" + channel + " chunk=" + chunkIndex + " len=" + chunk.length
+                    : "DATA ch" + channel + " len=" + chunk.length;
+            debugLog.host("TX", label + " | " + HostFrameCodec.toHex(tx));
             serial.write(tx);
         }
 
@@ -355,7 +391,7 @@ public final class HostSession implements AutoCloseable {
             if (remaining <= 0) {
                 break;
             }
-            HostFrameCodec.Frame frame = inbound.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+            HostFrameCodec.Frame frame = statusQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
             if (frame == null) {
                 continue;
             }
@@ -363,9 +399,9 @@ public final class HostSession implements AutoCloseable {
             if (HostFrameCodec.isDataAck(frame)) {
                 return;
             }
-            // Other pushed frames (monitor/status/data) are ignored while waiting for ack.
         }
-        throw new IOException("Timeout waiting for Host data-ack (ch" + channel + ")");
+        throw new IOException("Timeout waiting for Host data-ack (ch" + channel
+                + (multi ? ", chunk=" + chunkIndex : "") + ")");
     }
 
     /**
@@ -396,7 +432,7 @@ public final class HostSession implements AutoCloseable {
      * Example: MM$93 → value byte 0x93. Ingest the hex digits after '$'.
      */
     public int readMemoryByte(long timeoutMs) throws IOException, InterruptedException {
-        drainInbound();
+        drainWaiterQueues();
         byte[] tx = HostFrameCodec.encodeGlobalCommand("MM");
         synchronized (ioLock) {
             debugLog.host("TX", "CMD MM | " + HostFrameCodec.toHex(tx));
@@ -412,7 +448,7 @@ public final class HostSession implements AutoCloseable {
             if (remaining <= 0) {
                 break;
             }
-            HostFrameCodec.Frame frame = inbound.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+            HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
             if (frame == null) {
                 continue;
             }
@@ -477,8 +513,7 @@ public final class HostSession implements AutoCloseable {
                 }
                 List<HostFrameCodec.Frame> frames = parser.feed(buf, 0, n);
                 for (HostFrameCodec.Frame frame : frames) {
-                    inbound.offer(frame);
-                    fire(HostEvent.frame(frame));
+                    dispatchFrame(frame);
                 }
             }
         } catch (IOException e) {
@@ -489,6 +524,18 @@ public final class HostSession implements AutoCloseable {
         } finally {
             running.set(false);
         }
+    }
+
+    private void dispatchFrame(HostFrameCodec.Frame frame) {
+        HostEvent.Type type = HostFrameCodec.classifyCtl(frame.ctl);
+        switch (type) {
+            case COMMAND_RESPONSE -> commandQueue.offer(frame);
+            case DATA_ACK_OR_STATUS -> statusQueue.offer(frame);
+            default -> {
+                // UI-bound / async — not held in waiter queues.
+            }
+        }
+        fire(HostEvent.of(type, frame));
     }
 
     private void logRx(HostFrameCodec.Frame frame) {
@@ -509,10 +556,10 @@ public final class HostSession implements AutoCloseable {
 
     /** Test helper: enqueue a frame as if received (unused in production). */
     void injectFrameForTest(HostFrameCodec.Frame frame) {
-        inbound.offer(frame);
+        dispatchFrame(frame);
     }
 
-    List<HostFrameCodec.Frame> snapshotInboundForTest() {
-        return new ArrayList<>(inbound);
+    List<HostFrameCodec.Frame> snapshotCommandQueueForTest() {
+        return new ArrayList<>(commandQueue);
     }
 }

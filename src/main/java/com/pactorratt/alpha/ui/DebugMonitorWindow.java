@@ -1,6 +1,7 @@
 package com.pactorratt.alpha.ui;
 
 import com.pactorratt.alpha.app.AppController;
+import com.pactorratt.alpha.hostmode.HostFrameCodec;
 import com.pactorratt.alpha.serial.SerialByteListener;
 
 import javax.swing.BorderFactory;
@@ -15,6 +16,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.WindowConstants;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
@@ -23,16 +25,22 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
- * Live view of raw serial port traffic (hex + ASCII).
+ * Live view of serial port traffic (hex + ASCII). RX Host blocks are coalesced
+ * to one line per complete SOH…ETB frame so OS chunk splits (e.g. lone {@code 01})
+ * do not appear as separate packets. Non-framed bytes (pre-Host ASCII) still display.
  */
 public final class DebugMonitorWindow extends JFrame implements SerialByteListener {
 
     private static final int MAX_CHARS = 200_000;
+    private static final int RX_IDLE_FLUSH_MS = 250;
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
     private final AppController app;
@@ -43,16 +51,25 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
     private final JButton sendButton = new JButton("Send");
     private volatile boolean paused;
 
+    private final HostFrameCodec.FrameParser rxCoalesceParser = new HostFrameCodec.FrameParser();
+    private final ByteArrayOutputStream rxLooseBytes = new ByteArrayOutputStream();
+    private final Object rxCoalesceLock = new Object();
+    private final Timer rxIdleFlushTimer;
+
     public DebugMonitorWindow(AppController app) {
         super("TNC Debug Monitor");
         this.app = app;
         app.addSerialByteListener(this);
+        rxIdleFlushTimer = new Timer(RX_IDLE_FLUSH_MS, e -> flushRxIdle());
+        rxIdleFlushTimer.setRepeats(false);
         buildUi();
         sendButton.setEnabled(true);
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
+                rxIdleFlushTimer.stop();
+                flushRxIdle();
                 app.removeSerialByteListener(DebugMonitorWindow.this);
                 app.onDebugMonitorClosed(DebugMonitorWindow.this);
             }
@@ -82,11 +99,17 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
         controlsRow.setBackground(UiColors.PANEL_BG);
 
         JButton clearButton = new JButton("Clear");
-        clearButton.addActionListener(e -> textArea.setText(""));
+        clearButton.addActionListener(e -> {
+            flushRxIdle();
+            textArea.setText("");
+        });
 
         pauseButton.addActionListener(e -> {
             paused = !paused;
             pauseButton.setText(paused ? "Resume" : "Pause");
+            if (paused) {
+                flushRxIdle();
+            }
         });
 
         controlsRow.add(clearButton);
@@ -134,9 +157,59 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
         if (paused || length <= 0) {
             return;
         }
-        byte[] chunk = Arrays.copyOfRange(data, offset, offset + length);
-        String line = formatLine(transmit, chunk);
-        SwingUtilities.invokeLater(() -> appendLine(line));
+        if (transmit) {
+            byte[] chunk = Arrays.copyOfRange(data, offset, offset + length);
+            String line = formatLine(true, chunk);
+            SwingUtilities.invokeLater(() -> appendLine(line));
+            return;
+        }
+
+        List<String> lines = new ArrayList<>();
+        synchronized (rxCoalesceLock) {
+            int end = offset + length;
+            for (int i = offset; i < end; i++) {
+                byte b = data[i];
+                if (rxCoalesceParser.awaitingSoh() && b != HostFrameCodec.SOH) {
+                    rxLooseBytes.write(b);
+                    continue;
+                }
+                flushLooseLocked(lines);
+                HostFrameCodec.Frame frame = rxCoalesceParser.feed(b);
+                if (frame != null) {
+                    lines.add(formatLine(false, frame.raw));
+                }
+            }
+        }
+        for (String line : lines) {
+            SwingUtilities.invokeLater(() -> appendLine(line));
+        }
+        SwingUtilities.invokeLater(rxIdleFlushTimer::restart);
+    }
+
+    private void flushRxIdle() {
+        List<String> lines = new ArrayList<>();
+        synchronized (rxCoalesceLock) {
+            flushLooseLocked(lines);
+            // Drop incomplete Host block state so garbage does not stick.
+            if (!rxCoalesceParser.awaitingSoh()) {
+                rxCoalesceParser.reset();
+            }
+        }
+        for (String line : lines) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                appendLine(line);
+            } else {
+                SwingUtilities.invokeLater(() -> appendLine(line));
+            }
+        }
+    }
+
+    private void flushLooseLocked(List<String> lines) {
+        if (rxLooseBytes.size() == 0) {
+            return;
+        }
+        lines.add(formatLine(false, rxLooseBytes.toByteArray()));
+        rxLooseBytes.reset();
     }
 
     private void appendLine(String line) {
