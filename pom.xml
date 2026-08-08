@@ -22,6 +22,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
     <jserialcomm.version>2.11.0</jserialcomm.version>
+    <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss z</maven.build.timestamp.format>
   </properties>
 
   <dependencies>
@@ -51,6 +52,9 @@
             <manifest>
               <mainClass>com.pactorratt.alpha.app.PactorRattAlphaApp</mainClass>
             </manifest>
+            <manifestEntries>
+              <Build-Time>${maven.build.timestamp}</Build-Time>
+            </manifestEntries>
           </archive>
         </configuration>
       </plugin>
@@ -69,6 +73,9 @@
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>com.pactorratt.alpha.app.PactorRattAlphaApp</mainClass>
+                  <manifestEntries>
+                    <Build-Time>${maven.build.timestamp}</Build-Time>
+                  </manifestEntries>
                 </transformer>
               </transformers>
               <finalName>PactorRATT_Alpha</finalName>

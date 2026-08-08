@@ -57,13 +57,14 @@ public final class ConfigStore {
         Files.writeString(settingsFile, toJson(config), StandardCharsets.UTF_8);
     }
 
-    /** Creates {@code config/buddies.json} with defaults if the file is missing. */
+    /** Creates {@code config/buddies.json} with defaults if the file is missing (CRLF endings). */
     public void ensureBuddiesFile() throws IOException {
         if (Files.isRegularFile(buddiesFile)) {
             return;
         }
         Files.createDirectories(buddiesFile.getParent());
-        Files.writeString(buddiesFile, DEFAULT_BUDDIES_JSON, StandardCharsets.UTF_8);
+        String crlf = DEFAULT_BUDDIES_JSON.replace("\r\n", "\n").replace("\n", "\r\n");
+        Files.writeString(buddiesFile, crlf, StandardCharsets.UTF_8);
     }
 
     private static String toJson(AppConfig c) {

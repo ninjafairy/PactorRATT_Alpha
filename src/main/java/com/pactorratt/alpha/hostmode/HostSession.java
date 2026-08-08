@@ -59,8 +59,12 @@ public final class HostSession implements AutoCloseable {
     private final List<Consumer<HostEvent>> listeners = new CopyOnWriteArrayList<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final Object ioLock = new Object();
-    /** Serializes Host data sends so concurrent callers cannot steal each other's data-acks. */
-    private final Object dataSendLock = new Object();
+    /**
+     * Single Host round-trip lock (Ch. 4 §4.3 / §4.4): only one command or data wait
+     * at a time. Prevents concurrent {@code sendCommand}/{@code sendData} from clearing
+     * each other's waiter queues or stealing acks.
+     */
+    private final Object hostIoLock = new Object();
 
     private Thread readerThread;
     private volatile TncState state = TncState.UNKNOWN;
@@ -241,32 +245,34 @@ public final class HostSession implements AutoCloseable {
     }
 
     private boolean probeOgg(boolean resync, long timeoutMs) throws IOException, InterruptedException {
-        drainWaiterQueues();
-        byte[] tx = resync ? HostFrameCodec.encodeOggResync() : HostFrameCodec.encodeOggProbe();
-        synchronized (ioLock) {
-            debugLog.host("TX", (resync ? "OGG-resync " : "OGG ") + HostFrameCodec.toHex(tx));
-            serial.write(tx);
+        synchronized (hostIoLock) {
+            drainWaiterQueues();
+            byte[] tx = resync ? HostFrameCodec.encodeOggResync() : HostFrameCodec.encodeOggProbe();
+            synchronized (ioLock) {
+                debugLog.host("TX", (resync ? "OGG-resync " : "OGG ") + HostFrameCodec.toHex(tx));
+                serial.write(tx);
+            }
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+            while (System.nanoTime() < deadline) {
+                if (Thread.interrupted()) {
+                    throw new InterruptedException("OGG probe interrupted");
+                }
+                long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+                if (remaining <= 0) {
+                    break;
+                }
+                HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+                if (frame == null) {
+                    continue;
+                }
+                logRx(frame);
+                if (HostFrameCodec.isOggSuccess(frame)) {
+                    state = TncState.HOST_MODE;
+                    return true;
+                }
+            }
+            return false;
         }
-        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
-        while (System.nanoTime() < deadline) {
-            if (Thread.interrupted()) {
-                throw new InterruptedException("OGG probe interrupted");
-            }
-            long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
-            if (remaining <= 0) {
-                break;
-            }
-            HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
-            if (frame == null) {
-                continue;
-            }
-            logRx(frame);
-            if (HostFrameCodec.isOggSuccess(frame)) {
-                state = TncState.HOST_MODE;
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -284,46 +290,51 @@ public final class HostSession implements AutoCloseable {
         byte expect0 = (byte) mnemonicAndArgs.charAt(0);
         byte expect1 = (byte) mnemonicAndArgs.charAt(1);
 
-        drainWaiterQueues();
-        byte[] tx = HostFrameCodec.encodeGlobalCommand(mnemonicAndArgs);
-        synchronized (ioLock) {
-            debugLog.host("TX", "CMD " + mnemonicAndArgs + " | " + HostFrameCodec.toHex(tx));
-            serial.write(tx);
-        }
+        synchronized (hostIoLock) {
+            drainWaiterQueues();
+            byte[] tx = HostFrameCodec.encodeGlobalCommand(mnemonicAndArgs);
+            synchronized (ioLock) {
+                debugLog.host("TX", "CMD " + mnemonicAndArgs + " | " + HostFrameCodec.toHex(tx));
+                serial.write(tx);
+            }
 
-        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
-        while (System.nanoTime() < deadline) {
-            if (Thread.interrupted()) {
-                throw new InterruptedException("Host command interrupted: " + mnemonicAndArgs);
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+            while (System.nanoTime() < deadline) {
+                if (Thread.interrupted()) {
+                    throw new InterruptedException("Host command interrupted: " + mnemonicAndArgs);
+                }
+                long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+                if (remaining <= 0) {
+                    break;
+                }
+                HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+                if (frame == null) {
+                    continue;
+                }
+                logRx(frame);
+                if (frame.ctl != HostFrameCodec.CTL_GLOBAL || frame.payload.length < 3) {
+                    continue;
+                }
+                if (frame.payload[0] != expect0 || frame.payload[1] != expect1) {
+                    continue;
+                }
+                int status = frame.payload[2] & 0xFF;
+                byte[] data = new byte[frame.payload.length - 3];
+                if (data.length > 0) {
+                    System.arraycopy(frame.payload, 3, data, 0, data.length);
+                }
+                return new CommandResponse(expect0, expect1, status, data, frame);
             }
-            long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
-            if (remaining <= 0) {
-                break;
-            }
-            HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
-            if (frame == null) {
-                continue;
-            }
-            logRx(frame);
-            if (frame.ctl != HostFrameCodec.CTL_GLOBAL || frame.payload.length < 3) {
-                continue;
-            }
-            if (frame.payload[0] != expect0 || frame.payload[1] != expect1) {
-                continue;
-            }
-            int status = frame.payload[2] & 0xFF;
-            byte[] data = new byte[frame.payload.length - 3];
-            if (data.length > 0) {
-                System.arraycopy(frame.payload, 3, data, 0, data.length);
-            }
-            return new CommandResponse(expect0, expect1, status, data, frame);
+            // Drop a late response so the next round-trip cannot treat it as its own.
+            commandQueue.clear();
+            throw new IOException("Timeout waiting for Host response to: " + mnemonicAndArgs);
         }
-        throw new IOException("Timeout waiting for Host response to: " + mnemonicAndArgs);
     }
 
     /**
-     * Send a global Host command without draining inbound or waiting for a response.
-     * Intended for debug-monitor manual sends so init waiters are not starved.
+     * Send a global Host command without waiting for a response.
+     * Intended for debug-monitor manual sends (probe-only exception to Ch. 4 §4.3 wait).
+     * Still takes {@link #hostIoLock} for the write so it cannot run mid round-trip.
      */
     public void sendHostCommandFireAndForget(String mnemonicAndArgs) throws IOException {
         Objects.requireNonNull(mnemonicAndArgs, "mnemonicAndArgs");
@@ -331,9 +342,11 @@ public final class HostSession implements AutoCloseable {
             throw new IllegalArgumentException("Host mnemonic must be at least 2 characters");
         }
         byte[] tx = HostFrameCodec.encodeGlobalCommand(mnemonicAndArgs);
-        synchronized (ioLock) {
-            debugLog.host("TX", "CMD " + mnemonicAndArgs + " | " + HostFrameCodec.toHex(tx));
-            serial.write(tx);
+        synchronized (hostIoLock) {
+            synchronized (ioLock) {
+                debugLog.host("TX", "CMD " + mnemonicAndArgs + " | " + HostFrameCodec.toHex(tx));
+                serial.write(tx);
+            }
         }
     }
 
@@ -342,6 +355,7 @@ public final class HostSession implements AutoCloseable {
      * after each framed block. With HPOLL OFF the ack is pushed; do not send further data until
      * this returns.
      * <p>
+     * Serialized with {@link #sendCommand} on {@link #hostIoLock} (Ch. 4 §4.3 / §4.4).
      * Ch. 4 §4.8: payloads larger than {@link HostFrameCodec#MAX_HOST_TO_TNC_PAYLOAD} (330)
      * payload characters are split into multiple blocks. The limit counts pre-escape payload
      * bytes only (SOH/CTL/DLE/ETB excluded). Empty payload is a no-op.
@@ -356,21 +370,22 @@ public final class HostSession implements AutoCloseable {
             return;
         }
 
-        synchronized (dataSendLock) {
+        synchronized (hostIoLock) {
             int offset = 0;
             int chunkIndex = 0;
             boolean multi = payload.length > HostFrameCodec.MAX_HOST_TO_TNC_PAYLOAD;
             while (offset < payload.length) {
                 int len = Math.min(HostFrameCodec.MAX_HOST_TO_TNC_PAYLOAD, payload.length - offset);
                 byte[] chunk = Arrays.copyOfRange(payload, offset, offset + len);
-                sendDataBlock(channel, chunk, timeoutMs, chunkIndex, multi);
+                sendDataBlockLocked(channel, chunk, timeoutMs, chunkIndex, multi);
                 offset += len;
                 chunkIndex++;
             }
         }
     }
 
-    private void sendDataBlock(int channel, byte[] chunk, long timeoutMs, int chunkIndex, boolean multi)
+    /** Caller must hold {@link #hostIoLock}. */
+    private void sendDataBlockLocked(int channel, byte[] chunk, long timeoutMs, int chunkIndex, boolean multi)
             throws IOException, InterruptedException {
         drainWaiterQueues();
         byte[] tx = HostFrameCodec.encodeData(channel, chunk);
@@ -399,7 +414,15 @@ public final class HostSession implements AutoCloseable {
             if (HostFrameCodec.isDataAck(frame)) {
                 return;
             }
+            if (HostFrameCodec.isDataStatusError(frame)) {
+                int last = frame.payload[frame.payload.length - 1] & 0xFF;
+                throw new IOException("Host data status error (ch" + channel
+                        + (multi ? ", chunk=" + chunkIndex : "")
+                        + "): $5F … $" + String.format("%02X", last));
+            }
         }
+        // Drop a late data-ack so the next round-trip cannot treat it as its own.
+        statusQueue.clear();
         throw new IOException("Timeout waiting for Host data-ack (ch" + channel
                 + (multi ? ", chunk=" + chunkIndex : "") + ")");
     }
@@ -432,66 +455,69 @@ public final class HostSession implements AutoCloseable {
      * Example: MM$93 → value byte 0x93. Ingest the hex digits after '$'.
      */
     public int readMemoryByte(long timeoutMs) throws IOException, InterruptedException {
-        drainWaiterQueues();
-        byte[] tx = HostFrameCodec.encodeGlobalCommand("MM");
-        synchronized (ioLock) {
-            debugLog.host("TX", "CMD MM | " + HostFrameCodec.toHex(tx));
-            serial.write(tx);
-        }
+        synchronized (hostIoLock) {
+            drainWaiterQueues();
+            byte[] tx = HostFrameCodec.encodeGlobalCommand("MM");
+            synchronized (ioLock) {
+                debugLog.host("TX", "CMD MM | " + HostFrameCodec.toHex(tx));
+                serial.write(tx);
+            }
 
-        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
-        while (System.nanoTime() < deadline) {
-            if (Thread.interrupted()) {
-                throw new InterruptedException("Host MM read interrupted");
-            }
-            long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
-            if (remaining <= 0) {
-                break;
-            }
-            HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
-            if (frame == null) {
-                continue;
-            }
-            logRx(frame);
-            if (frame.ctl != HostFrameCodec.CTL_GLOBAL || frame.payload.length < 3) {
-                continue;
-            }
-            if (frame.payload[0] != 'M' || frame.payload[1] != 'M') {
-                continue;
-            }
-            if (frame.payload[2] == '$') {
-                StringBuilder hex = new StringBuilder();
-                for (int i = 3; i < frame.payload.length; i++) {
-                    hex.append((char) (frame.payload[i] & 0xFF));
+            long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+            while (System.nanoTime() < deadline) {
+                if (Thread.interrupted()) {
+                    throw new InterruptedException("Host MM read interrupted");
                 }
-                String hexStr = hex.toString().trim();
-                if (hexStr.isEmpty()) {
-                    throw new IOException("MEMORY read returned no hex digits after '$': "
-                            + HostFrameCodec.toHex(frame.payload));
+                long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+                if (remaining <= 0) {
+                    break;
                 }
-                int len = Math.min(hexStr.length(), 2);
-                String byteHex = hexStr.substring(0, len);
-                if (byteHex.length() == 1) {
-                    byteHex = "0" + byteHex;
+                HostFrameCodec.Frame frame = commandQueue.poll(Math.min(remaining, 100), TimeUnit.MILLISECONDS);
+                if (frame == null) {
+                    continue;
                 }
-                try {
-                    return Integer.parseInt(byteHex, 16) & 0xFF;
-                } catch (NumberFormatException e) {
-                    throw new IOException("MEMORY read invalid hex after '$': " + hexStr
-                            + " (payload=" + HostFrameCodec.toHex(frame.payload) + ")");
+                logRx(frame);
+                if (frame.ctl != HostFrameCodec.CTL_GLOBAL || frame.payload.length < 3) {
+                    continue;
                 }
+                if (frame.payload[0] != 'M' || frame.payload[1] != 'M') {
+                    continue;
+                }
+                if (frame.payload[2] == '$') {
+                    StringBuilder hex = new StringBuilder();
+                    for (int i = 3; i < frame.payload.length; i++) {
+                        hex.append((char) (frame.payload[i] & 0xFF));
+                    }
+                    String hexStr = hex.toString().trim();
+                    if (hexStr.isEmpty()) {
+                        throw new IOException("MEMORY read returned no hex digits after '$': "
+                                + HostFrameCodec.toHex(frame.payload));
+                    }
+                    int len = Math.min(hexStr.length(), 2);
+                    String byteHex = hexStr.substring(0, len);
+                    if (byteHex.length() == 1) {
+                        byteHex = "0" + byteHex;
+                    }
+                    try {
+                        return Integer.parseInt(byteHex, 16) & 0xFF;
+                    } catch (NumberFormatException e) {
+                        throw new IOException("MEMORY read invalid hex after '$': " + hexStr
+                                + " (payload=" + HostFrameCodec.toHex(frame.payload) + ")");
+                    }
+                }
+                if (frame.payload[2] == 0x00) {
+                    if (frame.payload.length < 4) {
+                        throw new IOException("MEMORY read legacy form missing data byte (payload="
+                                + HostFrameCodec.toHex(frame.payload) + ")");
+                    }
+                    return frame.payload[3] & 0xFF;
+                }
+                throw new IOException("MEMORY read unexpected response (payload="
+                        + HostFrameCodec.toHex(frame.payload) + ")");
             }
-            if (frame.payload[2] == 0x00) {
-                if (frame.payload.length < 4) {
-                    throw new IOException("MEMORY read legacy form missing data byte (payload="
-                            + HostFrameCodec.toHex(frame.payload) + ")");
-                }
-                return frame.payload[3] & 0xFF;
-            }
-            throw new IOException("MEMORY read unexpected response (payload="
-                    + HostFrameCodec.toHex(frame.payload) + ")");
+            commandQueue.clear();
+            throw new IOException("Timeout waiting for Host MM response");
         }
-        throw new IOException("Timeout waiting for Host MM response");
     }
 
     private void readerLoop() {

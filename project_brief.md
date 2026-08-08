@@ -244,7 +244,8 @@ hostmode/
   HostFrameCodec.java       SOH/CTL/ETB + DLE; encodeData; classifyCtl;
                             MAX_HOST_TO_TNC_PAYLOAD (330); FrameParser
   HostSession.java          demux, commandQueue/statusQueue, sendCommand,
-                            sendData (chunk + data-ack), OGG, AE/MM$hh
+                            sendData (chunk + data-ack), hostIoLock round-trips,
+                            OGG, AE/MM$hh
   HostEvent.java            typed demux events
   TncInitializer.java       full connect/init orchestration
   CompatChecker.java        fingerprint policy

@@ -88,10 +88,19 @@ public final class HostFrameCodec {
 
     /** Ch.4 data-ack: {@code SOH $5F X X $00 ETB}. */
     public static boolean isDataAck(Frame frame) {
+        if (frame == null || frame.ctl != CTL_DATA_ACK || frame.payload.length != 3) {
+            return false;
+        }
+        return (frame.payload[2] & 0xFF) == 0x00;
+    }
+
+    /** Ch.4 bad block ({@code … W}) or bad CTL ({@code … Y}) on {@code $5F}. */
+    public static boolean isDataStatusError(Frame frame) {
         if (frame == null || frame.ctl != CTL_DATA_ACK || frame.payload.length < 3) {
             return false;
         }
-        return (frame.payload[frame.payload.length - 1] & 0xFF) == 0x00;
+        int last = frame.payload[frame.payload.length - 1] & 0xFF;
+        return last == 'W' || last == 'Y';
     }
 
     public static byte[] encodeOggProbe() {

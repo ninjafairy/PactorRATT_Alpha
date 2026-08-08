@@ -159,9 +159,9 @@ Reference: [`docs/PK232_HostMode_Reference.md`](docs/PK232_HostMode_Reference.md
 
 - Framing: `SOH CTL payload ETB` with `DLE` escape for `SOH`/`DLE`/`ETB`.
 - **Command pacing (Ch. 4 §4.3):** The PK-232 always issues a response to each command; the host **must wait** for that response before issuing another command. Use `sendCommand` (not fire-and-forget) on product/init paths.
+- **Data pacing (Ch. 4 §4.4):** After each Host data block (`CTL 0x2x`), wait for data-ack `0x5F … 00` before the next data block. `HostSession` serializes **all** command and data round-trips on one `hostIoLock` so concurrent ISS/ARQ/FEC callers cannot steal acks or clear each other's waiter queues; late responses are discarded on timeout before unlock.
 - **`HPOLL OFF`:** continuous serial read; PK-232 pushes blocks; no periodic `GG` flood. Keep `GG` for Host entry probe / recovery only.
 - Channel **0** for Pactor.
-- After data send (`CTL 0x2x`), wait for data-ack `0x5F … 00` before next data block (pacing).
 - **Max Host→TNC block size (Ch. 4 §4.8): 330 payload characters** excluding SOH/CTL/DLE/ETB — enforced by chunking inside `HostSession.sendData`.
 - Demux by CTL: data `0x3x`, monitor `0x3F`, echo `0x2F`, link status `0x4x`, link msg `0x5x`, status/error `0x5F`, command rsp `0x4F`.
 - **Mnemonics are case-sensitive** (see HostCommands header).
