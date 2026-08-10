@@ -54,6 +54,8 @@
             </manifest>
             <manifestEntries>
               <Build-Time>${maven.build.timestamp}</Build-Time>
+              <!-- Required for jSerialComm System.loadLibrary on JDK 24+ (warn now; deny later). -->
+              <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
             </manifestEntries>
           </archive>
         </configuration>
@@ -75,6 +77,7 @@
                   <mainClass>com.pactorratt.alpha.app.PactorRattAlphaApp</mainClass>
                   <manifestEntries>
                     <Build-Time>${maven.build.timestamp}</Build-Time>
+                    <Enable-Native-Access>ALL-UNNAMED</Enable-Native-Access>
                   </manifestEntries>
                 </transformer>
               </transformers>

@@ -135,8 +135,15 @@ public final class MainWindow extends JFrame {
         JMenu settings = new JMenu("Settings");
         JMenuItem com = new JMenuItem("COM Port…");
         com.addActionListener(e -> {
-            ComPortDialog dialog = new ComPortDialog(this, app);
-            dialog.setVisible(true);
+            try {
+                ComPortDialog dialog = new ComPortDialog(this, app);
+                dialog.setVisible(true);
+            } catch (Throwable t) {
+                JOptionPane.showMessageDialog(this,
+                        "Could not open COM Port settings:\n" + t.getMessage(),
+                        "Settings — COM Port",
+                        JOptionPane.ERROR_MESSAGE);
+            }
             refreshConnectionState();
         });
         JMenuItem program = new JMenuItem("Program…");

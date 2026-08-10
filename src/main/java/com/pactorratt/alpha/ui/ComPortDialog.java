@@ -11,6 +11,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.Window;
@@ -23,8 +24,17 @@ public final class ComPortDialog extends JDialog {
 
         JComboBox<String> ports = new JComboBox<>();
         ports.setEditable(true);
-        for (SerialPort port : SerialPort.getCommPorts()) {
-            ports.addItem(port.getSystemPortName());
+        String portEnumFailure = null;
+        try {
+            SerialPort[] found = SerialPort.getCommPorts();
+            if (found != null) {
+                for (SerialPort port : found) {
+                    ports.addItem(port.getSystemPortName());
+                }
+            }
+        } catch (Throwable t) {
+            portEnumFailure = t.getClass().getSimpleName()
+                    + (t.getMessage() == null ? "" : ": " + t.getMessage());
         }
         if (!config.getComPort().isBlank()) {
             ports.setSelectedItem(config.getComPort());
@@ -62,7 +72,13 @@ public final class ComPortDialog extends JDialog {
         form.add(new JLabel("Flow control"));
         form.add(flow);
 
-        JLabel summary = new JLabel("Default first-run: 1200 7N1");
+        JLabel summary = new JLabel(portEnumFailure == null
+                ? "Default first-run: 1200 7N1"
+                : "Could not list serial ports. You can still type a port name (e.g. COM3).");
+        if (portEnumFailure != null) {
+            summary.setForeground(new Color(0xB00020));
+            summary.setToolTipText(portEnumFailure);
+        }
         summary.setBorder(new EmptyBorder(0, 10, 8, 10));
 
         JButton save = new JButton("Save");
