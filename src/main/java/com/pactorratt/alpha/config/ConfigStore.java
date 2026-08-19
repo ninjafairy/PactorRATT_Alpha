@@ -85,6 +85,7 @@ public final class ConfigStore {
         append(sb, "wrapColumns", c.getWrapColumns());
         append(sb, "fec200", c.isFec200());
         append(sb, "fecRetries", c.getFecRetries());
+        append(sb, "opPoll", c.getOpPoll());
         append(sb, "buddiesExpanded", c.isBuddiesExpanded());
         append(sb, "heardExpanded", c.isHeardExpanded());
         append(sb, "mentionedExpanded", c.isMentionedExpanded(), false);
@@ -169,6 +170,9 @@ public final class ConfigStore {
         }
         if (map.containsKey("fecRetries")) {
             config.setFecRetries(parseInt(map.get("fecRetries"), 1));
+        }
+        if (map.containsKey("opPoll")) {
+            config.setOpPoll(parseInt(map.get("opPoll"), 0));
         }
         if (map.containsKey("buddiesExpanded")) {
             config.setBuddiesExpanded(Boolean.parseBoolean(map.get("buddiesExpanded")));

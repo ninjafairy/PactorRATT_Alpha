@@ -68,7 +68,8 @@ public final class StartupWarningDialog extends JDialog {
         body.setBorder(BorderFactory.createEmptyBorder(8, 28, 16, 28));
 
         JLabel runtimeInfo = new JLabel(
-                "Java: " + javaVersion() + "    |    Build: " + jarBuildTime(),
+                "Java: " + javaVersion()
+                        + "    |    Build: " + jarBuildNumber() + "  " + jarBuildTime(),
                 SwingConstants.CENTER);
         runtimeInfo.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         runtimeInfo.setForeground(Color.DARK_GRAY);
@@ -128,13 +129,47 @@ public final class StartupWarningDialog extends JDialog {
         return version;
     }
 
-    /** Reads {@code Build-Time} from the running jar's manifest (set at Maven package). */
+    /** Reads sequential build number (Maven initialize increments {@code build.number.properties}). */
+    private static String jarBuildNumber() {
+        String fromResource = readBuildInfoProperty("buildNumber");
+        if (fromResource != null) {
+            return fromResource;
+        }
+        String fromManifest = readManifestValue("Build-Number");
+        if (fromManifest != null && !fromManifest.contains("${")) {
+            return fromManifest;
+        }
+        return "?";
+    }
+
+    /** Reads package timestamp. */
     private static String jarBuildTime() {
+        String fromResource = readBuildInfoProperty("buildTime");
+        if (fromResource != null) {
+            return fromResource;
+        }
         String fromManifest = readManifestValue("Build-Time");
-        if (fromManifest != null) {
+        if (fromManifest != null && !fromManifest.contains("${")) {
             return fromManifest;
         }
         return "unknown (not a packaged jar)";
+    }
+
+    private static String readBuildInfoProperty(String key) {
+        try (InputStream in = StartupWarningDialog.class.getResourceAsStream("/build-info.properties")) {
+            if (in == null) {
+                return null;
+            }
+            java.util.Properties props = new java.util.Properties();
+            props.load(in);
+            String value = props.getProperty(key);
+            if (value == null || value.isBlank() || value.contains("${")) {
+                return null;
+            }
+            return value.trim();
+        } catch (IOException ignored) {
+            return null;
+        }
     }
 
     private static String readManifestValue(String key) {

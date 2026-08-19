@@ -172,6 +172,9 @@ public final class MainWindow extends JFrame {
         JMenuItem debugMonitor = new JMenuItem("Debug Monitor…");
         debugMonitor.addActionListener(e -> app.openDebugMonitor());
         tncMenu.add(debugMonitor);
+        JMenuItem statusMonitor = new JMenuItem("Status Monitor…");
+        statusMonitor.addActionListener(e -> app.openStatusMonitor());
+        tncMenu.add(statusMonitor);
 
         JMenu help = new JMenu("Help");
         JMenuItem about = new JMenuItem("About");

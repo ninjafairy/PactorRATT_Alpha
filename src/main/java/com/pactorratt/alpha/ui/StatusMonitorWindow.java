@@ -11,11 +11,9 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.WindowConstants;
@@ -28,15 +26,13 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
- * Live view of serial port traffic (hex + ASCII). RX Host blocks are coalesced
- * to one line per complete SOH…ETB frame so OS chunk splits (e.g. lone {@code 01})
- * do not appear as separate packets. Non-framed bytes (pre-Host ASCII) still display.
+ * Live view of Host OPMODE ({@code $4F} + {@code OP…}) TX polls and RX replies only.
+ * Same stream formatting as Debug Monitor; {@code Mode:} is decoded per Ch. 4 §4.3.2.
  */
-public final class DebugMonitorWindow extends JFrame implements SerialByteListener {
+public final class StatusMonitorWindow extends JFrame implements SerialByteListener {
 
     private static final int MAX_CHARS = 200_000;
     private static final int RX_IDLE_FLUSH_MS = 250;
@@ -44,32 +40,31 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
     private final AppController app;
     private final JTextArea textArea = new JTextArea();
     private final JButton pauseButton = new JButton("Pause");
-    private final JTextField cmdField = new JTextField(4);
-    private final JTextField payloadField = new JTextField(20);
-    private final JButton sendButton = new JButton("Send");
+    private final JLabel modeLabel = new JLabel("Mode: —");
     private volatile boolean paused;
 
     private final HostFrameCodec.FrameParser rxCoalesceParser = new HostFrameCodec.FrameParser();
+    private final HostFrameCodec.FrameParser txCoalesceParser = new HostFrameCodec.FrameParser();
     private final ByteArrayOutputStream rxLooseBytes = new ByteArrayOutputStream();
     private final Object rxCoalesceLock = new Object();
+    private final Object txCoalesceLock = new Object();
     private final Timer rxIdleFlushTimer;
 
-    public DebugMonitorWindow(AppController app) {
-        super("TNC Debug Monitor");
+    public StatusMonitorWindow(AppController app) {
+        super("TNC Status Monitor");
         this.app = app;
         app.addSerialByteListener(this);
         rxIdleFlushTimer = new Timer(RX_IDLE_FLUSH_MS, e -> flushRxIdle());
         rxIdleFlushTimer.setRepeats(false);
         buildUi();
-        sendButton.setEnabled(true);
         setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
                 rxIdleFlushTimer.stop();
                 flushRxIdle();
-                app.removeSerialByteListener(DebugMonitorWindow.this);
-                app.onDebugMonitorClosed(DebugMonitorWindow.this);
+                app.removeSerialByteListener(StatusMonitorWindow.this);
+                app.onStatusMonitorClosed(StatusMonitorWindow.this);
             }
         });
         setSize(720, 420);
@@ -113,40 +108,27 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
         controlsRow.add(clearButton);
         controlsRow.add(pauseButton);
 
-        JPanel sendRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        sendRow.setBackground(UiColors.PANEL_BG);
-        sendRow.add(new JLabel("Cmd"));
-        sendRow.add(cmdField);
-        sendRow.add(new JLabel("Payload"));
-        sendRow.add(payloadField);
-        sendRow.add(sendButton);
-
-        sendButton.addActionListener(e -> onSendClicked());
+        JPanel modeRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        modeRow.setBackground(UiColors.PANEL_BG);
+        modeLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        modeRow.add(modeLabel);
 
         south.add(controlsRow);
         south.add(Box.createVerticalStrut(4));
-        south.add(sendRow);
+        south.add(modeRow);
 
         add(scroll, BorderLayout.CENTER);
         add(south, BorderLayout.SOUTH);
     }
 
-    private void onSendClicked() {
-        String cmd = cmdField.getText().trim();
-        if (cmd.length() != 2) {
-            JOptionPane.showMessageDialog(this,
-                    "Host command must be exactly 2 characters (e.g. HP, MM, AE).",
-                    "TNC Debug Monitor",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        String payload = payloadField.getText().trim();
-        String error = app.sendDebugHostCommand(cmd, payload);
-        if (error != null) {
-            JOptionPane.showMessageDialog(this,
-                    error,
-                    "TNC Debug Monitor",
-                    JOptionPane.ERROR_MESSAGE);
+    /** EDT-safe update of the decoded {@code Mode:} line. */
+    public void setModeLine(String text) {
+        String line = text == null || text.isBlank() ? "Mode: —" : text;
+        Runnable r = () -> modeLabel.setText(line);
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
         }
     }
 
@@ -156,12 +138,19 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
             return;
         }
         if (transmit) {
-            byte[] chunk = Arrays.copyOfRange(data, offset, offset + length);
-            if (OpmodeParser.isCompleteOpmodeBlock(chunk)) {
-                return;
+            List<String> lines = new ArrayList<>();
+            synchronized (txCoalesceLock) {
+                int end = offset + length;
+                for (int i = offset; i < end; i++) {
+                    HostFrameCodec.Frame frame = txCoalesceParser.feed(data[i]);
+                    if (frame != null && OpmodeParser.isOpmodeFrame(frame)) {
+                        lines.add(HostMonitorFormat.formatLine(true, frame.raw));
+                    }
+                }
             }
-            String line = HostMonitorFormat.formatLine(true, chunk);
-            SwingUtilities.invokeLater(() -> appendLine(line));
+            for (String line : lines) {
+                SwingUtilities.invokeLater(() -> appendLine(line));
+            }
             return;
         }
 
@@ -174,9 +163,9 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
                     rxLooseBytes.write(b);
                     continue;
                 }
-                flushLooseLocked(lines);
+                flushLooseLocked();
                 HostFrameCodec.Frame frame = rxCoalesceParser.feed(b);
-                if (frame != null && !OpmodeParser.isOpmodeFrame(frame)) {
+                if (frame != null && OpmodeParser.isOpmodeFrame(frame)) {
                     lines.add(HostMonitorFormat.formatLine(false, frame.raw));
                 }
             }
@@ -188,28 +177,15 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
     }
 
     private void flushRxIdle() {
-        List<String> lines = new ArrayList<>();
         synchronized (rxCoalesceLock) {
-            flushLooseLocked(lines);
-            // Drop incomplete Host block state so garbage does not stick.
+            flushLooseLocked();
             if (!rxCoalesceParser.awaitingSoh()) {
                 rxCoalesceParser.reset();
             }
         }
-        for (String line : lines) {
-            if (SwingUtilities.isEventDispatchThread()) {
-                appendLine(line);
-            } else {
-                SwingUtilities.invokeLater(() -> appendLine(line));
-            }
-        }
     }
 
-    private void flushLooseLocked(List<String> lines) {
-        if (rxLooseBytes.size() == 0) {
-            return;
-        }
-        lines.add(HostMonitorFormat.formatLine(false, rxLooseBytes.toByteArray()));
+    private void flushLooseLocked() {
         rxLooseBytes.reset();
     }
 
@@ -230,8 +206,6 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
         try {
             doc.remove(0, excess);
         } catch (BadLocationException ignored) {
-            // Best-effort trim; ignore if document changed concurrently.
         }
     }
-
 }

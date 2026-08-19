@@ -25,6 +25,11 @@ public final class AppConfig {
     private boolean fec200 = false;
     /** PTSend {@code x}: unproto repeats, 1–5. */
     private int fecRetries = 1;
+    /**
+     * Host {@code OP} (OPMODE) polls per second while an ARQ window is linked and not dead.
+     * {@code 0} disables polling. Range 0–10.
+     */
+    private int opPoll = 0;
 
     private boolean buddiesExpanded = true;
     private boolean heardExpanded = true;
@@ -154,6 +159,21 @@ public final class AppConfig {
             this.fecRetries = 5;
         } else {
             this.fecRetries = fecRetries;
+        }
+    }
+
+    public int getOpPoll() {
+        return opPoll;
+    }
+
+    /** Clamps to 0–10 (OPMODE polls per second; 0 = off). */
+    public void setOpPoll(int opPoll) {
+        if (opPoll < 0) {
+            this.opPoll = 0;
+        } else if (opPoll > 10) {
+            this.opPoll = 10;
+        } else {
+            this.opPoll = opPoll;
         }
     }
 

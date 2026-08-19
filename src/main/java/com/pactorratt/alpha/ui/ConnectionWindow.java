@@ -60,9 +60,13 @@ public final class ConnectionWindow extends JFrame {
     private final JButton sendButton = new JButton("Send");
     private final List<JButton> controlButtons = new ArrayList<>();
 
-    private boolean sessionActive = true;
+    private volatile boolean sessionActive = true;
     /** Phase 1 offline default: hold commits in App TX buffer (IRS). */
     private boolean localIsIrs = true;
+    /** Last OPMODE {@code w} word (Idle/Traffic/Standby/…); null until a decoded reply. */
+    private String opmodeWLabel;
+    /** True after a non-Standby OPMODE so later Standby can mark the link dead. */
+    private boolean opmodeWasLive;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
         super(kind == Kind.LISTEN ? "PactorRATT_Alpha — Listen" : "PactorRATT_Alpha — " + titleCall);
@@ -79,6 +83,35 @@ public final class ConnectionWindow extends JFrame {
         });
         setSize(640, 520);
         setLocationByPlatform(true);
+    }
+
+    /**
+     * Apply OPMODE {@code w} (link phase) and optional {@code x} (ISS/IRS).
+     * {@code x} uses the same S=Tx/ISS R=Rx/IRS table for every mode that includes *x*.
+     * IRS→ISS flushes App TX buffer the same as {@link #flushIss}.
+     */
+    public void applyOpmodeLink(String wLabel, Boolean transmit) {
+        if (wLabel != null && !wLabel.isBlank()) {
+            this.opmodeWLabel = wLabel;
+        }
+        if (transmit != null && sessionActive && kind == Kind.ARQ) {
+            boolean wantIrs = !transmit;
+            if (wantIrs) {
+                localIsIrs = true;
+            } else if (localIsIrs) {
+                flushIss();
+                return;
+            }
+        }
+        refreshStatus();
+    }
+
+    public void markOpmodeLive() {
+        this.opmodeWasLive = true;
+    }
+
+    public boolean hasSeenLiveOpmode() {
+        return opmodeWasLive;
     }
 
     public Kind kind() {
@@ -414,7 +447,14 @@ public final class ConnectionWindow extends JFrame {
 
     private void refreshStatus() {
         String role = localIsIrs ? "IRS" : "ISS";
-        String link = sessionActive ? (kind == Kind.LISTEN ? "LISTEN" : "ARQ") : "DEAD";
+        String link;
+        if (opmodeWLabel != null && !opmodeWLabel.isBlank()) {
+            link = opmodeWLabel;
+        } else if (sessionActive) {
+            link = kind == Kind.LISTEN ? "LISTEN" : "ARQ";
+        } else {
+            link = "DEAD";
+        }
         statusBar.setText(String.format(
                 " %s | %s | TX OFF | speed -- | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
                 role, link, titleCall, app.isTncConnected() ? "connected" : "offline"));

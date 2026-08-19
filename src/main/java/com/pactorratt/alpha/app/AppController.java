@@ -5,11 +5,13 @@ import com.pactorratt.alpha.config.ConfigStore;
 import com.pactorratt.alpha.hostmode.HostEvent;
 import com.pactorratt.alpha.hostmode.HostFrameCodec;
 import com.pactorratt.alpha.hostmode.HostSession;
+import com.pactorratt.alpha.hostmode.OpmodeParser;
 import com.pactorratt.alpha.hostmode.TncInitializer;
 import com.pactorratt.alpha.serial.SerialByteListener;
 import com.pactorratt.alpha.ui.ConnectionWindow;
 import com.pactorratt.alpha.ui.DebugMonitorWindow;
 import com.pactorratt.alpha.ui.MainWindow;
+import com.pactorratt.alpha.ui.StatusMonitorWindow;
 import com.pactorratt.alpha.ui.UiColors;
 import com.pactorratt.alpha.util.DebugLog;
 
@@ -32,6 +34,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -62,8 +68,9 @@ public final class AppController {
 
     private MainWindow mainWindow;
     private ConnectionWindow listenWindow;
-    private ConnectionWindow activeArqWindow;
+    private volatile ConnectionWindow activeArqWindow;
     private DebugMonitorWindow debugMonitorWindow;
+    private StatusMonitorWindow statusMonitorWindow;
     private final List<ConnectionWindow> deadArqWindows = new ArrayList<>();
 
     private volatile HostSession hostSession;
@@ -72,12 +79,19 @@ public final class AppController {
     private final AtomicBoolean arqConnectBusy = new AtomicBoolean(false);
     /** Guards overlapping Listen FEC / End TX ({@code PD} + data + CTRL-D) attempts. */
     private final AtomicBoolean fecBusy = new AtomicBoolean(false);
+    /** Guards overlapping Listen ON/OFF Host {@code OP}/{@code PN}/{@code Pt} round-trips. */
+    private final AtomicBoolean listenHostBusy = new AtomicBoolean(false);
     private volatile Thread connectThread;
     private final AtomicBoolean connectCancelled = new AtomicBoolean(false);
     private volatile HostSession pendingSession;
 
-    private boolean tncConnected;
+    private volatile boolean tncConnected;
     private AppMode mode = AppMode.IDLE;
+
+    private final Object opPollLock = new Object();
+    private final AtomicBoolean opPollInFlight = new AtomicBoolean(false);
+    private ScheduledExecutorService opPollExecutor;
+    private ScheduledFuture<?> opPollFuture;
 
     public AppController(Path portableRoot) {
         this.portableRoot = Objects.requireNonNull(portableRoot);
@@ -116,7 +130,27 @@ public final class AppController {
             debugMonitorWindow = null;
         }
         // After a failed/partial connect we may have kept the serial port open for the monitor.
-        if (!tncConnected) {
+        if (!tncConnected && !isAnyMonitorOpen()) {
+            closeRetainedDebugSession();
+        }
+    }
+
+    public void openStatusMonitor() {
+        runOnEdt(() -> {
+            if (statusMonitorWindow == null || !statusMonitorWindow.isDisplayable()) {
+                statusMonitorWindow = new StatusMonitorWindow(this);
+                statusMonitorWindow.setVisible(true);
+            } else {
+                statusMonitorWindow.toFront();
+            }
+        });
+    }
+
+    public void onStatusMonitorClosed(StatusMonitorWindow window) {
+        if (statusMonitorWindow == window) {
+            statusMonitorWindow = null;
+        }
+        if (!tncConnected && !isAnyMonitorOpen()) {
             closeRetainedDebugSession();
         }
     }
@@ -126,16 +160,25 @@ public final class AppController {
         return w != null && w.isDisplayable();
     }
 
+    private boolean isStatusMonitorOpen() {
+        StatusMonitorWindow w = statusMonitorWindow;
+        return w != null && w.isDisplayable();
+    }
+
+    private boolean isAnyMonitorOpen() {
+        return isDebugMonitorOpen() || isStatusMonitorOpen();
+    }
+
     /**
-     * On connect failure: keep the serial session if Debug Monitor is open; otherwise close it.
+     * On connect failure: keep the serial session if Debug or Status Monitor is open; otherwise close it.
      */
     private void retainOrCloseOnFailure(HostSession session) {
         if (session == null || !session.isOpen()) {
             return;
         }
-        if (isDebugMonitorOpen()) {
+        if (isAnyMonitorOpen()) {
             pendingSession = session;
-            debugLog.info("Keeping serial session open for Debug Monitor after connect failure");
+            debugLog.info("Keeping serial session open for monitor after connect failure");
         } else {
             tncInitializer.abort(session);
             if (pendingSession == session) {
@@ -518,7 +561,17 @@ public final class AppController {
     }
 
     private void onHostEvent(HostEvent event) {
-        if (event == null || event.type() != HostEvent.Type.INBOUND_DATA) {
+        if (event == null) {
+            return;
+        }
+        if (event.type() == HostEvent.Type.COMMAND_RESPONSE) {
+            OpmodeParser.Decoded decoded = OpmodeParser.decode(event.frame());
+            if (decoded != null) {
+                runOnEdt(() -> applyOpmodeDecoded(decoded));
+            }
+            return;
+        }
+        if (event.type() != HostEvent.Type.INBOUND_DATA) {
             return;
         }
         HostFrameCodec.Frame frame = event.frame();
@@ -535,6 +588,108 @@ public final class AppController {
                         + String.format("%02X", frame.ctl) + " len=" + frame.payload.length);
             }
         });
+    }
+
+    /**
+     * Drive Status Monitor {@code Mode:} and the active ARQ window from a decoded OPMODE reply.
+     * Pactor Standby ({@code Pt}) or *w*={@code $30} ends the ARQ link: stop polling, mark dead,
+     * freeze ISS/IRS. {@code x} (S/R) drives ISS/IRS for every mode that includes *x*.
+     */
+    private void applyOpmodeDecoded(OpmodeParser.Decoded decoded) {
+        if (decoded == null) {
+            return;
+        }
+        if (statusMonitorWindow != null && statusMonitorWindow.isDisplayable()) {
+            statusMonitorWindow.setModeLine(decoded.statusLine());
+        }
+        ConnectionWindow arq = activeArqWindow;
+        if (arq == null || !arq.isSessionActive()) {
+            return;
+        }
+        if (decoded.standby) {
+            String w = decoded.wLabel != null ? decoded.wLabel : "Standby";
+            arq.applyOpmodeLink(w, decoded.hasDirection() ? decoded.transmit : null);
+            if (arq.hasSeenLiveOpmode()) {
+                markArqDead(arq);
+                noticeArq(arq, "ARQ ended — OPMODE " + w + ".");
+            }
+            return;
+        }
+        arq.markOpmodeLive();
+        arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null);
+    }
+
+    /**
+     * Poll Host {@code OP} at {@code OPPOLL} Hz while TNC is connected and an ARQ window is linked.
+     * {@code OPPOLL=0} disables. Safe to call from EDT or the poller thread.
+     */
+    private void syncOpPollScheduler() {
+        synchronized (opPollLock) {
+            int hz = config.getOpPoll();
+            HostSession session = hostSession;
+            boolean shouldRun = tncConnected
+                    && hasActiveArq()
+                    && hz > 0
+                    && session != null
+                    && session.isOpen();
+            if (opPollFuture != null) {
+                opPollFuture.cancel(false);
+                opPollFuture = null;
+            }
+            if (!shouldRun) {
+                return;
+            }
+            if (opPollExecutor == null || opPollExecutor.isShutdown()) {
+                opPollExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+                    Thread t = new Thread(r, "opmode-poll");
+                    t.setDaemon(true);
+                    return t;
+                });
+            }
+            long periodMs = Math.max(1L, 1000L / hz);
+            opPollFuture = opPollExecutor.scheduleAtFixedRate(
+                    this::pollOpmodeOnce, 0, periodMs, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private void stopOpPollScheduler() {
+        synchronized (opPollLock) {
+            if (opPollFuture != null) {
+                opPollFuture.cancel(false);
+                opPollFuture = null;
+            }
+            if (opPollExecutor != null) {
+                opPollExecutor.shutdownNow();
+                opPollExecutor = null;
+            }
+        }
+    }
+
+    private void pollOpmodeOnce() {
+        if (!tncConnected || !hasActiveArq() || config.getOpPoll() <= 0) {
+            syncOpPollScheduler();
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            syncOpPollScheduler();
+            return;
+        }
+        if (!opPollInFlight.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            // OPMODE replies are not ACK $00; do not use sendHostOk.
+            session.sendCommand("OP", ARQ_HOST_TIMEOUT_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            debugLog.info("OPMODE poll interrupted");
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+            debugLog.info("OPMODE poll failed: " + msg);
+        } finally {
+            opPollInFlight.set(false);
+        }
     }
 
     /** ARQ active wins; else active Listen window. */
@@ -702,6 +857,10 @@ public final class AppController {
                     setTncConnected(true);
                     String label = result.firmwareLabel == null ? "" : result.firmwareLabel;
                     debugLog.info("TNC connected" + (label.isEmpty() ? "" : " (" + label + ")"));
+                    syncOpPollScheduler();
+                    if (mainWindow != null && mainWindow.isListenSelected() && !hasActiveArq()) {
+                        enterListenHostThenUi();
+                    }
                 }
                 case HARD_REFUSE -> {
                     hostSession = null;
@@ -750,6 +909,7 @@ public final class AppController {
         pendingSession = null;
         setTncConnected(false);
         tncBusy.set(false);
+        syncOpPollScheduler();
         if (mainWindow != null) {
             mainWindow.refreshConnectionState();
         }
@@ -890,6 +1050,7 @@ public final class AppController {
             configStore.save(config);
             debugLog.setEnabled(config.isDebugLogEnabled());
             debugLog.info("Config saved");
+            syncOpPollScheduler();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(mainWindow,
                     "Could not save settings:\n" + e.getMessage(),
@@ -900,28 +1061,171 @@ public final class AppController {
 
     public void setListenEnabled(boolean enabled) {
         if (enabled) {
-            if (mode == AppMode.ARQ) {
-                // Spec: Listen window may exist but inactive while ARQ active.
+            if (mode == AppMode.ARQ || hasActiveArq()) {
+                // Spec: Listen window may exist but inactive while ARQ active. Do not send PN.
                 ensureListenWindow(false);
                 if (mainWindow != null) {
                     mainWindow.setListenToggleSilently(true);
                 }
                 return;
             }
-            mode = AppMode.LISTEN;
-            ensureListenWindow(true);
+            enterListenHostThenUi();
         } else {
-            if (listenWindow != null) {
-                listenWindow.dispose();
-                listenWindow = null;
+            ConnectionWindow closing = listenWindow;
+            listenWindow = null;
+            if (closing != null) {
+                closing.dispose();
             }
             if (mode == AppMode.LISTEN || mode == AppMode.UNPROTO) {
                 mode = AppMode.IDLE;
             }
+            if (mainWindow != null) {
+                mainWindow.refreshModeLabel();
+            }
+            leaveListenHostIfPn();
         }
+    }
+
+    /**
+     * Listen ON: if TNC is {@code Pt}, send {@code PN}; if already {@code PN}, leave it.
+     * Any other OPMODE refuses Listen ON. No Host I/O while ARQ is active or TNC is offline.
+     */
+    private void enterListenHostThenUi() {
+        if (!tncConnected || hasActiveArq()) {
+            applyListenUiOn();
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            applyListenUiOn();
+            return;
+        }
+        if (!listenHostBusy.compareAndSet(false, true)) {
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                OpmodeParser.Decoded decoded = queryOpmode(session);
+                if (decoded != null && decoded.isPactorListen()) {
+                    runOnEdt(() -> {
+                        try {
+                            applyListenUiOn();
+                        } finally {
+                            listenHostBusy.set(false);
+                        }
+                    });
+                    return;
+                }
+                if (decoded != null && decoded.isPactorStandby()) {
+                    sendHostOk(session, "PN");
+                    runOnEdt(() -> {
+                        try {
+                            applyListenUiOn();
+                        } finally {
+                            listenHostBusy.set(false);
+                        }
+                    });
+                    return;
+                }
+                String current = decoded == null || decoded.modeName == null
+                        ? "unknown"
+                        : decoded.modeName;
+                runOnEdt(() -> {
+                    try {
+                        refuseListenOn("TNC is not in Pactor standby (Pt). Listen was not enabled.\n"
+                                + "Current OPMODE: " + current);
+                    } finally {
+                        listenHostBusy.set(false);
+                    }
+                });
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("Listen ON interrupted");
+                runOnEdt(() -> {
+                    try {
+                        refuseListenOn("Listen ON interrupted.");
+                    } finally {
+                        listenHostBusy.set(false);
+                    }
+                });
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Listen ON failed: " + msg);
+                runOnEdt(() -> {
+                    try {
+                        refuseListenOn("Listen ON failed: " + msg);
+                    } finally {
+                        listenHostBusy.set(false);
+                    }
+                });
+            }
+        }, "listen-enter");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void applyListenUiOn() {
+        if (mode == AppMode.ARQ || hasActiveArq()) {
+            ensureListenWindow(false);
+            if (mainWindow != null) {
+                mainWindow.setListenToggleSilently(true);
+                mainWindow.refreshModeLabel();
+            }
+            return;
+        }
+        mode = AppMode.LISTEN;
+        ensureListenWindow(true);
         if (mainWindow != null) {
+            mainWindow.setListenToggleSilently(true);
             mainWindow.refreshModeLabel();
         }
+    }
+
+    private void refuseListenOn(String message) {
+        if (mainWindow != null) {
+            mainWindow.setListenToggleSilently(false);
+            mainWindow.refreshModeLabel();
+        }
+        JOptionPane.showMessageDialog(mainWindow, message, "PactorRATT_Alpha",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
+    /**
+     * Listen window closed / Listen OFF: if TNC is {@code PN}, send {@code Pt}.
+     * Skip while ARQ is active or TNC is offline.
+     */
+    private void leaveListenHostIfPn() {
+        if (!tncConnected || hasActiveArq()) {
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                OpmodeParser.Decoded decoded = queryOpmode(session);
+                if (decoded != null && decoded.isPactorListen()) {
+                    sendHostOk(session, "Pt");
+                    debugLog.info("Listen OFF — sent Pt (was PN)");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("Listen OFF Host interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Listen OFF Host failed: " + msg);
+            }
+        }, "listen-leave");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** OPMODE query — replies are not ACK {@code $00}; do not use {@link #sendHostOk}. */
+    private OpmodeParser.Decoded queryOpmode(HostSession session)
+            throws IOException, InterruptedException {
+        HostSession.CommandResponse response = session.sendCommand("OP", ARQ_HOST_TIMEOUT_MS);
+        return OpmodeParser.decode(response.frame);
     }
 
     private void ensureListenWindow(boolean active) {
@@ -1035,6 +1339,7 @@ public final class AppController {
             mainWindow.refreshModeLabel();
         }
         debugLog.info("ARQ window opened after PTConn ACK for " + call);
+        syncOpPollScheduler();
     }
 
     private void showConnectError(String message) {
@@ -1063,6 +1368,7 @@ public final class AppController {
                 mainWindow.setListenToggleSilently(false);
                 mainWindow.refreshModeLabel();
             }
+            leaveListenHostIfPn();
             return;
         }
         if (window == activeArqWindow) {
@@ -1077,6 +1383,7 @@ public final class AppController {
             if (mainWindow != null) {
                 mainWindow.refreshModeLabel();
             }
+            syncOpPollScheduler();
             return;
         }
         deadArqWindows.remove(window);
@@ -1100,14 +1407,20 @@ public final class AppController {
             if (mainWindow != null) {
                 mainWindow.refreshModeLabel();
             }
+            syncOpPollScheduler();
         }
     }
 
     public void shutdown() {
+        stopOpPollScheduler();
         disconnectTnc();
         if (debugMonitorWindow != null) {
             debugMonitorWindow.dispose();
             debugMonitorWindow = null;
+        }
+        if (statusMonitorWindow != null) {
+            statusMonitorWindow.dispose();
+            statusMonitorWindow = null;
         }
         saveConfig();
         debugLog.close();
