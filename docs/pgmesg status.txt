@@ -1,0 +1,144 @@
+﻿pactor pg status link msg
+
+FINDINGS — reverse-engineering OPMODE (OP) responses in a Pactor ARQ session
+============================================================================
+Capture is polled Host OPMODE replies only (TX `.OOP.` polls and consecutive
+duplicate payloads already removed). Session runs ~12:21:11 to ~12:25:21.
+
+Session shape
+-------------
+- First line: `Pt` — Pactor standby (idle, ready to connect / be called).
+- Then `PG` — Pactor ARQ connect (`PTConn`) for the whole linked session.
+- Last line: `Pt` again — disconnected, back to Pactor standby.
+
+Payload layout (13 bytes, every line in this file)
+--------------------------------------------------
+  1     SOH                 $01
+  2     command response    $4F
+  3-4   command being answered  O P  ($4F $50)
+  5-6   mode tag            `Pt` = Pactor standby
+                            `PG` = Pactor ARQ / PTConn
+  7     *w*                 from the *w* table in docs/OPmodeResponse.md
+                            (on `Pt` this is always $30, the standby marker,
+                            not the live ARQ *w* sequence)
+  8     *x*                 from the *x* table: `S` = transmit (ISS),
+                            `R` = receive (IRS)
+  9-12  trailer             four ASCII digits, see below
+  13    ETB                 $17
+
+Trailer (bytes 9-12) — no longer fully mystery
+----------------------------------------------
+Seen values: `1010`, `2000`, `1000`.
+
+  byte 9   $31 '1' = 100 baud,  $32 '2' = 200 baud
+           Matches Pactor I auto speed (normal 100, upshift 200 when
+           conditions allow, downshift 100 when errors pile up) and the
+           `PTS 1` / `PTS 2` baud selectors. This capture: phasing at
+           `1000`, linked traffic jumps to `2000`, later error storm
+           drops back to `1000` and stays there until disconnect.
+  byte 10  $30 always in this capture
+  byte 11  longpath flag: $31 when longpath (`!call`) was used, $30 if not.
+           First `Pt` line is `1010` (flag still set from a prior attempt).
+           The `PG` connect and the final `Pt` are `x0x0` — connecting
+           without longpath cleared it. Same behaviour as the earlier
+           note in docs/OPmodeResponse.md.
+  byte 12  $30 always in this capture
+
+*w* values observed while `PG`
+------------------------------
+  $31 Phasing     connect start only (`PG1S1000`)
+  $32 Change-over only seen with *x*=`R` (we became IRS). Never captured `2S`.
+  $33 Idle        ISS, nothing to send
+  $34 Traffic     data moving (ISS or IRS)
+  $35 Error       very common; ping-pongs with Idle/Traffic/RQ
+  $36 RQ          request-repeat, both `S` and `R`
+  never $30 while `PG` (standby is `Pt`, not `PG`)
+  never $37 Sync in this capture
+
+  note: $32 Change-over is sent by the ISS (we become IRS → `2R`). `2S` may only
+  appear if the IRS seizes with `AChg`; that command has not been used yet.
+
+Rough timeline
+--------------
+  12:21:11  Pt0R1010   standby, 100 baud, longpath flag set
+  12:21:17  PG1S1000   we start the call: Phasing, ISS, 100 baud, longpath cleared
+  12:21:18  PG4S2000   linked: Traffic ISS, auto-upshift to 200 baud
+  12:21:20+            Error / Idle / RQ while still sending at 200
+  12:21:29  PG2R2000   Change-over to IRS, then Traffic receive at 200
+  12:21:44+            back to ISS; Error / Idle / RQ at 200
+  12:22:03  PG3S1000   downshift to 100 baud (error rate too high)
+  12:22:29  PG2R1000   Change-over to IRS at 100; Traffic / Error / RQ receive
+  12:23:06+            ISS again, then another IRS change-over, then ISS
+  12:25:20  Pt0R1000   link dropped, back to Pactor standby (100 baud, no longpath)
+
+============================================================================
+
+12:21:11.404 RX  01 4F 4F 50 50 74 30 52 31 30 31 30 17  | .OOPPt0R1010.
+12:21:17.479 RX  01 4F 4F 50 50 47 31 53 31 30 30 30 17  | .OOPPG1S1000.
+12:21:18.573 RX  01 4F 4F 50 50 47 34 53 32 30 30 30 17  | .OOPPG4S2000.
+12:21:20.122 RX  01 4F 4F 50 50 47 35 53 32 30 30 30 17  | .OOPPG5S2000.
+12:21:22.640 RX  01 4F 4F 50 50 47 33 53 32 30 30 30 17  | .OOPPG3S2000.
+12:21:24.125 RX  01 4F 4F 50 50 47 35 53 32 30 30 30 17  | .OOPPG5S2000.
+12:21:29.040 RX  01 4F 4F 50 50 47 32 52 32 30 30 30 17  | .OOPPG2R2000.
+12:21:29.447 RX  01 4F 4F 50 50 47 34 52 32 30 30 30 17  | .OOPPG4R2000.
+12:21:44.764 RX  01 4F 4F 50 50 47 35 53 32 30 30 30 17  | .OOPPG5S2000.
+12:21:46.330 RX  01 4F 4F 50 50 47 33 53 32 30 30 30 17  | .OOPPG3S2000.
+12:21:46.925 RX  01 4F 4F 50 50 47 36 53 32 30 30 30 17  | .OOPPG6S2000.
+12:21:49.540 RX  01 4F 4F 50 50 47 35 53 32 30 30 30 17  | .OOPPG5S2000.
+12:21:50.963 RX  01 4F 4F 50 50 47 33 53 32 30 30 30 17  | .OOPPG3S2000.
+12:21:54.783 RX  01 4F 4F 50 50 47 36 53 32 30 30 30 17  | .OOPPG6S2000.
+12:21:55.627 RX  01 4F 4F 50 50 47 35 53 32 30 30 30 17  | .OOPPG5S2000.
+12:22:01.087 RX  01 4F 4F 50 50 47 33 53 32 30 30 30 17  | .OOPPG3S2000.
+12:22:02.009 RX  01 4F 4F 50 50 47 35 53 32 30 30 30 17  | .OOPPG5S2000.
+12:22:03.121 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:22:04.670 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:09.071 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:22:09.461 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:11.027 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:22:13.626 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:14.534 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:22:15.907 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:18.206 RX  01 4F 4F 50 50 47 34 53 31 30 30 30 17  | .OOPPG4S1000.
+12:22:19.961 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:21.056 RX  01 4F 4F 50 50 47 36 53 31 30 30 30 17  | .OOPPG6S1000.
+12:22:22.104 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:25.684 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:22:27.170 RX  01 4F 4F 50 50 47 36 53 31 30 30 30 17  | .OOPPG6S1000.
+12:22:28.203 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:22:29.814 RX  01 4F 4F 50 50 47 32 52 31 30 30 30 17  | .OOPPG2R1000.
+12:22:30.472 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:22:31.525 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:22:35.592 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:22:36.501 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:22:37.909 RX  01 4F 4F 50 50 47 36 52 31 30 30 30 17  | .OOPPG6R1000.
+12:22:38.974 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:22:41.490 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:22:42.960 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:22:43.992 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:03.987 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:23:05.724 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:06.533 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:23:07.705 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:23:10.538 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:23:14.040 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:23:15.464 RX  01 4F 4F 50 50 47 34 53 31 30 30 30 17  | .OOPPG4S1000.
+12:23:16.497 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:23:22.787 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:23:24.334 RX  01 4F 4F 50 50 47 36 53 31 30 30 30 17  | .OOPPG6S1000.
+12:23:25.633 RX  01 4F 4F 50 50 47 32 52 31 30 30 30 17  | .OOPPG2R1000.
+12:23:26.087 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:27.556 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:23:29.042 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:32.488 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:23:33.583 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:35.053 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:23:36.210 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:37.370 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:23:39.187 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:40.063 RX  01 4F 4F 50 50 47 34 52 31 30 30 30 17  | .OOPPG4R1000.
+12:23:41.096 RX  01 4F 4F 50 50 47 35 52 31 30 30 30 17  | .OOPPG5R1000.
+12:23:43.618 RX  01 4F 4F 50 50 47 33 53 31 30 30 30 17  | .OOPPG3S1000.
+12:23:45.028 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:24:20.216 RX  01 4F 4F 50 50 47 34 53 31 30 30 30 17  | .OOPPG4S1000.
+12:24:21.577 RX  01 4F 4F 50 50 47 35 53 31 30 30 30 17  | .OOPPG5S1000.
+12:25:20.895 RX  01 4F 4F 50 50 74 30 52 31 30 30 30 17  | .OOPPt0R1000.

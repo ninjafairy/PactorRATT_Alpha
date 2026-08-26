@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Minimal JSON-ish key/value persistence beside the jar (portable root).
+ * Minimal JSON-ish key/value persistence in {@code config/} beside the jar.
  * Avoids adding a JSON library for Phase 1.
  */
 public final class ConfigStore {
@@ -20,13 +20,22 @@ public final class ConfigStore {
             ]
             """;
 
+    private final Path configDir;
     private final Path settingsFile;
     private final Path buddiesFile;
 
+    public static Path configDir(Path portableRoot) {
+        return portableRoot.resolve("config");
+    }
+
     public ConfigStore(Path portableRoot) {
-        Path configDir = portableRoot.resolve("config");
+        this.configDir = configDir(portableRoot);
         this.settingsFile = configDir.resolve("settings.json");
         this.buddiesFile = configDir.resolve("buddies.json");
+    }
+
+    public Path configDir() {
+        return configDir;
     }
 
     public Path settingsFile() {

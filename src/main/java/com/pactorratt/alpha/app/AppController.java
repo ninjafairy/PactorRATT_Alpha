@@ -47,8 +47,12 @@ import java.util.function.Consumer;
 public final class AppController {
 
     private static final long ARQ_HOST_TIMEOUT_MS = 2000;
-    /** Default RECeive character (CTRL-D) — ends PTSend / unproto after TNC TX clears. */
+    /** Default RECeive character (CTRL-D) — disconnect / FEC end after TNC TX clears. */
     private static final byte RECEIVE_CHAR_CTRL_D = 0x04;
+    /** Default PTOver character (CTRL-Z) — ARQ ISS→IRS changeover. */
+    private static final byte PTOVER_CHAR_CTRL_Z = 0x1A;
+    /** OP poll period while HO buttons are locked and program OPPOLL is 0. */
+    private static final long HANDOVER_WATCH_POLL_MS = 500;
 
     private final Path portableRoot;
     private final ConfigStore configStore;
@@ -268,14 +272,67 @@ public final class AppController {
         }
     }
 
-    /** Disc. after TX clear — Host {@code RE} (RECeive). */
+    /** Disc. after TX clear — flush App TX, then ch0 {@code $04} in the same block. */
     public void arqDiscAfterTxClear(ConnectionWindow window) {
-        runArqHostAction(window, "Disc. after TX clear", session -> sendHostOk(session, "RE"));
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
+            return;
+        }
+        String pending = window.drainAppTxBufferToTranscript();
+        String notice = pending.isBlank()
+                ? "Disc. after TX clear — sent CTRL-D ($04)."
+                : "Disc. after TX clear — flushed App TX + CTRL-D ($04).";
+        runArqHostAction(window, "Disc. after TX clear",
+                session -> session.sendData(0,
+                        hostDataWithControl(pending, RECEIVE_CHAR_CTRL_D),
+                        ARQ_HOST_TIMEOUT_MS),
+                null,
+                notice);
     }
 
-    /** HO after TX clear — Host {@code PV} (PTOver). */
+    /**
+     * Disconnect now — Host {@code TC} (TClear), wait ACK, then ch0 data {@code $04}.
+     */
+    public void arqDisconnectNow(ConnectionWindow window) {
+        runArqHostAction(window, "Disconnect now", session -> {
+            sendHostOk(session, "TC");
+            sendCh0Control(session, RECEIVE_CHAR_CTRL_D);
+        }, null, "Disconnect now — sent TC then CTRL-D ($04).");
+    }
+
+    /** Handover now — ch0 data {@code $1A} (CTRL-Z). Locks HO buttons until ISS again. */
+    public void arqHandoverNow(ConnectionWindow window) {
+        runHandoverAction(window, "Handover", null, PTOVER_CHAR_CTRL_Z);
+    }
+
+    /**
+     * HO after TX clear — flush App TX, then ch0 {@code $1A} in the same block.
+     * Locks HO buttons until ISS again. Allowed while IRS if App TX has text to flush.
+     */
     public void arqHoAfterTxClear(ConnectionWindow window) {
-        runArqHostAction(window, "HO after TX clear", session -> sendHostOk(session, "PV"));
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
+            return;
+        }
+        if (window.isLocalIrs() && window.isAppTxEmpty()) {
+            noticeWindow(window, "HO after TX clear — not ISS (use Seize to take the link).");
+            return;
+        }
+        if (!window.lockHandoverControls()) {
+            noticeWindow(window, "HO after TX clear — handover already pending.");
+            return;
+        }
+        String pending = window.drainAppTxBufferToTranscript();
+        syncOpPollScheduler();
+        byte[] payload = hostDataWithControl(pending, PTOVER_CHAR_CTRL_Z);
+        String notice = pending.isBlank()
+                ? "HO after TX clear — sent CTRL-Z; HO buttons locked until ISS again."
+                : "HO after TX clear — flushed App TX + CTRL-Z; HO buttons locked until ISS again.";
+        runArqHostAction(window, "HO after TX clear",
+                session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
+                () -> {
+                    window.unlockHandoverControls();
+                    syncOpPollScheduler();
+                },
+                notice);
     }
 
     /** Seize — Host {@code AG} (AChg). */
@@ -333,29 +390,19 @@ public final class AppController {
         worker.start();
     }
 
-    /** HO with text — canned handover as ch0 data, then Host {@code PV}. */
+    /** HO with text — canned handover + {@code $1A} in the same ch0 block. Locks HO until ISS again. */
     public void arqHoWithText(ConnectionWindow window) {
-        runArqHostAction(window, "HO with text", session -> {
-            sendCannedDataIfPresent(session, config.getCannedHandoverText());
-            sendHostOk(session, "PV");
-        });
+        runHandoverAction(window, "HO with text", config.getCannedHandoverText(), PTOVER_CHAR_CTRL_Z);
     }
 
-    /** Disc. with text — canned disconnect as ch0 data, then Host {@code RE}. */
+    /** Disc. with text — canned disconnect + {@code $04} in the same ch0 block. */
     public void arqDiscWithText(ConnectionWindow window) {
-        runArqHostAction(window, "Disc. with text", session -> {
-            sendCannedDataIfPresent(session, config.getCannedDisconnectText());
-            sendHostOk(session, "RE");
-        });
-    }
-
-    private void sendCannedDataIfPresent(HostSession session, String text)
-            throws IOException, InterruptedException {
-        String canned = text == null ? "" : text;
-        if (canned.isEmpty()) {
-            return;
-        }
-        sendHostData(session, canned);
+        runArqHostAction(window, "Disc. with text",
+                session -> session.sendData(0,
+                        hostDataWithControl(config.getCannedDisconnectText(), RECEIVE_CHAR_CTRL_D),
+                        ARQ_HOST_TIMEOUT_MS),
+                null,
+                "Disc. with text — sent canned text + CTRL-D ($04).");
     }
 
     /**
@@ -474,10 +521,24 @@ public final class AppController {
         worker.start();
     }
 
-    /** Encode chat/canned text and send as Host ch0 data (waits data-ack; chunks at 330). */
-    private void sendHostData(HostSession session, String text)
+    private void sendCh0Control(HostSession session, byte control)
             throws IOException, InterruptedException {
-        session.sendData(0, toHostDataBytes(text), ARQ_HOST_TIMEOUT_MS);
+        session.sendData(0, new byte[]{control}, ARQ_HOST_TIMEOUT_MS);
+    }
+
+    /**
+     * Canned text (if any) plus a trailing control character in one ch0 payload.
+     * Empty text → the control byte alone (no extra CR).
+     */
+    static byte[] hostDataWithControl(String text, byte control) {
+        if (text == null || text.isEmpty()) {
+            return new byte[]{control};
+        }
+        byte[] body = toHostDataBytes(text);
+        byte[] out = new byte[body.length + 1];
+        System.arraycopy(body, 0, out, 0, body.length);
+        out[body.length] = control;
+        return out;
     }
 
     /**
@@ -510,31 +571,79 @@ public final class AppController {
     }
 
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work) {
+        runArqHostAction(window, actionName, work, null, actionName + " — sent.");
+    }
+
+    private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
+            Runnable onFailure, String successNotice) {
         if (!tncConnected) {
             noticeWindow(window, actionName + " — TNC not connected.");
+            if (onFailure != null) {
+                onFailure.run();
+            }
             return;
         }
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
             noticeWindow(window, actionName + " — no open Host session.");
+            if (onFailure != null) {
+                onFailure.run();
+            }
             return;
         }
         Thread worker = new Thread(() -> {
             try {
                 work.run(session);
-                runOnEdt(() -> noticeWindow(window, actionName + " — sent."));
+                runOnEdt(() -> noticeWindow(window, successNotice));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("ARQ " + actionName + " interrupted");
-                runOnEdt(() -> noticeWindow(window, actionName + " — interrupted."));
+                runOnEdt(() -> {
+                    if (onFailure != null) {
+                        onFailure.run();
+                    }
+                    noticeWindow(window, actionName + " — interrupted.");
+                });
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
                 debugLog.info("ARQ " + actionName + " failed: " + msg);
-                runOnEdt(() -> noticeWindow(window, actionName + " — " + msg));
+                runOnEdt(() -> {
+                    if (onFailure != null) {
+                        onFailure.run();
+                    }
+                    noticeWindow(window, actionName + " — " + msg);
+                });
             }
         }, "arq-" + actionName.replaceAll("\\s+", "-").toLowerCase());
         worker.setDaemon(true);
         worker.start();
+    }
+
+    /**
+     * Send PTOver ({@code $1A}) as ch0 data (optionally after canned text in the same block).
+     * Locks all HO buttons until OPMODE shows IRS then ISS again.
+     */
+    private void runHandoverAction(ConnectionWindow window, String actionName, String canned, byte control) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
+            return;
+        }
+        if (window.isLocalIrs()) {
+            noticeWindow(window, actionName + " — not ISS (use Seize to take the link).");
+            return;
+        }
+        if (!window.lockHandoverControls()) {
+            noticeWindow(window, actionName + " — handover already pending.");
+            return;
+        }
+        syncOpPollScheduler();
+        byte[] payload = hostDataWithControl(canned, control);
+        runArqHostAction(window, actionName,
+                session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
+                () -> {
+                    window.unlockHandoverControls();
+                    syncOpPollScheduler();
+                },
+                actionName + " — sent CTRL-Z; HO buttons locked until ISS again.");
     }
 
     private void noticeArq(ConnectionWindow window, String text) {
@@ -616,20 +725,26 @@ public final class AppController {
             return;
         }
         arq.markOpmodeLive();
+        boolean hoLocked = arq.isHandoverLocked();
         arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null);
+        if (hoLocked && !arq.isHandoverLocked()) {
+            syncOpPollScheduler();
+        }
     }
 
     /**
      * Poll Host {@code OP} at {@code OPPOLL} Hz while TNC is connected and an ARQ window is linked.
-     * {@code OPPOLL=0} disables. Safe to call from EDT or the poller thread.
+     * {@code OPPOLL=0} disables, except while HO buttons are locked (then 2 Hz) so ISS/IRS can
+     * release the lock. Safe to call from EDT or the poller thread.
      */
     private void syncOpPollScheduler() {
         synchronized (opPollLock) {
             int hz = config.getOpPoll();
             HostSession session = hostSession;
+            boolean handoverWatch = isHandoverWatchActive();
             boolean shouldRun = tncConnected
                     && hasActiveArq()
-                    && hz > 0
+                    && (hz > 0 || handoverWatch)
                     && session != null
                     && session.isOpen();
             if (opPollFuture != null) {
@@ -646,10 +761,15 @@ public final class AppController {
                     return t;
                 });
             }
-            long periodMs = Math.max(1L, 1000L / hz);
+            long periodMs = hz > 0 ? Math.max(1L, 1000L / hz) : HANDOVER_WATCH_POLL_MS;
             opPollFuture = opPollExecutor.scheduleAtFixedRate(
                     this::pollOpmodeOnce, 0, periodMs, TimeUnit.MILLISECONDS);
         }
+    }
+
+    private boolean isHandoverWatchActive() {
+        ConnectionWindow arq = activeArqWindow;
+        return arq != null && arq.isSessionActive() && arq.isHandoverLocked();
     }
 
     private void stopOpPollScheduler() {
@@ -666,7 +786,7 @@ public final class AppController {
     }
 
     private void pollOpmodeOnce() {
-        if (!tncConnected || !hasActiveArq() || config.getOpPoll() <= 0) {
+        if (!tncConnected || !hasActiveArq() || (config.getOpPoll() <= 0 && !isHandoverWatchActive())) {
             syncOpPollScheduler();
             return;
         }
@@ -1100,6 +1220,7 @@ public final class AppController {
             applyListenUiOn();
             return;
         }
+        applyListenUiOn();
         if (!listenHostBusy.compareAndSet(false, true)) {
             return;
         }
@@ -1107,24 +1228,12 @@ public final class AppController {
             try {
                 OpmodeParser.Decoded decoded = queryOpmode(session);
                 if (decoded != null && decoded.isPactorListen()) {
-                    runOnEdt(() -> {
-                        try {
-                            applyListenUiOn();
-                        } finally {
-                            listenHostBusy.set(false);
-                        }
-                    });
+                    listenHostBusy.set(false);
                     return;
                 }
                 if (decoded != null && decoded.isPactorStandby()) {
                     sendHostOk(session, "PN");
-                    runOnEdt(() -> {
-                        try {
-                            applyListenUiOn();
-                        } finally {
-                            listenHostBusy.set(false);
-                        }
-                    });
+                    listenHostBusy.set(false);
                     return;
                 }
                 String current = decoded == null || decoded.modeName == null
@@ -1182,6 +1291,14 @@ public final class AppController {
     }
 
     private void refuseListenOn(String message) {
+        ConnectionWindow closing = listenWindow;
+        listenWindow = null;
+        if (closing != null) {
+            closing.dispose();
+        }
+        if (mode == AppMode.LISTEN || mode == AppMode.UNPROTO) {
+            mode = AppMode.IDLE;
+        }
         if (mainWindow != null) {
             mainWindow.setListenToggleSilently(false);
             mainWindow.refreshModeLabel();
@@ -1240,8 +1357,8 @@ public final class AppController {
     }
 
     /**
-     * Main-window Connect / buddy double-click: Host {@code PG}+callsign (PTConn), then ARQ window.
-     * Success is command ACK only ({@code status 0x00}); link-status / call-timeout later.
+     * Main-window Connect / buddy double-click: open the ARQ window, then send Host
+     * {@code PG}+callsign (PTConn) in the background. Failure closes the window.
      */
     public void requestConnect(String remoteCallsign) {
         if (!tncConnected) {
@@ -1280,6 +1397,7 @@ public final class AppController {
 
         // Host wire: no space — PG + callsign (leading ! preserved for long path).
         final String hostCmd = "PG" + call;
+        openArqWindowForConnect(call);
         Thread worker = new Thread(() -> {
             try {
                 HostSession.CommandResponse response =
@@ -1288,19 +1406,13 @@ public final class AppController {
                     throw new IOException("PG failed, status=0x"
                             + Integer.toHexString(response.statusCode));
                 }
-                runOnEdt(() -> {
-                    try {
-                        openArqWindowForConnect(call);
-                    } finally {
-                        arqConnectBusy.set(false);
-                    }
-                });
+                runOnEdt(() -> arqConnectBusy.set(false));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("PTConn interrupted for " + call);
                 runOnEdt(() -> {
                     try {
-                        showConnectError("Connect interrupted.");
+                        abortFailedConnect("Connect interrupted.");
                     } finally {
                         arqConnectBusy.set(false);
                     }
@@ -1308,11 +1420,9 @@ public final class AppController {
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
                 debugLog.info("PTConn failed for " + call + ": " + msg);
-                // TODO: Later detect call timeout / "did not answer" (OPMODE/link status);
-                // close ARQ window if open and show a "did not answer" popup.
                 runOnEdt(() -> {
                     try {
-                        showConnectError("Connect failed: " + msg);
+                        abortFailedConnect("Connect failed: " + msg);
                     } finally {
                         arqConnectBusy.set(false);
                     }
@@ -1323,7 +1433,7 @@ public final class AppController {
         worker.start();
     }
 
-    /** Opens the active ARQ UI after a successful PTConn ({@code PG}) command ACK. */
+    /** Opens the ARQ window; Host {@code PG} is sent in the background. */
     private void openArqWindowForConnect(String call) {
         if (activeArqWindow != null) {
             return;
@@ -1338,8 +1448,17 @@ public final class AppController {
         if (mainWindow != null) {
             mainWindow.refreshModeLabel();
         }
-        debugLog.info("ARQ window opened after PTConn ACK for " + call);
+        debugLog.info("ARQ window opened for " + call);
         syncOpPollScheduler();
+    }
+
+    private void abortFailedConnect(String message) {
+        ConnectionWindow w = activeArqWindow;
+        if (w != null) {
+            onConnectionWindowClosed(w);
+            w.dispose();
+        }
+        showConnectError(message);
     }
 
     private void showConnectError(String message) {

@@ -2,7 +2,7 @@ package com.pactorratt.alpha.hostmode;
 
 /**
  * Host {@code OP} (OPMODE) detect + decode per {@code docs/OPmodeResponse.md}.
- * Pactor uses its own tags ({@code PN}, {@code Pt}); AMTOR {@code AM}/{@code AC}/{@code AL}/{@code FE}
+ * Pactor uses its own tags ({@code PN}, {@code Pt}, {@code PG}); AMTOR {@code AM}/{@code AC}/{@code AL}/{@code FE}
  * are not Pactor.
  */
 public final class OpmodeParser {
@@ -69,6 +69,7 @@ public final class OpmodeParser {
             case "FA" -> decodeFax(p);
             case "PN" -> decodePactorListen(p);
             case "Pt" -> decodePactorStandby(p);
+            case "PG" -> decodePactorArq(p);
             default -> new Decoded("Unknown (" + tag + ")", null, null, null, false, null);
         };
     }
@@ -116,10 +117,22 @@ public final class OpmodeParser {
 
     /** Hardware: {@code OP PN w x ? ? ? ?}. */
     private static Decoded decodePactorListen(byte[] p) {
+        return decodePactorWxTrailer("Pactor Listen", p);
+    }
+
+    /**
+     * Hardware: {@code OP PG w x ? ? ? ?}. Linked ARQ ({@code PTConn}); *w* is live link status.
+     */
+    private static Decoded decodePactorArq(byte[] p) {
+        return decodePactorWxTrailer("Pactor ARQ", p);
+    }
+
+    /** Pactor listen / ARQ: *w* then *x* then four trailer bytes. */
+    private static Decoded decodePactorWxTrailer(String mode, byte[] p) {
         String w = p.length > 4 ? wLabel(p[4] & 0xFF) : null;
         Boolean tx = p.length > 5 ? xr(p[5]) : null;
         boolean standby = w != null && w.equals("Standby");
-        return new Decoded("Pactor Listen", w, tx, null, standby, mysteryBeforeEtb(p));
+        return new Decoded(mode, w, tx, null, standby, mysteryBeforeEtb(p));
     }
 
     /**
@@ -224,6 +237,10 @@ public final class OpmodeParser {
 
         public boolean isPactorListen() {
             return "Pactor Listen".equals(modeName);
+        }
+
+        public boolean isPactorArq() {
+            return "Pactor ARQ".equals(modeName);
         }
 
         /**

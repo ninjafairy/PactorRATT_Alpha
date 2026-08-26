@@ -524,13 +524,10 @@ public final class HostSession implements AutoCloseable {
         byte[] buf = new byte[256];
         try {
             while (running.get()) {
-                int n;
-                synchronized (serial) {
-                    if (!serial.isOpen()) {
-                        break;
-                    }
-                    n = serial.read(buf);
+                if (!serial.isOpen()) {
+                    break;
                 }
+                int n = serial.read(buf);
                 if (n < 0) {
                     break;
                 }
@@ -558,7 +555,6 @@ public final class HostSession implements AutoCloseable {
             case COMMAND_RESPONSE -> commandQueue.offer(frame);
             case DATA_ACK_OR_STATUS -> statusQueue.offer(frame);
             default -> {
-                // UI-bound / async — not held in waiter queues.
             }
         }
         fire(HostEvent.of(type, frame));

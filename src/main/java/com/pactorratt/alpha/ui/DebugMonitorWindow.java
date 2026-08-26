@@ -233,5 +233,4 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
             // Best-effort trim; ignore if document changed concurrently.
         }
     }
-
 }

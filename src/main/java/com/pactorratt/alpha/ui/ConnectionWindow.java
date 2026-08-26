@@ -59,6 +59,7 @@ public final class ConnectionWindow extends JFrame {
     private final JLabel noticeLabel = new JLabel(" ");
     private final JButton sendButton = new JButton("Send");
     private final List<JButton> controlButtons = new ArrayList<>();
+    private final List<JButton> handoverButtons = new ArrayList<>();
 
     private volatile boolean sessionActive = true;
     /** Phase 1 offline default: hold commits in App TX buffer (IRS). */
@@ -67,6 +68,15 @@ public final class ConnectionWindow extends JFrame {
     private String opmodeWLabel;
     /** True after a non-Standby OPMODE so later Standby can mark the link dead. */
     private boolean opmodeWasLive;
+    /**
+     * HO / HO after TX clear / HO with text locked after sending CTRL-Z until OPMODE shows
+     * IRS (consumed) then ISS again — prevents stacking extra {@code $1A} in the TNC buffer.
+     * {@code handoverSeenIssSinceLock} ignores IRS that was already true at press (HO after
+     * TX clear from IRS while flushing App TX).
+     */
+    private volatile boolean handoverLocked;
+    private boolean handoverSawIrs;
+    private boolean handoverSeenIssSinceLock;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
         super(kind == Kind.LISTEN ? "PactorRATT_Alpha — Listen" : "PactorRATT_Alpha — " + titleCall);
@@ -97,10 +107,21 @@ public final class ConnectionWindow extends JFrame {
         if (transmit != null && sessionActive && kind == Kind.ARQ) {
             boolean wantIrs = !transmit;
             if (wantIrs) {
+                if (handoverLocked && handoverSeenIssSinceLock) {
+                    handoverSawIrs = true;
+                }
                 localIsIrs = true;
             } else if (localIsIrs) {
+                if (handoverLocked) {
+                    handoverSeenIssSinceLock = true;
+                    if (handoverSawIrs) {
+                        unlockHandoverControls();
+                    }
+                }
                 flushIss();
                 return;
+            } else if (handoverLocked) {
+                handoverSeenIssSinceLock = true;
             }
         }
         refreshStatus();
@@ -118,16 +139,63 @@ public final class ConnectionWindow extends JFrame {
         return kind;
     }
 
+    public boolean isLocalIrs() {
+        return localIsIrs;
+    }
+
+    public boolean isHandoverLocked() {
+        return handoverLocked;
+    }
+
+    /**
+     * Disable HO / HO after TX clear / HO with text. EDT. Returns false if already locked
+     * or the session is dead.
+     */
+    public boolean lockHandoverControls() {
+        if (!sessionActive || handoverLocked) {
+            return false;
+        }
+        handoverLocked = true;
+        handoverSawIrs = false;
+        handoverSeenIssSinceLock = !localIsIrs;
+        setHandoverButtonsEnabled(false);
+        return true;
+    }
+
+    /** Re-enable HO buttons if the session is still active. EDT. */
+    public void unlockHandoverControls() {
+        handoverLocked = false;
+        handoverSawIrs = false;
+        handoverSeenIssSinceLock = false;
+        if (sessionActive) {
+            setHandoverButtonsEnabled(true);
+        }
+    }
+
+    private void setHandoverButtonsEnabled(boolean enabled) {
+        for (JButton b : handoverButtons) {
+            b.setEnabled(enabled);
+        }
+    }
+
     public boolean isSessionActive() {
         return sessionActive;
     }
 
     public void setSessionActive(boolean active) {
         this.sessionActive = active;
+        if (!active) {
+            handoverLocked = false;
+            handoverSawIrs = false;
+            handoverSeenIssSinceLock = false;
+        }
         compose.setEditable(active);
         sendButton.setEnabled(active);
         for (JButton b : controlButtons) {
             b.setEnabled(active);
+        }
+        if (active && handoverLocked) {
+            setHandoverButtonsEnabled(false);
         }
         refreshStatus();
     }
@@ -240,23 +308,30 @@ public final class ConnectionWindow extends JFrame {
         p.setBorder(BorderFactory.createTitledBorder("Controls"));
 
         if (kind == Kind.ARQ) {
-            addControl(p, "Disc. after TX clear", "Disconnect after TX clear (Host RE)",
+            addControl(p, "Disc. after TX clear",
+                    "Flush App TX, then ch0 CTRL-D $04 after TNC TX empty",
                     () -> app.arqDiscAfterTxClear(this));
-            addControl(p, "Disconnect now", "Disconnect immediately (deferred until Rcve confirmed)",
-                    () -> stubAction("Disconnect now (deferred)"));
+            addControl(p, "Disconnect now", "TClear (TC) then ch0 CTRL-D $04",
+                    () -> app.arqDisconnectNow(this));
             addControl(p, "Abort", "Abort link (PN if Listen on, else Pt)", this::abortSession);
-            addControl(p, "Handover", "Handover now (stubbed)",
-                    () -> stubAction("Handover now (deferred)"));
-            addControl(p, "HO after TX clear", "Handover after TX clear (Host PV)",
+            JButton hoNow = addControl(p, "Handover", "Handover now (ch0 CTRL-Z $1A)",
+                    () -> app.arqHandoverNow(this));
+            JButton hoAfter = addControl(p, "HO after TX clear",
+                    "Flush App TX, then ch0 CTRL-Z $1A after TNC TX empty",
                     () -> app.arqHoAfterTxClear(this));
             addControl(p, "Seize", "Seize link / ACHG (Host AG)",
                     () -> app.arqSeize(this));
-            addControl(p, "HO with text", "Canned handover text then Host PV",
+            JButton hoText = addControl(p, "HO with text",
+                    "Canned handover text + CTRL-Z $1A in the same ch0 block",
                     () -> app.arqHoWithText(this));
-            addControl(p, "Disc. with text", "Canned disconnect text then Host RE",
+            addControl(p, "Disc. with text",
+                    "Canned disconnect text + CTRL-D $04 in the same ch0 block",
                     () -> app.arqDiscWithText(this));
             addControl(p, "Flush ISS", "Flush App TX buffer to TNC (Host data ch0); mark local ISS",
                     this::flushIss);
+            handoverButtons.add(hoNow);
+            handoverButtons.add(hoAfter);
+            handoverButtons.add(hoText);
         } else {
             addControl(p, "FEC / End TX", "PTSend from Program settings (FEC 200 / Retries) → buffer → CTRL-D end",
                     this::fecEndTx);
@@ -280,12 +355,13 @@ public final class ConnectionWindow extends JFrame {
         return scroll;
     }
 
-    private void addControl(JPanel p, String label, String tooltip, Runnable action) {
+    private JButton addControl(JPanel p, String label, String tooltip, Runnable action) {
         JButton b = new JButton(label);
         b.setToolTipText(tooltip);
         b.addActionListener(e -> action.run());
         controlButtons.add(b);
         p.add(b);
+        return b;
     }
 
     private void stubAction(String name) {
@@ -366,6 +442,36 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
+     * Drain App TX to grey transcript and mark local ISS. Returns the drained text
+     * (empty if the buffer was blank). Does not send Host data — caller does.
+     * EDT.
+     */
+    public String drainAppTxBufferToTranscript() {
+        if (!sessionActive || kind != Kind.ARQ) {
+            return "";
+        }
+        String pending = appTxBuffer.getText();
+        if (pending == null) {
+            pending = "";
+        }
+        localIsIrs = false;
+        if (pending.isBlank()) {
+            refreshStatus();
+            return "";
+        }
+        String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
+        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        appTxBuffer.setText("");
+        refreshStatus();
+        return pending;
+    }
+
+    public boolean isAppTxEmpty() {
+        String pending = appTxBuffer.getText();
+        return pending == null || pending.isBlank();
+    }
+
+    /**
      * ARQ: become ISS — drain App TX buffer to transcript (grey) and Host ch0 data.
      * Empty buffer still flips IRS→ISS so later commits go outbound.
      */
@@ -373,17 +479,11 @@ public final class ConnectionWindow extends JFrame {
         if (!sessionActive || kind != Kind.ARQ) {
             return;
         }
-        String pending = appTxBuffer.getText();
-        localIsIrs = false;
+        String pending = drainAppTxBufferToTranscript();
         if (pending.isBlank()) {
             showNotice("Now ISS. New commits go to TNC (grey in transcript).");
-            refreshStatus();
             return;
         }
-        String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
-        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
-        appTxBuffer.setText("");
-        refreshStatus();
         app.sendOutboundChat(this, pending);
     }
 

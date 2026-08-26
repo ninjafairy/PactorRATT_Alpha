@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Per-launch debug log under portable logs/. Toggleable; no rotation in Alpha.
+ * Per-launch debug log under portable {@code config/}. Toggleable; no rotation in Alpha.
  */
 public final class DebugLog implements AutoCloseable {
 
@@ -22,7 +22,7 @@ public final class DebugLog implements AutoCloseable {
 
     public DebugLog(Path portableRoot) {
         String name = "debug-" + LocalDateTime.now().format(FILE_TS) + ".log";
-        this.logFile = portableRoot.resolve("logs").resolve(name);
+        this.logFile = portableRoot.resolve("config").resolve(name);
     }
 
     public Path logFile() {

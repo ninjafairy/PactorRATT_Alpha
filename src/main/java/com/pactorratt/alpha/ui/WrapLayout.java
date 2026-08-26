@@ -65,6 +65,7 @@ public final class WrapLayout extends FlowLayout {
     }
 
     private Dimension layoutSize(Container target, boolean preferred) {
+        Dimension dim;
         synchronized (target.getTreeLock()) {
             int targetWidth = target.getWidth();
             Container parent = target.getParent();
@@ -80,7 +81,7 @@ public final class WrapLayout extends FlowLayout {
             Insets insets = target.getInsets();
             int maxWidth = targetWidth - (insets.left + insets.right + hgap * 2);
 
-            Dimension dim = new Dimension(0, 0);
+            dim = new Dimension(0, 0);
             int rowWidth = 0;
             int rowHeight = 0;
 
@@ -108,7 +109,7 @@ public final class WrapLayout extends FlowLayout {
             dim.height += rowHeight;
             dim.width += insets.left + insets.right + hgap * 2;
             dim.height += insets.top + insets.bottom + vgap * 2;
-            return dim;
         }
+        return dim;
     }
 }

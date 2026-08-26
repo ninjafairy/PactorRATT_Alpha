@@ -216,8 +216,11 @@ public final class HostFrameCodec {
                         state = State.READ_ESCAPE;
                     } else if (b == ETB) {
                         raw.write(b);
+                        Frame frame = new Frame(ctl, payload.toByteArray(), raw.toByteArray());
+                        payload.reset();
+                        raw.reset();
                         state = State.WAIT_SOH;
-                        return new Frame(ctl, payload.toByteArray(), raw.toByteArray());
+                        return frame;
                     } else {
                         raw.write(b);
                         payload.write(b);
