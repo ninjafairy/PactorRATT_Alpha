@@ -1,10 +1,13 @@
 package com.pactorratt.alpha.hostmode;
 
 import com.pactorratt.alpha.config.AppConfig;
+import com.pactorratt.alpha.config.HostCommandIni;
 import com.pactorratt.alpha.serial.SerialByteListener;
 import com.pactorratt.alpha.util.DebugLog;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -50,13 +53,18 @@ public final class TncInitializer {
     private final SerialByteListener serialTap;
     private final StartupMessageUi startupUi;
     private final CompatInfoUi compatInfoUi;
+    private final InitWarningUi initWarningUi;
+    private final HostCommandIni hostCommandIni;
 
     public TncInitializer(DebugLog debugLog, SerialByteListener serialTap,
-                          StartupMessageUi startupUi, CompatInfoUi compatInfoUi) {
+                          StartupMessageUi startupUi, CompatInfoUi compatInfoUi,
+                          InitWarningUi initWarningUi, Path configDir) {
         this.debugLog = Objects.requireNonNull(debugLog);
         this.serialTap = serialTap;
         this.startupUi = startupUi;
         this.compatInfoUi = compatInfoUi;
+        this.initWarningUi = initWarningUi;
+        this.hostCommandIni = new HostCommandIni(Objects.requireNonNull(configDir, "configDir"));
     }
 
     /**
@@ -195,6 +203,64 @@ public final class TncInitializer {
         sendRequiredCommand(session, "AA" + config.getWrapColumns());
         sendRequiredCommand(session, "Pt");
         debugLog.info("Coded TNC init completed");
+        runUserInit(session);
+    }
+
+    /**
+     * User {@code config/config.ini} {@code [INIT]} after coded init. Re-read every Connect.
+     * Banned {@code OP}/{@code MM}/{@code AE}: skip + warn. Extra spaces: collapse + warn.
+     * Bad ACK: warn (via thrown failure) and abort Connect.
+     */
+    private void runUserInit(HostSession session) throws IOException, InterruptedException {
+        List<HostCommandIni.InitLine> lines;
+        try {
+            lines = hostCommandIni.loadInitLines();
+        } catch (IOException e) {
+            throw new IOException("Could not read " + hostCommandIni.file() + ": " + e.getMessage(), e);
+        }
+        if (lines.isEmpty()) {
+            debugLog.info("User INIT: no commands in " + hostCommandIni.file());
+            return;
+        }
+        for (HostCommandIni.InitLine line : lines) {
+            checkInterrupted();
+            if (line.invalid()) {
+                warnInit("INIT line skipped",
+                        line.invalidReason() + "\nLine: " + line.original());
+                continue;
+            }
+            if (line.banned()) {
+                warnInit("INIT command skipped",
+                        "Banned INIT mnemonic " + line.mnemonic()
+                                + " (OP, MM, and AE are not simple ACK commands).\nLine: "
+                                + line.original());
+                debugLog.info("INIT skipped banned " + line.mnemonic() + ": " + line.original());
+                continue;
+            }
+            if (line.extraSpaces()) {
+                warnInit("INIT extra spaces",
+                        "Extra spaces were removed.\nLine: " + line.original()
+                                + "\nSent as: " + line.wire());
+                debugLog.info("INIT extra spaces: \"" + line.original() + "\" → " + line.wire());
+            }
+            HostSession.CommandResponse response =
+                    session.sendCommand(line.wire(), COMMAND_TIMEOUT_MS);
+            if (!response.ok()) {
+                String msg = "INIT command failed: " + line.wire()
+                        + "\nLine: " + line.original()
+                        + "\nHost ACK status: 0x" + Integer.toHexString(response.statusCode);
+                throw new IOException(msg);
+            }
+            debugLog.info("INIT sent " + line.wire());
+        }
+        debugLog.info("User INIT completed (" + lines.size() + " line(s))");
+    }
+
+    private void warnInit(String title, String message) throws InterruptedException {
+        debugLog.info(title + ": " + message.replace('\n', ' '));
+        if (initWarningUi != null) {
+            initWarningUi.showInitWarning(title, message);
+        }
     }
 
     private void sendRequiredCommand(HostSession session, String mnemonicAndArgs)

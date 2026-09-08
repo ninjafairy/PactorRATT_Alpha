@@ -73,6 +73,8 @@ Case-sensitive Host mnemonics.
 | `AA<n>` | Wrap columns from config (decimal) |
 | `Pt` | Pactor standby |
 
+Then **`config/config.ini` `[INIT]`** (if the file has uncommented command lines): each line is a Host command, ACK wait, same as coded init. Missing file is created with comments only. `OP` / `MM` / `AE` skipped with a warning. Extra spaces collapsed with a warning. Bad ACK aborts Connect.
+
 ## 7. Success
 
 Set `tncConnected = true`. Main-window **Connect** remains ARQ-only; use **TNC → Disconnect** to close the session.

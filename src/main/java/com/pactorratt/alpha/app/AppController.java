@@ -2,9 +2,11 @@ package com.pactorratt.alpha.app;
 
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.ConfigStore;
+import com.pactorratt.alpha.config.HostCommandIni;
 import com.pactorratt.alpha.hostmode.HostEvent;
 import com.pactorratt.alpha.hostmode.HostFrameCodec;
 import com.pactorratt.alpha.hostmode.HostSession;
+import com.pactorratt.alpha.hostmode.LinkMessageParser;
 import com.pactorratt.alpha.hostmode.OpmodeParser;
 import com.pactorratt.alpha.hostmode.TncInitializer;
 import com.pactorratt.alpha.serial.SerialByteListener;
@@ -39,6 +41,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -47,6 +50,8 @@ import java.util.function.Consumer;
 public final class AppController {
 
     private static final long ARQ_HOST_TIMEOUT_MS = 2000;
+    /** Outbound call UI timeout until {@code $50} CONNECTED or Cancel. TNC ARQTMO default is 60 s. */
+    private static final int CALLING_TIMEOUT_MS = 60_000;
     /** Default RECeive character (CTRL-D) — disconnect / FEC end after TNC TX clears. */
     private static final byte RECEIVE_CHAR_CTRL_D = 0x04;
     /** Default PTOver character (CTRL-Z) — ARQ ISS→IRS changeover. */
@@ -79,8 +84,6 @@ public final class AppController {
 
     private volatile HostSession hostSession;
     private final AtomicBoolean tncBusy = new AtomicBoolean(false);
-    /** Guards overlapping main-window Connect → PTConn ({@code PG}) attempts. */
-    private final AtomicBoolean arqConnectBusy = new AtomicBoolean(false);
     /** Guards overlapping Listen FEC / End TX ({@code PD} + data + CTRL-D) attempts. */
     private final AtomicBoolean fecBusy = new AtomicBoolean(false);
     /** Guards overlapping Listen ON/OFF Host {@code OP}/{@code PN}/{@code Pt} round-trips. */
@@ -91,6 +94,15 @@ public final class AppController {
 
     private volatile boolean tncConnected;
     private AppMode mode = AppMode.IDLE;
+
+    /**
+     * Outbound {@code PG} in progress (no ARQ window yet). Bumped on each new call / cancel /
+     * timeout so a stale {@code PG} worker cannot clear a newer attempt.
+     */
+    private final AtomicInteger callingEpoch = new AtomicInteger(0);
+    private volatile boolean calling;
+    private volatile String callingCallsign;
+    private Timer callingTimer;
 
     private final Object opPollLock = new Object();
     private final AtomicBoolean opPollInFlight = new AtomicBoolean(false);
@@ -104,8 +116,14 @@ public final class AppController {
         this.debugLog = new DebugLog(portableRoot);
         this.debugLog.setEnabled(config.isDebugLogEnabled());
         this.tncInitializer = new TncInitializer(
-                debugLog, serialTapFanout, this::showStartupMessageOnEdt, this::showCompatInfoOnEdt);
+                debugLog, serialTapFanout, this::showStartupMessageOnEdt, this::showCompatInfoOnEdt,
+                this::showInitWarningOnEdt, configStore.configDir());
         this.tncConnected = false;
+        try {
+            new HostCommandIni(configStore.configDir()).ensureFile();
+        } catch (IOException e) {
+            debugLog.info("Could not create config.ini: " + e.getMessage());
+        }
     }
 
     public void addSerialByteListener(SerialByteListener listener) {
@@ -701,6 +719,13 @@ public final class AppController {
             }
             return;
         }
+        if (event.type() == HostEvent.Type.LINK_MESSAGE) {
+            String peer = LinkMessageParser.connectedPeer(event.frame());
+            if (peer != null) {
+                runOnEdt(() -> onArqLinkConnected(peer));
+            }
+            return;
+        }
         if (event.type() != HostEvent.Type.INBOUND_DATA) {
             return;
         }
@@ -724,6 +749,9 @@ public final class AppController {
      * Drive Status Monitor {@code Mode:} and the active ARQ window from a decoded OPMODE reply.
      * Pactor Standby ({@code Pt}) or *w*={@code $30} ends the ARQ link: stop polling, mark dead,
      * freeze ISS/IRS. {@code x} (S/R) drives ISS/IRS for every mode that includes *x*.
+     * <p>
+     * Later: ARQ end / call timeout should follow {@code $50} DISCONNECTED / no-answer link
+     * messages instead of OPMODE Standby.
      */
     private void applyOpmodeDecoded(OpmodeParser.Decoded decoded) {
         if (decoded == null) {
@@ -734,6 +762,7 @@ public final class AppController {
         }
         ConnectionWindow arq = activeArqWindow;
         if (arq == null || !arq.isSessionActive()) {
+            applyMainModeFromOpmode(decoded);
             return;
         }
         if (decoded.standby) {
@@ -750,6 +779,24 @@ public final class AppController {
         arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null);
         if (hoLocked && !arq.isHandoverLocked()) {
             syncOpPollScheduler();
+        }
+    }
+
+    /** Map a Pactor OPMODE reply onto the main-window Mode label when no ARQ window is live. */
+    private void applyMainModeFromOpmode(OpmodeParser.Decoded decoded) {
+        if (decoded == null || hasActiveArq()) {
+            return;
+        }
+        if (decoded.isPactorArq() && !decoded.standby) {
+            return;
+        }
+        if (decoded.isPactorListen()) {
+            mode = AppMode.LISTEN;
+        } else if (decoded.isPactorStandby() || decoded.standby) {
+            mode = AppMode.IDLE;
+        }
+        if (mainWindow != null) {
+            mainWindow.refreshModeLabel();
         }
     }
 
@@ -1050,6 +1097,7 @@ public final class AppController {
         pendingSession = null;
         setTncConnected(false);
         tncBusy.set(false);
+        stopCallingUi();
         syncOpPollScheduler();
         if (mainWindow != null) {
             mainWindow.refreshConnectionState();
@@ -1090,6 +1138,27 @@ public final class AppController {
                 label,
                 "PK-232 Startup Message",
                 JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showInitWarningOnEdt(String title, String message) throws InterruptedException {
+        if (SwingUtilities.isEventDispatchThread()) {
+            showInitWarningDialog(title, message);
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(() -> showInitWarningDialog(title, message));
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new InterruptedException("INIT warning dialog failed: " + e.getMessage());
+        }
+    }
+
+    private void showInitWarningDialog(String title, String message) {
+        String body = message == null ? "" : message.replace("\r\n", "\n").replace('\r', '\n');
+        JOptionPane.showMessageDialog(
+                mainWindow,
+                body,
+                title == null || title.isBlank() ? "INIT" : title,
+                JOptionPane.WARNING_MESSAGE);
     }
 
     private void showCompatInfoOnEdt(String message) {
@@ -1378,8 +1447,8 @@ public final class AppController {
     }
 
     /**
-     * Main-window Connect / buddy double-click: open the ARQ window, then send Host
-     * {@code PG}+callsign (PTConn) in the background. Failure closes the window.
+     * Main-window Connect / buddy double-click: send Host {@code PG}+callsign (PTConn) without
+     * opening an ARQ window. The window opens on {@code $50} CONNECTED (same path as inbound).
      */
     public void requestConnect(String remoteCallsign) {
         if (!tncConnected) {
@@ -1389,7 +1458,7 @@ public final class AppController {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (activeArqWindow != null) {
+        if (hasActiveArq()) {
             JOptionPane.showMessageDialog(mainWindow,
                     "An ARQ link is already active.",
                     "PactorRATT_Alpha",
@@ -1412,13 +1481,9 @@ public final class AppController {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (!arqConnectBusy.compareAndSet(false, true)) {
-            return;
-        }
 
-        // Host wire: no space — PG + callsign (leading ! preserved for long path).
+        int epoch = beginCalling(call);
         final String hostCmd = "PG" + call;
-        openArqWindowForConnect(call);
         Thread worker = new Thread(() -> {
             try {
                 HostSession.CommandResponse response =
@@ -1427,35 +1492,138 @@ public final class AppController {
                     throw new IOException("PG failed, status=0x"
                             + Integer.toHexString(response.statusCode));
                 }
-                runOnEdt(() -> arqConnectBusy.set(false));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("PTConn interrupted for " + call);
-                runOnEdt(() -> {
-                    try {
-                        abortFailedConnect("Connect interrupted.");
-                    } finally {
-                        arqConnectBusy.set(false);
-                    }
-                });
+                runOnEdt(() -> failCallingIfCurrent(epoch, "Connect interrupted."));
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
                 debugLog.info("PTConn failed for " + call + ": " + msg);
-                runOnEdt(() -> {
-                    try {
-                        abortFailedConnect("Connect failed: " + msg);
-                    } finally {
-                        arqConnectBusy.set(false);
-                    }
-                });
+                runOnEdt(() -> failCallingIfCurrent(epoch, "Connect failed: " + msg));
             }
         }, "arq-ptconn");
         worker.setDaemon(true);
         worker.start();
     }
 
-    /** Opens the ARQ window; Host {@code PG} is sent in the background. */
-    private void openArqWindowForConnect(String call) {
+    /**
+     * Cancel an outbound call (main-window Cancel). Same Host action as ARQ Abort:
+     * Listen on → {@code PN}, else {@code Pt}. Then {@code OP} to refresh Mode.
+     */
+    public void cancelOutboundCall() {
+        if (!calling) {
+            return;
+        }
+        stopCallingUi();
+        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
+        String mnemonic = listenOn ? "PN" : "Pt";
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            pollOpmodeAfterCalling();
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                sendHostOk(session, mnemonic);
+                debugLog.info("Call cancel — sent " + mnemonic);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("Call cancel interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Call cancel failed: " + msg);
+            } finally {
+                pollOpmodeAfterCallingOn(session);
+            }
+        }, "arq-call-cancel");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** {@code $50} CONNECTED — inbound or outbound; one ARQ window-open path. */
+    private void onArqLinkConnected(String peerTitle) {
+        stopCallingUi();
+        if (hasActiveArq()) {
+            debugLog.info("CONNECTED ignored — ARQ already active: " + peerTitle);
+            return;
+        }
+        openArqWindowForLink(peerTitle);
+        pollOpmodeAfterCalling();
+    }
+
+    private int beginCalling(String call) {
+        int epoch = callingEpoch.incrementAndGet();
+        calling = true;
+        callingCallsign = call;
+        if (mainWindow != null) {
+            mainWindow.setCallingDisplay(call);
+        }
+        if (callingTimer == null) {
+            callingTimer = new Timer(CALLING_TIMEOUT_MS, e -> onCallingTimeout());
+            callingTimer.setRepeats(false);
+        }
+        callingTimer.restart();
+        debugLog.info("Calling " + call);
+        return epoch;
+    }
+
+    private void stopCallingUi() {
+        callingEpoch.incrementAndGet();
+        calling = false;
+        callingCallsign = null;
+        if (callingTimer != null) {
+            callingTimer.stop();
+        }
+        if (mainWindow != null) {
+            mainWindow.setCallingDisplay(null);
+        }
+    }
+
+    private void onCallingTimeout() {
+        if (!calling) {
+            return;
+        }
+        String call = callingCallsign;
+        stopCallingUi();
+        debugLog.info("Calling timeout (60 s) for " + call);
+        pollOpmodeAfterCalling();
+    }
+
+    private void failCallingIfCurrent(int epoch, String message) {
+        if (callingEpoch.get() != epoch) {
+            return;
+        }
+        stopCallingUi();
+        showConnectError(message);
+        pollOpmodeAfterCalling();
+    }
+
+    private void pollOpmodeAfterCalling() {
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        pollOpmodeAfterCallingOn(session);
+    }
+
+    private void pollOpmodeAfterCallingOn(HostSession session) {
+        Thread worker = new Thread(() -> {
+            try {
+                session.sendCommand("OP", ARQ_HOST_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("Post-call OP interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Post-call OP failed: " + msg);
+            }
+        }, "arq-call-op");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Opens the ARQ window after {@code $50} CONNECTED (inbound or outbound). */
+    private void openArqWindowForLink(String call) {
         if (activeArqWindow != null) {
             return;
         }
@@ -1471,15 +1639,6 @@ public final class AppController {
         }
         debugLog.info("ARQ window opened for " + call);
         syncOpPollScheduler();
-    }
-
-    private void abortFailedConnect(String message) {
-        ConnectionWindow w = activeArqWindow;
-        if (w != null) {
-            onConnectionWindowClosed(w);
-            w.dispose();
-        }
-        showConnectError(message);
     }
 
     private void showConnectError(String message) {

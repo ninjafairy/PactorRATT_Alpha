@@ -50,6 +50,8 @@ public final class MainWindow extends JFrame {
 
     private final JLabel modeLabel = new JLabel();
     private final JLabel tncLabel = new JLabel();
+    private final JLabel callingLabel = new JLabel();
+    private final JButton cancelCallingButton = new JButton("Cancel");
     private final JTextField callsignField = new JTextField(12);
     private final JButton connectButton = new JButton("Connect");
     private final JToggleButton listenToggle = new JToggleButton("Listen");
@@ -118,6 +120,25 @@ public final class MainWindow extends JFrame {
     public void refreshModeLabel() {
         AppMode mode = app.mode();
         modeLabel.setText("Mode: " + mode.displayName());
+    }
+
+    /**
+     * Show or hide {@code Calling <call>…} plus Cancel in the top status strip.
+     * {@code callsign} null/blank hides the row.
+     */
+    public void setCallingDisplay(String callsign) {
+        boolean show = callsign != null && !callsign.isBlank();
+        callingLabel.setText(show ? "Calling " + callsign.trim() + "…" : "");
+        callingLabel.setVisible(show);
+        cancelCallingButton.setVisible(show);
+        statusRowRevalidate();
+    }
+
+    private void statusRowRevalidate() {
+        if (callingLabel.getParent() != null) {
+            callingLabel.getParent().revalidate();
+            callingLabel.getParent().repaint();
+        }
     }
 
     private void buildMenu() {
@@ -195,7 +216,16 @@ public final class MainWindow extends JFrame {
         JPanel top = new JPanel(new GridLayout(2, 1));
         top.setBackground(UiColors.PANEL_BG);
         modeLabel.setFont(modeLabel.getFont().deriveFont(Font.BOLD));
-        top.add(modeLabel);
+        callingLabel.setVisible(false);
+        cancelCallingButton.setVisible(false);
+        cancelCallingButton.setToolTipText("Stop the outbound ARQ call (same as Abort: PN if Listen on, else Pt)");
+        cancelCallingButton.addActionListener(e -> app.cancelOutboundCall());
+        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        statusRow.setBackground(UiColors.PANEL_BG);
+        statusRow.add(modeLabel);
+        statusRow.add(callingLabel);
+        statusRow.add(cancelCallingButton);
+        top.add(statusRow);
         top.add(tncLabel);
         top.setBorder(BorderFactory.createEmptyBorder(6, 8, 4, 8));
 
