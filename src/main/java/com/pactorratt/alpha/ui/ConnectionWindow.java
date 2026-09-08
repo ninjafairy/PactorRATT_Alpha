@@ -19,6 +19,7 @@ import javax.swing.JTextPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
+import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
@@ -47,6 +48,8 @@ public final class ConnectionWindow extends JFrame {
         LISTEN,
         ARQ
     }
+
+    private static final char BACKSPACE = 0x08;
 
     private final AppController app;
     private final Kind kind;
@@ -210,11 +213,65 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        Runnable r = () -> appendTranscript(normalized, UiColors.REMOTE_TEXT);
+        Runnable r = () -> applyInboundTranscript(normalized);
         if (SwingUtilities.isEventDispatchThread()) {
             r.run();
         } else {
             SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
+     * Inbound only: print text, interpret {@code $08} as backspace on the current line.
+     * Does not delete a newline or walk onto the previous line; extra BS is consumed.
+     */
+    private void applyInboundTranscript(String normalized) {
+        if (normalized == null || normalized.isEmpty()) {
+            return;
+        }
+        StringBuilder pending = new StringBuilder();
+        for (int i = 0; i < normalized.length(); i++) {
+            char c = normalized.charAt(i);
+            if (c == BACKSPACE) {
+                if (pending.length() > 0) {
+                    if (pending.charAt(pending.length() - 1) != '\n') {
+                        pending.deleteCharAt(pending.length() - 1);
+                    }
+                } else {
+                    backspaceCurrentTranscriptLine();
+                }
+            } else {
+                pending.append(c);
+            }
+        }
+        if (pending.length() > 0) {
+            appendTranscript(pending.toString(), UiColors.REMOTE_TEXT);
+        }
+    }
+
+    /**
+     * Delete one character from the current transcript line (after the last {@code \n}).
+     * No-op if the line is empty. Does not delete local grey text if it is somehow last.
+     */
+    private void backspaceCurrentTranscriptLine() {
+        StyledDocument doc = transcript.getStyledDocument();
+        int len = doc.getLength();
+        if (len <= 0) {
+            return;
+        }
+        try {
+            String existing = doc.getText(0, len);
+            if (existing.endsWith("\n")) {
+                return;
+            }
+            AttributeSet attrs = doc.getCharacterElement(len - 1).getAttributes();
+            Color fg = StyleConstants.getForeground(attrs);
+            if (UiColors.LOCAL_PENDING.equals(fg)) {
+                return;
+            }
+            doc.remove(len - 1, 1);
+            transcript.setCaretPosition(doc.getLength());
+        } catch (BadLocationException ignored) {
         }
     }
 
@@ -314,7 +371,8 @@ public final class ConnectionWindow extends JFrame {
             addControl(p, "Disconnect now", "TClear (TC) then ch0 CTRL-D $04",
                     () -> app.arqDisconnectNow(this));
             addControl(p, "Abort", "Abort link (PN if Listen on, else Pt)", this::abortSession);
-            JButton hoNow = addControl(p, "Handover", "Handover now (ch0 CTRL-Z $1A)",
+            JButton hoNow = addControl(p, "Clear TX and Handover",
+                    "TClear (TC) then ch0 CTRL-Z $1A",
                     () -> app.arqHandoverNow(this));
             JButton hoAfter = addControl(p, "HO after TX clear",
                     "Flush App TX, then ch0 CTRL-Z $1A after TNC TX empty",
@@ -414,6 +472,7 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         // ISS: grey transcript immediately; Host data when TNC connected (ARQ only).
+        ensureTranscriptNewline();
         String forTranscript = line.endsWith("\n") ? line : line + "\n";
         appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
         if (kind == Kind.ARQ) {
@@ -435,6 +494,7 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
+        ensureTranscriptNewline();
         appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
         appTxBuffer.setText("");
         refreshStatus();
@@ -455,6 +515,7 @@ public final class ConnectionWindow extends JFrame {
             pending = "";
         }
         localIsIrs = false;
+        ensureTranscriptNewline();
         if (pending.isBlank()) {
             refreshStatus();
             return "";
@@ -464,6 +525,19 @@ public final class ConnectionWindow extends JFrame {
         appTxBuffer.setText("");
         refreshStatus();
         return pending;
+    }
+
+    /**
+     * IRS→ISS (and any App TX drain): if the transcript has text that does not already end
+     * on its own line, insert a newline so local outbound does not continue the last RX line.
+     * No-op on an empty transcript (no leading blank line after connect). Does not send Host data.
+     */
+    private void ensureTranscriptNewline() {
+        String existing = transcript.getText();
+        if (existing == null || existing.isEmpty() || existing.endsWith("\n")) {
+            return;
+        }
+        appendTranscript("\n", UiColors.LOCAL_PENDING);
     }
 
     public boolean isAppTxEmpty() {

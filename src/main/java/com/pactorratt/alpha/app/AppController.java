@@ -299,9 +299,30 @@ public final class AppController {
         }, null, "Disconnect now — sent TC then CTRL-D ($04).");
     }
 
-    /** Handover now — ch0 data {@code $1A} (CTRL-Z). Locks HO buttons until ISS again. */
+    /**
+     * Clear TX and Handover — Host {@code TC} (TClear), wait ACK, then ch0 {@code $1A}.
+     * Locks HO buttons until ISS again.
+     */
     public void arqHandoverNow(ConnectionWindow window) {
-        runHandoverAction(window, "Handover", null, PTOVER_CHAR_CTRL_Z);
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
+            return;
+        }
+        if (window.isLocalIrs()) {
+            noticeWindow(window, "Clear TX and Handover — not ISS (use Seize to take the link).");
+            return;
+        }
+        if (!window.lockHandoverControls()) {
+            noticeWindow(window, "Clear TX and Handover — handover already pending.");
+            return;
+        }
+        syncOpPollScheduler();
+        runArqHostAction(window, "Clear TX and Handover", session -> {
+            sendHostOk(session, "TC");
+            sendCh0Control(session, PTOVER_CHAR_CTRL_Z);
+        }, () -> {
+            window.unlockHandoverControls();
+            syncOpPollScheduler();
+        }, "Clear TX and Handover — sent TC then CTRL-Z ($1A); HO buttons locked until ISS again.");
     }
 
     /**

@@ -5,7 +5,7 @@
 **Status:** Phase 3+4 TNC init **hardware-validated**; Phase 5 outbound **done**; Listen `PN`/`Pt` + OPMODE Status Monitor **in**; **long-uptime UI hang fixed** (Build 11+, instrumentation stripped in **Build 13**); portable I/O is **`config/` beside the jar**; linked-ARQ / PTSend OPMODE captures, grey→green, call-timeout still open  
 **License:** AGPL-3.0  
 **Support contact (compat popups):** KJ7RBS@gmail.com  
-**Last packaged jar:** `target/PactorRATT_Alpha.jar` copied to `Builds/Most Recent Build/PactorRATT_Alpha.jar` — warning line `Build: N  {date time}` (sequential `N` in `build.number.properties`; last package was **build 16**)
+**Last packaged jar:** `target/PactorRATT_Alpha.jar` copied to `Builds/Most Recent Build/PactorRATT_Alpha.jar` — warning line `Build: N  {date time}` (sequential `N` in `build.number.properties`; last package was **build 20**)
 
 ---
 
@@ -52,7 +52,7 @@ A portable **Java 21 + Swing** desktop chat program that drives a **PK-232 with 
 | Abort | Listen checkbox on → `PN`; else → `Pt`; then `markArqDead` |
 | Clean disconnect / handover | Embed CTRL-D (`$04`) / CTRL-Z (`$1A`) in Host **ch0 data** (`$01 $20 … $17`). Do **not** send Host CMD `RE` / `PV` (those only *set* the characters). Same-block for with-text. |
 | Disconnect now | Host `TC` (TClear), wait ACK, then ch0 `$04`. Not `RC`/`Rcve`. |
-| Handover now | Same ch0 `$1A` as HO after TX clear (both kept). HO / HO after TX clear / HO with text **lock** until OPMODE IRS then ISS again. |
+| Handover now | Host `TC`, wait ACK, then ch0 `$1A`. Label: **Clear TX and Handover**. HO / HO after TX clear / HO with text **lock** until OPMODE IRS then ISS again. |
 | Seize | `AG` (`AChg`) |
 | Inbound text CTLs | Treat **all** `0x30`–`0x3F` the same (Pactor channel 0 only; hardware PTL uses `0x3F`) |
 | EAS | OFF (`EAN`); grey→green later via TX-empty/idle (not EAS) |
@@ -162,6 +162,8 @@ Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRAT
 #### Inbound frame demux + transcript (done)
 
 - All CTL `0x30`–`0x3F` → `INBOUND_DATA` → active **ARQ else Listen** transcript.
+- Inbound `$08` (BS) backspaces the current transcript line (does not cross `\n`; extra BS consumed). Debug Monitor stays raw.
+- Local grey paint calls `ensureTranscriptNewline` first so remote and local never share a line.
 - `0x4F` → `commandQueue` **and** `HostEvent` (OPMODE decode for Status Monitor + ARQ).
 - `0x5F` → `statusQueue`; other types event-only.
 - PTL samples: `01 3F … 17` ([`docs/Hardware_Capture_Sample.md`](docs/Hardware_Capture_Sample.md)).
@@ -185,7 +187,7 @@ Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRAT
 |---|---|
 | Disc. after TX clear | Flush App TX, then ch0 `$04` in the same block |
 | Disconnect now | Host `TC`, wait ACK, then ch0 `$04` |
-| Handover | ch0 data `$1A` (CTRL-Z); lock HO buttons until IRS then ISS again |
+| Clear TX and Handover | Host `TC`, wait ACK, then ch0 `$1A`; lock HO buttons until IRS then ISS again |
 | HO after TX clear | Flush App TX, then ch0 `$1A` in the same block; same HO lock |
 | Seize | CMD `AG` |
 | Abort | Listen checkbox on → `PN`, else `Pt`; then `markArqDead` |
@@ -347,4 +349,4 @@ File transfer, multi-user, store-and-forward, BBS, Winlink, encryption, network 
 
 ## Resume prompt (paste into a new chat)
 
-> Resume PactorRATT_Alpha from `project_brief.md`, `docs/OPmodeResponse.md`, and `docs/Alpha_Init_Sequence.md`. Phase 1 UI and Phase 3+4 TNC init are hardware-validated. Phase 5 outbound is done (`sendData` 330-chunk, `hostIoLock`, ARQ ch0 `$04`/`$1A` / `AG` / Abort / with-text, ISS flush, Listen FEC `PD`+data+CTRL-D). **ARQ end/HO:** Disc. after TX clear = flush App TX then ch0 `$04`; HO after TX clear = flush App TX then ch0 `$1A`; Handover = ch0 `$1A` only; with-text appends the control byte in the same ch0 block; Disconnect now = `TC` ACK then ch0 `$04`. Do **not** send Host `RE`/`PV` to trigger those. HO / HO after TX clear / HO with text lock until OPMODE IRS then ISS again (2 Hz `OP` watch if OPPOLL is 0). **Portable I/O:** `{jarDir}/config/` only (`settings.json`, `buddies.json`, optional debug log). **Long-uptime hang is fixed (Build 13):** do not lock `SerialPortService.isOpen()` or native COM read on the EDT; Listen/ARQ windows open immediately, then `OP`/`PN` or `PG` on a worker (fail closes the window). **Listen Host:** ON is `Pt`→`PN` (already `PN` OK; other modes refuse); OFF / Listen close is `PN`→`Pt`; no `PN`/`Pt` while ARQ is active. **OPMODE:** Pactor is **not** AMTOR — hardware tags `PN` / `Pt` (see OPmodeResponse.md); Status Monitor shows only `$4F`+`OP…` plus `Mode:`; Debug Monitor hides those frames; OPPOLL 0–10 polls `OP` while ARQ is linked; *x* drives ISS/IRS. After Listen FEC the TNC returns to **`Pt`**; do **not** auto-`PN` until TX-empty is known. Last packaged **Build 16** in `Builds/Most Recent Build/`. **Next:** capture linked-ARQ and PTSend OPMODE bytes (do not invent); then post-FEC `PN` restore; call-timeout after `PG`; grey→green. Hardware-validate `$04`/`$1A` / `TC` on a live link.
+> Resume PactorRATT_Alpha from `project_brief.md`, `docs/OPmodeResponse.md`, and `docs/Alpha_Init_Sequence.md`. Phase 1 UI and Phase 3+4 TNC init are hardware-validated. Phase 5 outbound is done (`sendData` 330-chunk, `hostIoLock`, ARQ ch0 `$04`/`$1A` / `AG` / Abort / with-text, ISS flush, Listen FEC `PD`+data+CTRL-D). **ARQ end/HO:** Disc. after TX clear = flush App TX then ch0 `$04`; HO after TX clear = flush App TX then ch0 `$1A`; Clear TX and Handover = `TC` ACK then ch0 `$1A`; with-text appends the control byte in the same ch0 block; Disconnect now = `TC` ACK then ch0 `$04`. Do **not** send Host `RE`/`PV` to trigger those. HO / HO after TX clear / HO with text lock until OPMODE IRS then ISS again (2 Hz `OP` watch if OPPOLL is 0). **Portable I/O:** `{jarDir}/config/` only (`settings.json`, `buddies.json`, optional debug log). **Long-uptime hang is fixed (Build 13):** do not lock `SerialPortService.isOpen()` or native COM read on the EDT; Listen/ARQ windows open immediately, then `OP`/`PN` or `PG` on a worker (fail closes the window). **Listen Host:** ON is `Pt`→`PN` (already `PN` OK; other modes refuse); OFF / Listen close is `PN`→`Pt`; no `PN`/`Pt` while ARQ is active. **OPMODE:** Pactor is **not** AMTOR — hardware tags `PN` / `Pt` (see OPmodeResponse.md); Status Monitor shows only `$4F`+`OP…` plus `Mode:`; Debug Monitor hides those frames; OPPOLL 0–10 polls `OP` while ARQ is linked; *x* drives ISS/IRS. After Listen FEC the TNC returns to **`Pt`**; do **not** auto-`PN` until TX-empty is known. Last packaged **Build 20** in `Builds/Most Recent Build/`. **Next:** capture linked-ARQ and PTSend OPMODE bytes (do not invent); then post-FEC `PN` restore; call-timeout after `PG`; grey→green. Hardware-validate `$04`/`$1A` / `TC` on a live link.
