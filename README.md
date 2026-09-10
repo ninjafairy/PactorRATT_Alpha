@@ -2,6 +2,8 @@
 
 # Try it out
 
+Run Java_Troubleshooter.jar from the "stable" build page to make sure the program launches with the proper version of java.
+
 ## Builds > Most Recent Build for the latest 
 
 # Latest "Stable" Build
