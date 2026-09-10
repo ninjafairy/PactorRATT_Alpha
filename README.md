@@ -1,8 +1,11 @@
-# This program is AI generated using Cursor with Grok 4.5 High Fast
+# This program is AI generated using Cursor with Grok 4.5 High Fast, 4.5 High, 4.6 High.
 
 # Try it out
 
-## Pick a .jar out of the Builds folder and run it. It will create some folders so place it in an empty folder 
+## Builds > Most Recent Build for the latest 
+
+# Latest "Stable" Build
+https://github.com/ninjafairy/PactorRATT_Alpha/releases/tag/Experimental.v.1.0.0
 
 
 
