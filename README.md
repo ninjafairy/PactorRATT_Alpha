@@ -3,7 +3,9 @@
 # Try it out
 
 Run Java_Troubleshooter.jar from the "stable" build page to make sure the program launches with the proper version of java.
-Now with PactoRATT_Launcher-v1 you dont have to mess with java at all, it will tell you if you need to use the launcher and if so find and launch PactorRATT with the proper version of JAVA
+
+Now with PactoRATT_Launcher-v1 you dont have to mess with java at all, it will tell you if you need to use the launcher,
+And if so find and launch PactorRATT with the proper version of JAVA
 
 ## Builds > Most Recent Build for the latest 
 
