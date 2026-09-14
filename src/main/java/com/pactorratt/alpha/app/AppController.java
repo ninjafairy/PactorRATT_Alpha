@@ -3,6 +3,7 @@ package com.pactorratt.alpha.app;
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.ConfigStore;
 import com.pactorratt.alpha.config.HostCommandIni;
+import com.pactorratt.alpha.hostmode.CallsignLineParser;
 import com.pactorratt.alpha.hostmode.HostEvent;
 import com.pactorratt.alpha.hostmode.HostFrameCodec;
 import com.pactorratt.alpha.hostmode.HostSession;
@@ -34,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
@@ -50,7 +52,11 @@ import java.util.function.Consumer;
 public final class AppController {
 
     private static final long ARQ_HOST_TIMEOUT_MS = 2000;
-    /** Outbound call UI timeout until {@code $50} CONNECTED or Cancel. TNC ARQTMO default is 60 s. */
+    /**
+     * Fallback outbound-call UI timer. TNC ARQTMO default is 60 s and reports
+     * {@code $50 Timeout} (no {@code DISCONNECTED:}) when the call dies; this timer
+     * covers a missed frame. Neither path Aborts the TNC (Cancel still does that).
+     */
     private static final int CALLING_TIMEOUT_MS = 60_000;
     /** Default RECeive character (CTRL-D) — disconnect / FEC end after TNC TX clears. */
     private static final byte RECEIVE_CHAR_CTRL_D = 0x04;
@@ -58,6 +64,12 @@ public final class AppController {
     private static final byte PTOVER_CHAR_CTRL_Z = 0x1A;
     /** OP poll period while HO buttons are locked and program OPPOLL is 0. */
     private static final long HANDOVER_WATCH_POLL_MS = 500;
+    /** OP poll while waiting for PTSend ({@code PD}) to leave the air. */
+    private static final long FEC_WATCH_POLL_MS = 500;
+    /** Wait this long for the first {@code PD} OPMODE after PTSend. */
+    private static final long FEC_WAIT_ENTER_MS = 10_000;
+    /** After seeing {@code PD}, wait this long for end (Idle then {@code Pt} or {@code PN}). */
+    private static final long FEC_WAIT_LEAVE_MS = 300_000;
 
     private final Path portableRoot;
     private final ConfigStore configStore;
@@ -103,6 +115,18 @@ public final class AppController {
     private volatile boolean calling;
     private volatile String callingCallsign;
     private Timer callingTimer;
+    /**
+     * Linked-ARQ {@code $50 Timeout}; consumed by the following {@code DISCONNECTED:}.
+     * Not set for call no-answer (Timeout alone while Calling).
+     */
+    private volatile boolean pendingArqLinkTimeout;
+
+    private final List<String> heardCalls = new ArrayList<>();
+    private final List<String> mentionedCalls = new ArrayList<>();
+    /** Session-only &lt;C&gt;onnect list; not persisted. */
+    private final List<String> connectCalls = new ArrayList<>();
+    /** Last connect-frame tokens (oldest first), cap {@link CallsignLineParser#CONNECT_WINDOW}. */
+    private final List<String> connectFrameRecent = new ArrayList<>();
 
     private final Object opPollLock = new Object();
     private final AtomicBoolean opPollInFlight = new AtomicBoolean(false);
@@ -119,11 +143,173 @@ public final class AppController {
                 debugLog, serialTapFanout, this::showStartupMessageOnEdt, this::showCompatInfoOnEdt,
                 this::showInitWarningOnEdt, configStore.configDir());
         this.tncConnected = false;
+        loadMonitorLists();
         try {
             new HostCommandIni(configStore.configDir()).ensureFile();
         } catch (IOException e) {
             debugLog.info("Could not create config.ini: " + e.getMessage());
         }
+    }
+
+    private void loadMonitorLists() {
+        heardCalls.clear();
+        mentionedCalls.clear();
+        String own = ownCallsign();
+        for (String call : configStore.loadMonitorList(configStore.heardFile())) {
+            if (!call.equals(own)) {
+                heardCalls.add(call);
+            }
+        }
+        for (String call : configStore.loadMonitorList(configStore.mentionedFile())) {
+            if (!call.equals(own)) {
+                mentionedCalls.add(call);
+            }
+        }
+    }
+
+    public List<String> heardCalls() {
+        return List.copyOf(heardCalls);
+    }
+
+    public List<String> mentionedCalls() {
+        return List.copyOf(mentionedCalls);
+    }
+
+    public List<String> connectCalls() {
+        return List.copyOf(connectCalls);
+    }
+
+    public void clearHeardList() {
+        if (heardCalls.isEmpty()) {
+            return;
+        }
+        heardCalls.clear();
+        persistMonitorLists();
+        if (mainWindow != null) {
+            mainWindow.refreshMonitorLists();
+        }
+    }
+
+    public void clearMentionedList() {
+        if (mentionedCalls.isEmpty()) {
+            return;
+        }
+        mentionedCalls.clear();
+        persistMonitorLists();
+        if (mainWindow != null) {
+            mainWindow.refreshMonitorLists();
+        }
+    }
+
+    public void clearHeardCall(String call) {
+        if (removeMonitorCall(heardCalls, call)) {
+            persistMonitorLists();
+            if (mainWindow != null) {
+                mainWindow.refreshMonitorLists();
+            }
+        }
+    }
+
+    public void clearMentionedCall(String call) {
+        if (removeMonitorCall(mentionedCalls, call)) {
+            persistMonitorLists();
+            if (mainWindow != null) {
+                mainWindow.refreshMonitorLists();
+            }
+        }
+    }
+
+    public void clearConnectList() {
+        if (connectCalls.isEmpty() && connectFrameRecent.isEmpty()) {
+            return;
+        }
+        connectCalls.clear();
+        connectFrameRecent.clear();
+        if (mainWindow != null) {
+            mainWindow.refreshMonitorLists();
+        }
+    }
+
+    public void clearConnectCall(String call) {
+        if (removeMonitorCall(connectCalls, call)) {
+            if (mainWindow != null) {
+                mainWindow.refreshMonitorLists();
+            }
+        }
+    }
+
+    public void addBuddy(String call) {
+        String u = normalizeListCall(call);
+        if (u.isEmpty()) {
+            return;
+        }
+        try {
+            configStore.ensureBuddiesFile();
+            List<String> buddies = configStore.loadBuddyList();
+            if (buddies.contains(u)) {
+                return;
+            }
+            buddies.add(0, u);
+            configStore.saveBuddyList(buddies);
+            if (mainWindow != null) {
+                mainWindow.refreshBuddies();
+            }
+        } catch (IOException e) {
+            debugLog.info("Could not add buddy: " + e.getMessage());
+        }
+    }
+
+    public void moveBuddyToTop(String call) {
+        String u = normalizeListCall(call);
+        if (u.isEmpty()) {
+            return;
+        }
+        try {
+            List<String> buddies = configStore.loadBuddyList();
+            if (!buddies.remove(u)) {
+                return;
+            }
+            buddies.add(0, u);
+            configStore.saveBuddyList(buddies);
+            if (mainWindow != null) {
+                mainWindow.refreshBuddies();
+            }
+        } catch (IOException e) {
+            debugLog.info("Could not move buddy: " + e.getMessage());
+        }
+    }
+
+    public void removeBuddy(String call) {
+        String u = normalizeListCall(call);
+        if (u.isEmpty()) {
+            return;
+        }
+        try {
+            List<String> buddies = configStore.loadBuddyList();
+            if (!buddies.remove(u)) {
+                return;
+            }
+            configStore.saveBuddyList(buddies);
+            if (mainWindow != null) {
+                mainWindow.refreshBuddies();
+            }
+        } catch (IOException e) {
+            debugLog.info("Could not remove buddy: " + e.getMessage());
+        }
+    }
+
+    private boolean removeMonitorCall(List<String> list, String call) {
+        String u = normalizeListCall(call);
+        return !u.isEmpty() && list.remove(u);
+    }
+
+    private static String normalizeListCall(String call) {
+        return call == null ? "" : call.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String ownCallsign() {
+        String own = config.getCallsign();
+        return own == null ? "" : own.trim().toUpperCase(Locale.ROOT);
     }
 
     public void addSerialByteListener(SerialByteListener listener) {
@@ -490,6 +676,8 @@ public final class AppController {
     /**
      * Listen FEC / End TX: Host {@code PD} (PTSend), then App TX text as ch0 data (chunked §4.8),
      * then CTRL-D ({@code $04}) so the TNC returns to receive after TX clear.
+     * After OPMODE leaves {@code PD}, restore Listen only if the TNC landed on {@code Pt}
+     * (older firmware). Newer firmware returns to {@code PN} on its own — do not send {@code PN}.
      * Caller paints grey transcript and clears the App TX buffer before calling.
      */
     public void listenFecEndTx(ConnectionWindow window, String text) {
@@ -516,7 +704,8 @@ public final class AppController {
         }
 
         Thread worker = new Thread(() -> {
-            String resultNotice;
+            String resultNotice = null;
+            boolean sent = false;
             try {
                 runOnEdt(() -> {
                     mode = AppMode.UNPROTO;
@@ -531,33 +720,116 @@ public final class AppController {
                 System.arraycopy(body, 0, withEnd, 0, body.length);
                 withEnd[body.length] = RECEIVE_CHAR_CTRL_D;
                 session.sendData(0, withEnd, ARQ_HOST_TIMEOUT_MS);
-                resultNotice = "FEC / End TX — sent " + pdCmd + " + " + body.length
+                sent = true;
+                String sentNotice = "FEC / End TX — sent " + pdCmd + " + " + body.length
                         + " char(s) + CTRL-D (grey until TX-empty).";
+                runOnEdt(() -> noticeWindow(window, sentNotice));
+                watchPostFecListenCompat(session);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                resultNotice = "FEC / End TX — interrupted.";
+                resultNotice = sent ? null : "FEC / End TX — interrupted.";
                 debugLog.info("FEC / End TX interrupted");
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                resultNotice = "FEC / End TX — " + msg;
+                if (!sent) {
+                    resultNotice = "FEC / End TX — " + msg;
+                }
                 debugLog.info("FEC / End TX failed: " + msg);
             } finally {
                 fecBusy.set(false);
-                runOnEdt(() -> {
-                    if (mode == AppMode.UNPROTO) {
-                        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
-                        mode = listenOn ? AppMode.LISTEN : AppMode.IDLE;
-                    }
-                    if (mainWindow != null) {
-                        mainWindow.refreshModeLabel();
-                    }
-                });
+                if (!sent) {
+                    runOnEdt(() -> {
+                        if (mode == AppMode.UNPROTO) {
+                            boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
+                            mode = listenOn ? AppMode.LISTEN : AppMode.IDLE;
+                        }
+                        if (mainWindow != null) {
+                            mainWindow.refreshModeLabel();
+                        }
+                    });
+                }
             }
-            final String notice = resultNotice;
-            runOnEdt(() -> noticeWindow(window, notice));
+            if (resultNotice != null) {
+                final String notice = resultNotice;
+                runOnEdt(() -> noticeWindow(window, notice));
+            }
         }, "listen-fec-end-tx");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    /**
+     * Poll {@code OP} until PTSend ({@code PD}) has finished. Idle ({@code $33}) is still FEC
+     * (TX about to end). When the tag leaves {@code PD}:
+     * <ul>
+     *   <li>{@code Pt} and Listen still on → {@code PN} (older firmware stays in standby)</li>
+     *   <li>{@code PN} → nothing (later firmware auto-Listen)</li>
+     *   <li>Listen off and {@code PN} → {@code Pt} (honor Listen OFF)</li>
+     * </ul>
+     * No {@code PN}/{@code Pt} while ARQ is active.
+     */
+    private void watchPostFecListenCompat(HostSession session)
+            throws IOException, InterruptedException {
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        long started = System.currentTimeMillis();
+        boolean sawPd = false;
+        while (tncConnected && session.isOpen() && !hasActiveArq()) {
+            OpmodeParser.Decoded decoded = queryOpmode(session);
+            long elapsed = System.currentTimeMillis() - started;
+            if (decoded != null && decoded.isPactorFec()) {
+                sawPd = true;
+            } else if (decoded != null && decoded.isPactorStandby()) {
+                applyPostFecListenCompat(session, decoded);
+                return;
+            } else if (decoded != null && decoded.isPactorListen()) {
+                if (sawPd || elapsed >= FEC_WAIT_ENTER_MS) {
+                    applyPostFecListenCompat(session, decoded);
+                    return;
+                }
+            } else if (sawPd) {
+                debugLog.info("FEC ended — OPMODE "
+                        + (decoded == null || decoded.modeName == null ? "unknown" : decoded.modeName)
+                        + " (no PN/Pt)");
+                return;
+            } else if (elapsed >= FEC_WAIT_ENTER_MS) {
+                debugLog.info("FEC watch — never saw PD OPMODE; leaving TNC as-is");
+                return;
+            }
+            if (sawPd && elapsed >= FEC_WAIT_LEAVE_MS) {
+                debugLog.info("FEC watch — still PD after " + FEC_WAIT_LEAVE_MS + " ms; not sending PN");
+                return;
+            }
+            Thread.sleep(FEC_WATCH_POLL_MS);
+        }
+    }
+
+    private void applyPostFecListenCompat(HostSession session, OpmodeParser.Decoded decoded)
+            throws IOException, InterruptedException {
+        if (session == null || decoded == null || hasActiveArq()) {
+            return;
+        }
+        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
+        if (decoded.isPactorStandby()) {
+            if (listenOn) {
+                sendHostOk(session, "PN");
+                debugLog.info("FEC ended — Pt; sent PN (Listen still on)");
+                queryOpmode(session);
+            } else {
+                debugLog.info("FEC ended — Pt; Listen off, left standby");
+            }
+            return;
+        }
+        if (decoded.isPactorListen()) {
+            if (listenOn) {
+                debugLog.info("FEC ended — already PN; no Host change");
+            } else {
+                sendHostOk(session, "Pt");
+                debugLog.info("FEC ended — PN but Listen off; sent Pt");
+                queryOpmode(session);
+            }
+        }
     }
 
     private void sendCh0Control(HostSession session, byte control)
@@ -720,9 +992,19 @@ public final class AppController {
             return;
         }
         if (event.type() == HostEvent.Type.LINK_MESSAGE) {
-            String peer = LinkMessageParser.connectedPeer(event.frame());
-            if (peer != null) {
-                runOnEdt(() -> onArqLinkConnected(peer));
+            HostFrameCodec.Frame linkFrame = event.frame();
+            String connected = LinkMessageParser.connectedPeer(linkFrame);
+            if (connected != null) {
+                runOnEdt(() -> onArqLinkConnected(connected));
+                return;
+            }
+            if (LinkMessageParser.isTimeout(linkFrame)) {
+                runOnEdt(this::onArqLinkTimeout);
+                return;
+            }
+            String disconnected = LinkMessageParser.disconnectedPeer(linkFrame);
+            if (disconnected != null) {
+                runOnEdt(() -> onArqLinkDisconnected(disconnected));
             }
             return;
         }
@@ -747,11 +1029,10 @@ public final class AppController {
 
     /**
      * Drive Status Monitor {@code Mode:} and the active ARQ window from a decoded OPMODE reply.
-     * Pactor Standby ({@code Pt}) or *w*={@code $30} ends the ARQ link: stop polling, mark dead,
-     * freeze ISS/IRS. {@code x} (S/R) drives ISS/IRS for every mode that includes *x*.
-     * <p>
-     * Later: ARQ end / call timeout should follow {@code $50} DISCONNECTED / no-answer link
-     * messages instead of OPMODE Standby.
+     * {@code x} (S/R) drives ISS/IRS. ARQ end is {@code $50 DISCONNECTED:} (and {@code Timeout}
+     * immediately before it). Call no-answer is {@code $50 Timeout} alone while Calling.
+     * OPMODE {@code Pt} / *w*=Standby after a live OPMODE is only a fallback if that
+     * link message is missed.
      */
     private void applyOpmodeDecoded(OpmodeParser.Decoded decoded) {
         if (decoded == null) {
@@ -767,16 +1048,17 @@ public final class AppController {
         }
         if (decoded.standby) {
             String w = decoded.wLabel != null ? decoded.wLabel : "Standby";
-            arq.applyOpmodeLink(w, decoded.hasDirection() ? decoded.transmit : null);
+            arq.applyOpmodeLink(w, decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
             if (arq.hasSeenLiveOpmode()) {
                 markArqDead(arq);
-                noticeArq(arq, "ARQ ended — OPMODE " + w + ".");
+                noticeArq(arq, "ARQ ended — OPMODE " + w + " (no $50 DISCONNECTED).");
             }
             return;
         }
         arq.markOpmodeLive();
         boolean hoLocked = arq.isHandoverLocked();
-        arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null);
+        arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null,
+                decoded.pactorBaud);
         if (hoLocked && !arq.isHandoverLocked()) {
             syncOpPollScheduler();
         }
@@ -790,7 +1072,9 @@ public final class AppController {
         if (decoded.isPactorArq() && !decoded.standby) {
             return;
         }
-        if (decoded.isPactorListen()) {
+        if (decoded.isPactorFec()) {
+            mode = AppMode.UNPROTO;
+        } else if (decoded.isPactorListen()) {
             mode = AppMode.LISTEN;
         } else if (decoded.isPactorStandby() || decoded.standby) {
             mode = AppMode.IDLE;
@@ -1249,6 +1533,86 @@ public final class AppController {
 
     public void setMainWindow(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
+        if (mainWindow != null) {
+            mainWindow.refreshMonitorLists();
+        }
+    }
+
+    /** Listen inbound line completed (newline after {@code $08}). EDT. */
+    public void onListenInboundLine(String line) {
+        if (line == null || line.isEmpty()) {
+            return;
+        }
+        CallsignLineParser.Hits hits = CallsignLineParser.parse(line);
+        if (hits.connectToken != null) {
+            noteConnectFrame(hits.connectToken);
+            return;
+        }
+        boolean changed = false;
+        for (String call : hits.heard) {
+            changed |= promoteMonitorCall(heardCalls, call);
+        }
+        for (String call : hits.mentioned) {
+            changed |= promoteMonitorCall(mentionedCalls, call);
+        }
+        if (!changed) {
+            return;
+        }
+        persistMonitorLists();
+        if (mainWindow != null) {
+            mainWindow.refreshMonitorLists();
+        }
+    }
+
+    /**
+     * Connect frame: never Heard/Mentioned. Session list updates only if a gate passes.
+     */
+    private void noteConnectFrame(String token) {
+        if (token == null || token.isEmpty()) {
+            return;
+        }
+        connectFrameRecent.add(token);
+        while (connectFrameRecent.size() > CallsignLineParser.CONNECT_WINDOW) {
+            connectFrameRecent.remove(0);
+        }
+        String promo = CallsignLineParser.promoteConnect(connectFrameRecent);
+        if (promo == null || !promoteMonitorCall(connectCalls, promo)) {
+            return;
+        }
+        if (mainWindow != null) {
+            mainWindow.refreshMonitorLists();
+        }
+    }
+
+    private boolean promoteMonitorCall(List<String> list, String call) {
+        if (call == null || call.isEmpty()) {
+            return false;
+        }
+        String u = call.toUpperCase(Locale.ROOT);
+        if (u.equals(ownCallsign())) {
+            return false;
+        }
+        int existing = list.indexOf(u);
+        if (existing == 0) {
+            return false;
+        }
+        if (existing > 0) {
+            list.remove(existing);
+        }
+        list.add(0, u);
+        while (list.size() > ConfigStore.MONITOR_LIST_CAP) {
+            list.remove(list.size() - 1);
+        }
+        return true;
+    }
+
+    private void persistMonitorLists() {
+        try {
+            configStore.saveMonitorList(configStore.heardFile(), heardCalls);
+            configStore.saveMonitorList(configStore.mentionedFile(), mentionedCalls);
+        } catch (IOException e) {
+            debugLog.info("Could not save heard/mentioned: " + e.getMessage());
+        }
     }
 
     public MainWindow mainWindow() {
@@ -1438,6 +1802,7 @@ public final class AppController {
     private void ensureListenWindow(boolean active) {
         if (listenWindow == null) {
             listenWindow = new ConnectionWindow(this, ConnectionWindow.Kind.LISTEN, "Listen");
+            listenWindow.setInboundLineListener(this::onListenInboundLine);
             listenWindow.setVisible(true);
         }
         listenWindow.setSessionActive(active && mode != AppMode.ARQ);
@@ -1542,12 +1907,56 @@ public final class AppController {
 
     /** {@code $50} CONNECTED — inbound or outbound; one ARQ window-open path. */
     private void onArqLinkConnected(String peerTitle) {
+        pendingArqLinkTimeout = false;
         stopCallingUi();
         if (hasActiveArq()) {
             debugLog.info("CONNECTED ignored — ARQ already active: " + peerTitle);
             return;
         }
         openArqWindowForLink(peerTitle);
+        pollOpmodeAfterCalling();
+    }
+
+    /**
+     * {@code $50 Timeout}. Linked ARQ: remember it; {@code DISCONNECTED:} follows.
+     * Calling (no ARQ window): call no-answer — same strip as the 60 s fallback;
+     * TNC already stopped, so do not Abort and do not expect {@code DISCONNECTED:}.
+     */
+    private void onArqLinkTimeout() {
+        if (hasActiveArq()) {
+            pendingArqLinkTimeout = true;
+            debugLog.info("Link Timeout");
+            return;
+        }
+        if (calling) {
+            showCallNoAnswer("Call Timeout ($50)");
+            return;
+        }
+        debugLog.info("Timeout ignored — no active ARQ, not calling");
+    }
+
+    /**
+     * {@code $50 DISCONNECTED: <call>}. Marks the ARQ window dead. If a {@code Timeout}
+     * frame preceded it, the notice says Timeout; otherwise a normal disconnect.
+     */
+    private void onArqLinkDisconnected(String peer) {
+        boolean timeout = pendingArqLinkTimeout;
+        pendingArqLinkTimeout = false;
+        if (calling) {
+            stopCallingUi();
+        }
+        if (!hasActiveArq()) {
+            debugLog.info("DISCONNECTED ignored — no active ARQ: " + peer);
+            pollOpmodeAfterCalling();
+            return;
+        }
+        ConnectionWindow arq = activeArqWindow;
+        String notice = timeout
+                ? "ARQ ended — Timeout (" + peer + ")."
+                : "ARQ ended — DISCONNECTED: " + peer + ".";
+        markArqDead(arq);
+        noticeArq(arq, notice);
+        debugLog.info(notice);
         pollOpmodeAfterCalling();
     }
 
@@ -1568,25 +1977,40 @@ public final class AppController {
     }
 
     private void stopCallingUi() {
+        stopCallingState();
+        if (mainWindow != null) {
+            mainWindow.setCallingDisplay(null);
+        }
+    }
+
+    private void stopCallingState() {
         callingEpoch.incrementAndGet();
         calling = false;
         callingCallsign = null;
         if (callingTimer != null) {
             callingTimer.stop();
         }
-        if (mainWindow != null) {
-            mainWindow.setCallingDisplay(null);
-        }
     }
 
-    private void onCallingTimeout() {
+    /**
+     * {@code <call> no answer} on the Calling strip; hide Cancel. Does not Abort.
+     * Used for {@code $50 Timeout} while calling and for the 60 s local fallback.
+     */
+    private void showCallNoAnswer(String reason) {
         if (!calling) {
             return;
         }
         String call = callingCallsign;
-        stopCallingUi();
-        debugLog.info("Calling timeout (60 s) for " + call);
+        stopCallingState();
+        if (mainWindow != null) {
+            mainWindow.setCallNoAnswerDisplay(call);
+        }
+        debugLog.info(reason + " — " + call + " no answer");
         pollOpmodeAfterCalling();
+    }
+
+    private void onCallingTimeout() {
+        showCallNoAnswer("Calling timeout (60 s)");
     }
 
     private void failCallingIfCurrent(int epoch, String message) {
@@ -1694,6 +2118,7 @@ public final class AppController {
 
     public void markArqDead(ConnectionWindow window) {
         if (window == activeArqWindow) {
+            pendingArqLinkTimeout = false;
             activeArqWindow = null;
             deadArqWindows.add(window);
             window.setSessionActive(false);

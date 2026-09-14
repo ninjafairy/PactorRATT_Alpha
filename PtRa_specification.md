@@ -27,7 +27,7 @@ The TNC is not replaced. The app does not implement Pactor on the wire. It does 
 
 ### 1.4 Success test (Alpha)
 
-Station A and Station B each run PactorRATT_Alpha on a supported PK-232. A configures callsign and COM, connects to B (or accepts inbound). Typed lines flow according to IRS/ISS rules. Transcript shows remote text in black and local outbound as grey then green when confirmation is known. Listen/FEC paths work. Chat can be saved. Debug Host I/O can be logged. The uberjar runs portably on Windows 10+, macOS, and Linux with Java 21.
+Station A and Station B each run PactorRATT_Alpha on a supported PK-232. A configures callsign and COM, connects to B (or accepts inbound). Typed lines flow according to IRS/ISS rules. Transcript shows remote text in black and local outbound in grey. Listen/FEC paths work. Chat can be saved. Debug Host I/O can be logged. The uberjar runs portably on Windows 10+, macOS, and Linux with Java 21.
 
 ---
 
@@ -58,6 +58,7 @@ Station A and Station B each run PactorRATT_Alpha on a supported PK-232. A confi
 - Mobile apps
 - Non-PK-232 TNCs / generic TNC abstraction layer
 - EAS-driven per-character color confirmation (Alpha uses EAS off)
+- Grey→green / TX-empty confirm coloring (local outbound stays grey)
 - Morse-ID disconnect (`CTRL-F`)
 - Automatic `AAB` programming
 - Spring or other heavy DI frameworks
@@ -69,7 +70,6 @@ Station A and Station B each run PactorRATT_Alpha on a supported PK-232. A confi
 |---|---|
 | OPMODE / detailed status-bar field parsing | Docs deferred |
 | Host link-block formats for incoming ARQ string | To be captured from hardware |
-| TNC TX-empty + idle signal for grey→green | To be figured out later |
 | `Rcve` (`RC`) as “disconnect immediately” | Must be confirmed manually on Pactor |
 | Mentioned-list regex beyond planned patterns | Need monitor samples |
 | Settings → TNC large parameter editor | Phase 2 growth |
@@ -175,7 +175,7 @@ All UI updates from Host events use `SwingUtilities.invokeLater`. Never block th
 - `HostSession` — port + parser + send API
 - `PactorController` — Pactor-specific commands and actions
 - `CompatChecker`
-- `OutboundPipeline` — compose commit, App TX buffer, flush, grey/green transcript coordination
+- `OutboundPipeline` — compose commit, App TX buffer, flush, grey transcript coordination
 - `ConfigStore`, `BuddyStore`, `DebugLog`
 
 ---
@@ -263,8 +263,7 @@ Exactly one **active air mode** at a time:
 - On window close: **discard** unless user previously used Save chat.
 - Save chat: dump transcript to a user-chosen file (end of session or anytime).
 - Colors (transcript only):
-  - **Grey** — local text accepted by TNC, not yet confirmed as fully sent/idle
-  - **Green** — local text confirmed
+  - **Grey** — local outbound text (stays grey; no confirm recolor)
   - **Black** — remote station text and all other transcript text
 
 **Compose**
@@ -356,20 +355,18 @@ Close all connection windows (dead ones included) and exit. Unsaved transcripts 
 - Auto-drain: flush **entire** App TX buffer to the TNC as Host data blocks on channel 0.
 - Immediately move that text into the transcript as **grey**.
 - Additional commits while still sending append into the **same open grey outbound block** (not separate pending blocks).
-- When the app later detects **TNC TX buffer empty** and **TNC idle** (mechanism TBD): recolor that grey block to **green**.
-- Until that detector exists: leave text grey (acceptable Alpha stub).
+- Local outbound stays grey. Do not recolor to green on TX-empty / idle.
 
 **EAS**
 
 - Alpha forces **EAS OFF**.
-- Do not implement char-by-char EAS coloring in Alpha.
-- Future: optional EAS path may refine confirmation; not required now.
+- Do not implement char-by-char EAS coloring or grey→green confirm coloring.
 
 ### 8.4 Listen / FEC send path
 
 1. User commits text in Listen window (same commit modes).
 2. App enters unproto via `PTSend` (`PD`) — UI shows FEC.
-3. Same grey→(later) green pipeline against TNC TX.
+3. Same grey outbound pipeline against TNC TX (no green recolor).
 4. End unproto TX with RECEIVE character `<CTRL-D>` (default `RE` mapping) so TNC returns to receive / Listen posture.
 5. Because PK-232 is simplex in this state, inbound ARQ cannot occur during FEC/unproto TX.
 
@@ -604,15 +601,27 @@ User-saved; not derived from air.
 
 ### 13.2 Heard
 
-- From Listen/monitor text.
-- Alpha pattern: callsign following the text ` de` (case handling per implementation; prefer practical amateur callsign matcher).
-- Show raw callsign token (including rare `-N` if present).
+- Listen inbound lines only (scan on newline after `$08`; not local grey).
+- Whole-word `de ` (d, e, space) immediately followed by a matching callsign.
+- Callsign: 1–2 letters, 1 digit, 1–3 letters, then space or end of line. No SSID. Own `ML` excluded.
+- Most recent at top; no duplicates; persist `config/heard.json`; cap 12.
 
 ### 13.3 Mentioned
 
-- Stations being called by someone else (calling station may be unknown).
-- Exact patterns TBD; document in `docs/` when samples exist.
-- Until then: section can exist empty or with conservative stubs.
+- Same callsign pattern on the same completed inbound line, without a leading whole-word `de `.
+- A line may add to both lists. Lists are independent (a call may sit on both).
+- Persist `config/mentioned.json`; cap 12; most recent at top.
+
+### 13.4 `<C>onnect` frames
+
+- Listen inbound only (same newline / `$08` scan). Air: FEC/PTL beacons, not ARQ.
+- Line shape: `?>` + token + ` <C>`. `<C>` means connect/calling frame, **not** a complete copy.
+- Token is raw text between the wrappers (may be `W` / `WA` / `WA6HVC`). Never Heard or Mentioned.
+- Session-only list (no `connect.json`). Cap 12. Own `ML` excluded.
+- Promote when either gate passes:
+  - three identical connect tokens in a row, and that token is a valid callsign; or
+  - last 5 connect frames: the two longest tokens are identical, every other token is a leading prefix of that longest call, and the longest is a valid callsign.
+- Truncations like `WA` / `WA6` / `W` around two `WA6HVC` copies pass as `WA6HVC`. A foreign call (`KE6O`) in that window fails. Two identical incomplete longest calls (`WA6HV`) may pass as that shorter call.
 
 ---
 
@@ -644,7 +653,7 @@ User-saved; not derived from air.
 3. **Serial + Host framer** — open port, enter Host, `HPOLL OFF`, reader loop, debug log.
 4. **Compat + init** — fingerprint policy, callsigns, `Pt`, defaults.
 5. **Pactor flows** — Listen, Connect, FEC/unproto, control buttons that are not stubbed.
-6. **Status + confirmation** — fill deferred detectors (TX empty/idle, OPMODE, incoming ARQ parse).
+6. **Status** — fill deferred detectors (OPMODE, incoming ARQ / `$50` parse). No grey→green.
 
 Do not implement stubbed protocol behaviors by guessing.
 
@@ -661,8 +670,7 @@ Do not implement stubbed protocol behaviors by guessing.
 - [ ] ARQ connect from field or list; one active ARQ max; dead windows retained
 - [ ] Line and Message commit modes work
 - [ ] IRS holds text in App TX buffer only
-- [ ] ISS flushes to TNC and shows grey in transcript
-- [ ] Green recolor when confirmation logic available (else remains grey)
+- [ ] ISS flushes to TNC and shows grey in transcript (stays grey)
 - [ ] FEC UI uses `PTSend` internally
 - [ ] Handover / seize / abort / disconnect-after-clear / with-text actions match §10
 - [ ] Disconnect-immediately and Rcve not falsely implemented

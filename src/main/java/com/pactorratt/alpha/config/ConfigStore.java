@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -20,9 +23,13 @@ public final class ConfigStore {
             ]
             """;
 
+    public static final int MONITOR_LIST_CAP = 12;
+
     private final Path configDir;
     private final Path settingsFile;
     private final Path buddiesFile;
+    private final Path heardFile;
+    private final Path mentionedFile;
 
     public static Path configDir(Path portableRoot) {
         return portableRoot.resolve("config");
@@ -32,6 +39,8 @@ public final class ConfigStore {
         this.configDir = configDir(portableRoot);
         this.settingsFile = configDir.resolve("settings.json");
         this.buddiesFile = configDir.resolve("buddies.json");
+        this.heardFile = configDir.resolve("heard.json");
+        this.mentionedFile = configDir.resolve("mentioned.json");
     }
 
     public Path configDir() {
@@ -44,6 +53,70 @@ public final class ConfigStore {
 
     public Path buddiesFile() {
         return buddiesFile;
+    }
+
+    public Path heardFile() {
+        return heardFile;
+    }
+
+    public Path mentionedFile() {
+        return mentionedFile;
+    }
+
+    /** Missing file → empty list. Most-recent-first. Caps at {@link #MONITOR_LIST_CAP}. */
+    public List<String> loadMonitorList(Path file) {
+        List<String> calls = new ArrayList<>();
+        if (file == null || !Files.isRegularFile(file)) {
+            return calls;
+        }
+        try {
+            String text = Files.readString(file, StandardCharsets.UTF_8).trim();
+            if (text.startsWith("[")) {
+                String body = text.substring(1, text.endsWith("]") ? text.length() - 1 : text.length());
+                for (String part : body.split(",")) {
+                    String s = part.trim();
+                    if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
+                        appendMonitorCall(calls, s.substring(1, s.length() - 1));
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+            return calls;
+        }
+        return calls;
+    }
+
+    public void saveMonitorList(Path file, List<String> calls) throws IOException {
+        Files.createDirectories(file.getParent());
+        StringBuilder sb = new StringBuilder();
+        sb.append("[\r\n");
+        List<String> capped = new ArrayList<>();
+        if (calls != null) {
+            for (String call : calls) {
+                appendMonitorCall(capped, call);
+            }
+        }
+        for (int i = 0; i < capped.size(); i++) {
+            sb.append("  \"").append(escape(capped.get(i))).append('"');
+            if (i + 1 < capped.size()) {
+                sb.append(',');
+            }
+            sb.append("\r\n");
+        }
+        sb.append("]\r\n");
+        Files.writeString(file, sb.toString(), StandardCharsets.UTF_8);
+    }
+
+    /** Keeps existing order; skips blanks and duplicates; stops at {@link #MONITOR_LIST_CAP}. */
+    private static void appendMonitorCall(List<String> calls, String raw) {
+        if (raw == null) {
+            return;
+        }
+        String call = raw.trim().toUpperCase(Locale.ROOT);
+        if (call.isEmpty() || calls.contains(call) || calls.size() >= MONITOR_LIST_CAP) {
+            return;
+        }
+        calls.add(call);
     }
 
     public AppConfig load() {
@@ -64,6 +137,68 @@ public final class ConfigStore {
     public void save(AppConfig config) throws IOException {
         Files.createDirectories(settingsFile.getParent());
         Files.writeString(settingsFile, toJson(config), StandardCharsets.UTF_8);
+    }
+
+    /** Existing {@code buddies.json} order; empty if missing after {@link #ensureBuddiesFile}. */
+    public List<String> loadBuddyList() {
+        List<String> calls = new ArrayList<>();
+        if (!Files.isRegularFile(buddiesFile)) {
+            return calls;
+        }
+        try {
+            String text = Files.readString(buddiesFile, StandardCharsets.UTF_8).trim();
+            if (text.startsWith("[")) {
+                String body = text.substring(1, text.endsWith("]") ? text.length() - 1 : text.length());
+                for (String part : body.split(",")) {
+                    String s = part.trim();
+                    if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
+                        appendBuddyCall(calls, s.substring(1, s.length() - 1));
+                    }
+                }
+            } else {
+                for (String line : text.split("\\R")) {
+                    String s = line.trim();
+                    if (!s.isEmpty() && !s.startsWith("#")) {
+                        appendBuddyCall(calls, s);
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+            return calls;
+        }
+        return calls;
+    }
+
+    public void saveBuddyList(List<String> calls) throws IOException {
+        Files.createDirectories(buddiesFile.getParent());
+        List<String> unique = new ArrayList<>();
+        if (calls != null) {
+            for (String call : calls) {
+                appendBuddyCall(unique, call);
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("[\r\n");
+        for (int i = 0; i < unique.size(); i++) {
+            sb.append("  \"").append(escape(unique.get(i))).append('"');
+            if (i + 1 < unique.size()) {
+                sb.append(',');
+            }
+            sb.append("\r\n");
+        }
+        sb.append("]\r\n");
+        Files.writeString(buddiesFile, sb.toString(), StandardCharsets.UTF_8);
+    }
+
+    private static void appendBuddyCall(List<String> calls, String raw) {
+        if (raw == null) {
+            return;
+        }
+        String call = raw.trim().toUpperCase(Locale.ROOT);
+        if (call.isEmpty() || calls.contains(call)) {
+            return;
+        }
+        calls.add(call);
     }
 
     /** Creates {@code config/buddies.json} with defaults if the file is missing (CRLF endings). */

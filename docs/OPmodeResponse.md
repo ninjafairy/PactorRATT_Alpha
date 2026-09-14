@@ -19,6 +19,7 @@ The computer can use the OPMODE command (`OP`) to interrogate the PK-232 for inf
 | Pactor Listen (`PN`) | SOH `$4F` O P P N *w* *x* *u* `?` *s* `?` ETB |
 | Pactor Standby (`Pt`) | SOH `$4F` O P P t `$30` *x* *u* `?` *s* `?` ETB |
 | Pactor ARQ (`PG` / PTConn) | SOH `$4F` O P P G *w* *x* *u* `?` *s* `?` ETB |
+| Pactor FEC (`PD` / PTSend) | SOH `$4F` O P P D *w* *x* *u* `?` *s* `?` ETB |
 
 `$30` after `Pt` is always the standby marker for that mode. It is not the *w* status byte.
 
@@ -33,7 +34,7 @@ Identify an OPMODE response as CTL `$4F` followed by the characters `OP`, with m
 
 ## Field *w* (link / mode status)
 
-Used on ARQ, ARQ Listen, FEC, SELFEC, Pactor Listen, and Pactor ARQ. Not used on FAX.
+Used on ARQ, ARQ Listen, FEC, SELFEC, Pactor Listen, Pactor ARQ, and Pactor FEC (`PD`). Not used on FAX.
 
 | *w* | Meaning |
 |---|---|
@@ -52,7 +53,7 @@ FAX is the only OPMODE reply that has a *v* byte. Meaning to be added later.
 
 ## Field *u* (baud rate)
 
-Pactor OPMODE replies (`PN`, `Pt`, `PG`). First of the four trailer bytes after *x*. Hardware capture, not the Host manual.
+Pactor OPMODE replies (`PN`, `Pt`, `PG`, `PD`). First of the four trailer bytes after *x*. Hardware capture, not the Host manual.
 
 | *u* | Baud Rate |
 |---|---|
@@ -63,7 +64,7 @@ ASCII `'1'` / `'2'`. Matches Pactor I auto speed and the `PTS 1` / `PTS 2` selec
 
 ## Field *s* (longpath connect)
 
-Pactor OPMODE replies (`PN`, `Pt`, `PG`). Third of the four trailer bytes after *x*. Hardware capture, not the Host manual.
+Pactor OPMODE replies (`PN`, `Pt`, `PG`, `PD`). Third of the four trailer bytes after *x*. Hardware capture, not the Host manual.
 
 | *s* | Meaning |
 |---|---|
@@ -78,7 +79,7 @@ For mode Morse, *yz* = present receive Morse code speed in words per minute.
 
 ## Pactor signatures (hardware capture)
 
-Pactor is **not** the AMTOR `AM` / `AC` / `AL` / `FE` rows. Host OPMODE uses the Pactor mnemonics themselves: `PN` (PTList), `Pt` (PACTor standby; case-sensitive `t`), and `PG` (PTConn ARQ). Chapter 4 rows above stay as the original Host reference; Pactor rows are from hardware capture.
+Pactor is **not** the AMTOR `AM` / `AC` / `AL` / `FE` rows. Host OPMODE uses the Pactor mnemonics themselves: `PN` (PTList), `Pt` (PACTor standby; case-sensitive `t`), `PG` (PTConn ARQ), and `PD` (PTSend unproto / UI FEC). Chapter 4 rows above stay as the original Host reference; Pactor rows are from hardware capture.
 
 Captured wire bytes:
 
@@ -87,22 +88,25 @@ Captured wire bytes:
 | Pactor Listen (`PN`) | `01 4F 4F 50 50 4E 31 52 31 30 30 30 17` |
 | Pactor Standby (`Pt`) | `01 4F 4F 50 50 74 30 52 31 30 30 30 17` |
 | Pactor ARQ (`PG`) | `01 4F 4F 50 50 47 34 53 32 30 30 30 17` |
+| Pactor FEC sending (`PD`, 100 baud) | `01 4F 4F 50 50 44 34 53 31 30 30 30 17` |
+| Pactor FEC idle before end TX (`PD`) | `01 4F 4F 50 50 44 33 53 31 30 30 30 17` |
 
 Layout after `OP`:
 
 - Listen: `P N` *w* *x* *u* `?` *s* `?`
 - Standby: `P t` `$30` *x* *u* `?` *s* `?`
 - ARQ: `P G` *w* *x* *u* `?` *s* `?`
+- FEC / unproto: `P D` *w* *x* *u* `?` *s* `?`
 
 Standby and listen captures had *x* = `R` (`$52`). Listen *w* was `$31` (Phasing). The ARQ example above is Traffic ISS at 200 baud (`PG4S2000`); full `PG` sequence is in `docs/pgmesg status.txt`.
 
-On **`Pt`**, `$30` is a fixed standby marker, not the *w* sequence. Linked ARQ uses tag `PG`; listen uses `PN`. Unproto / FEC (`PD` / PTSend) is not yet captured.
+FEC (`PD`) captures above are 100 baud Traffic ISS (`PD4S1000`) while sending, then Idle ISS (`PD3S1000`) immediately before end TX. *u* (`$31`/`$32`) follows baud (100/200) the same as `PN`/`Pt`/`PG`. After CTRL-D is consumed, OPMODE leaves `PD`: older firmware → `Pt` (app sends `PN` if Listen is still on); later firmware → `PN` on its own (app does nothing). Do not treat AMTOR `FE` as Pactor FEC.
 
-Still needed (do not invent rows): OPMODE while **unproto / FEC** (`PD` / PTSend).
+On **`Pt`**, `$30` is a fixed standby marker, not the *w* sequence. Linked ARQ uses tag `PG`; listen uses `PN`; unproto uses `PD`.
 
 ### Remaining trailer bytes
 
-Pactor OPMODE replies (`PN`, `Pt`, `PG`) still have two unnamed payload bytes (2 and 4 of the four-byte trailer). They are ASCII digits. Parser/display should keep them as a raw trailer until named.
+Pactor OPMODE replies (`PN`, `Pt`, `PG`, `PD`) still have two unnamed payload bytes (2 and 4 of the four-byte trailer). They are ASCII digits. Parser/display should keep them as a raw trailer until named.
 
 | Trailer byte | Observed | Meaning |
 |---|---|---|

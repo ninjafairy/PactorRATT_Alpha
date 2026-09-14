@@ -13,6 +13,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
@@ -34,10 +35,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 public final class MainWindow extends JFrame {
@@ -45,6 +42,7 @@ public final class MainWindow extends JFrame {
     private static final String NODE_BUDDIES = "Buddies";
     private static final String NODE_HEARD = "Heard";
     private static final String NODE_MENTIONED = "Mentioned";
+    private static final String NODE_CONNECT = "<C>onnect";
 
     private final AppController app;
 
@@ -62,11 +60,14 @@ public final class MainWindow extends JFrame {
     private final DefaultMutableTreeNode buddiesNode = new DefaultMutableTreeNode(NODE_BUDDIES);
     private final DefaultMutableTreeNode heardNode = new DefaultMutableTreeNode(NODE_HEARD);
     private final DefaultMutableTreeNode mentionedNode = new DefaultMutableTreeNode(NODE_MENTIONED);
+    private final DefaultMutableTreeNode connectNode = new DefaultMutableTreeNode(NODE_CONNECT);
     private final DefaultTreeModel treeModel = new DefaultTreeModel(root);
     private final JTree stationTree = new JTree(treeModel);
 
     private boolean suppressListenCallback;
     private boolean suppressExpandPersist;
+    /** Session-only; not saved in settings.json. */
+    private boolean connectExpanded = true;
 
     public MainWindow(AppController app) {
         super("PactorRATT_Alpha");
@@ -74,10 +75,11 @@ public final class MainWindow extends JFrame {
         root.add(buddiesNode);
         root.add(heardNode);
         root.add(mentionedNode);
+        root.add(connectNode);
         buildMenu();
         buildUi();
         loadBuddies();
-        loadPlaceholderBranches();
+        refreshMonitorLists();
         applyExpandState();
         refreshConnectionState();
         refreshModeLabel();
@@ -131,6 +133,23 @@ public final class MainWindow extends JFrame {
         callingLabel.setText(show ? "Calling " + callsign.trim() + "…" : "");
         callingLabel.setVisible(show);
         cancelCallingButton.setVisible(show);
+        statusRowRevalidate();
+    }
+
+    /**
+     * {@code <call> no answer} after {@code $50 Timeout} while calling, or the 60 s
+     * local fallback. Cancel is hidden; a later {@code $50} CONNECTED still opens ARQ.
+     * Cleared by {@link #setCallingDisplay}.
+     */
+    public void setCallNoAnswerDisplay(String callsign) {
+        String call = callsign == null ? "" : callsign.trim();
+        if (call.isEmpty()) {
+            setCallingDisplay(null);
+            return;
+        }
+        callingLabel.setText(call + " no answer");
+        callingLabel.setVisible(true);
+        cancelCallingButton.setVisible(false);
         statusRowRevalidate();
     }
 
@@ -240,7 +259,7 @@ public final class MainWindow extends JFrame {
         stationTree.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() != 2) {
+                if (e.getClickCount() != 2 || e.isPopupTrigger()) {
                     return;
                 }
                 TreePath path = stationTree.getPathForLocation(e.getX(), e.getY());
@@ -258,7 +277,8 @@ public final class MainWindow extends JFrame {
                 String category = String.valueOf(parentNode.getUserObject());
                 if (!NODE_BUDDIES.equals(category)
                         && !NODE_HEARD.equals(category)
-                        && !NODE_MENTIONED.equals(category)) {
+                        && !NODE_MENTIONED.equals(category)
+                        && !NODE_CONNECT.equals(category)) {
                     return;
                 }
                 String call = String.valueOf(node.getUserObject());
@@ -267,6 +287,16 @@ public final class MainWindow extends JFrame {
                 }
                 callsignField.setText(call);
                 app.requestConnect(call);
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                maybeShowStationPopup(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                maybeShowStationPopup(e);
             }
         });
         stationTree.addTreeExpansionListener(new TreeExpansionListener() {
@@ -314,13 +344,121 @@ public final class MainWindow extends JFrame {
         add(bottom, BorderLayout.SOUTH);
     }
 
-    private void loadPlaceholderBranches() {
-        heardNode.removeAllChildren();
-        mentionedNode.removeAllChildren();
-        heardNode.add(new DefaultMutableTreeNode("(heard list fills from Listen monitor)"));
-        mentionedNode.add(new DefaultMutableTreeNode("(mentioned patterns TBD)"));
-        treeModel.reload(heardNode);
-        treeModel.reload(mentionedNode);
+    /** Heard / Mentioned / &lt;C&gt;onnect leaves; most recent first. Double-click still Connects. */
+    public void refreshMonitorLists() {
+        fillCallBranch(heardNode, app.heardCalls());
+        fillCallBranch(mentionedNode, app.mentionedCalls());
+        fillCallBranch(connectNode, app.connectCalls());
+        SwingUtilities.invokeLater(this::applyExpandState);
+    }
+
+    public void refreshBuddies() {
+        loadBuddies();
+    }
+
+    private void maybeShowStationPopup(MouseEvent e) {
+        if (!e.isPopupTrigger()) {
+            return;
+        }
+        TreePath path = stationTree.getPathForLocation(e.getX(), e.getY());
+        if (path == null) {
+            return;
+        }
+        stationTree.setSelectionPath(path);
+        Object last = path.getLastPathComponent();
+        if (!(last instanceof DefaultMutableTreeNode node)) {
+            return;
+        }
+        JPopupMenu menu = stationPopupFor(node);
+        if (menu != null) {
+            menu.show(stationTree, e.getX(), e.getY());
+        }
+    }
+
+    private JPopupMenu stationPopupFor(DefaultMutableTreeNode node) {
+        String label = String.valueOf(node.getUserObject());
+        if (NODE_HEARD.equals(label)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem clear = new JMenuItem("Clear");
+            clear.addActionListener(ev -> app.clearHeardList());
+            menu.add(clear);
+            return menu;
+        }
+        if (NODE_MENTIONED.equals(label)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem clear = new JMenuItem("Clear");
+            clear.addActionListener(ev -> app.clearMentionedList());
+            menu.add(clear);
+            return menu;
+        }
+        if (NODE_CONNECT.equals(label)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem clear = new JMenuItem("Clear");
+            clear.addActionListener(ev -> app.clearConnectList());
+            menu.add(clear);
+            return menu;
+        }
+        Object parent = node.getParent();
+        if (!(parent instanceof DefaultMutableTreeNode parentNode) || !node.isLeaf()) {
+            return null;
+        }
+        if (label.startsWith("(")) {
+            return null;
+        }
+        String category = String.valueOf(parentNode.getUserObject());
+        if (NODE_HEARD.equals(category)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem addBuddy = new JMenuItem("Add buddy");
+            addBuddy.addActionListener(ev -> app.addBuddy(label));
+            JMenuItem clear = new JMenuItem("Clear");
+            clear.addActionListener(ev -> app.clearHeardCall(label));
+            menu.add(addBuddy);
+            menu.add(clear);
+            return menu;
+        }
+        if (NODE_MENTIONED.equals(category)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem addBuddy = new JMenuItem("Add buddy");
+            addBuddy.addActionListener(ev -> app.addBuddy(label));
+            JMenuItem clear = new JMenuItem("Clear");
+            clear.addActionListener(ev -> app.clearMentionedCall(label));
+            menu.add(addBuddy);
+            menu.add(clear);
+            return menu;
+        }
+        if (NODE_CONNECT.equals(category)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem addBuddy = new JMenuItem("Add buddy");
+            addBuddy.addActionListener(ev -> app.addBuddy(label));
+            JMenuItem clear = new JMenuItem("Clear");
+            clear.addActionListener(ev -> app.clearConnectCall(label));
+            menu.add(addBuddy);
+            menu.add(clear);
+            return menu;
+        }
+        if (NODE_BUDDIES.equals(category)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem top = new JMenuItem("Move to top");
+            top.addActionListener(ev -> app.moveBuddyToTop(label));
+            JMenuItem remove = new JMenuItem("Remove");
+            remove.addActionListener(ev -> app.removeBuddy(label));
+            menu.add(top);
+            menu.add(remove);
+            return menu;
+        }
+        return null;
+    }
+
+    private void fillCallBranch(DefaultMutableTreeNode branch, List<String> calls) {
+        branch.removeAllChildren();
+        if (calls == null || calls.isEmpty()) {
+            treeModel.reload(branch);
+            return;
+        }
+        for (String call : calls) {
+            branch.add(new DefaultMutableTreeNode(call));
+        }
+        treeModel.reload(branch);
     }
 
     private void applyExpandState() {
@@ -329,6 +467,7 @@ public final class MainWindow extends JFrame {
         setExpanded(buddiesNode, c.isBuddiesExpanded());
         setExpanded(heardNode, c.isHeardExpanded());
         setExpanded(mentionedNode, c.isMentionedExpanded());
+        setExpanded(connectNode, connectExpanded);
         suppressExpandPersist = false;
     }
 
@@ -349,37 +488,14 @@ public final class MainWindow extends JFrame {
         c.setBuddiesExpanded(stationTree.isExpanded(new TreePath(buddiesNode.getPath())));
         c.setHeardExpanded(stationTree.isExpanded(new TreePath(heardNode.getPath())));
         c.setMentionedExpanded(stationTree.isExpanded(new TreePath(mentionedNode.getPath())));
+        connectExpanded = stationTree.isExpanded(new TreePath(connectNode.getPath()));
     }
 
     private void loadBuddies() {
         buddiesNode.removeAllChildren();
-        Path file = app.configStore().buddiesFile();
-        List<String> calls = new ArrayList<>();
         try {
             app.configStore().ensureBuddiesFile();
-        } catch (Exception e) {
-            buddiesNode.add(new DefaultMutableTreeNode("(failed to create buddies.json)"));
-            treeModel.reload(buddiesNode);
-            return;
-        }
-        try {
-            String text = Files.readString(file, StandardCharsets.UTF_8).trim();
-            if (text.startsWith("[")) {
-                String body = text.substring(1, text.endsWith("]") ? text.length() - 1 : text.length());
-                for (String part : body.split(",")) {
-                    String s = part.trim();
-                    if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
-                        calls.add(s.substring(1, s.length() - 1).toUpperCase());
-                    }
-                }
-            } else {
-                for (String line : text.split("\\R")) {
-                    String s = line.trim();
-                    if (!s.isEmpty() && !s.startsWith("#")) {
-                        calls.add(s.toUpperCase());
-                    }
-                }
-            }
+            List<String> calls = app.configStore().loadBuddyList();
             if (calls.isEmpty()) {
                 buddiesNode.add(new DefaultMutableTreeNode("(no buddies yet)"));
             } else {

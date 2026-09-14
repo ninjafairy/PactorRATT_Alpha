@@ -2,7 +2,7 @@ package com.pactorratt.alpha.hostmode;
 
 /**
  * Host {@code OP} (OPMODE) detect + decode per {@code docs/OPmodeResponse.md}.
- * Pactor uses its own tags ({@code PN}, {@code Pt}, {@code PG}); AMTOR {@code AM}/{@code AC}/{@code AL}/{@code FE}
+ * Pactor uses its own tags ({@code PN}, {@code Pt}, {@code PG}, {@code PD}); AMTOR {@code AM}/{@code AC}/{@code AL}/{@code FE}
  * are not Pactor.
  */
 public final class OpmodeParser {
@@ -70,6 +70,7 @@ public final class OpmodeParser {
             case "PN" -> decodePactorListen(p);
             case "Pt" -> decodePactorStandby(p);
             case "PG" -> decodePactorArq(p);
+            case "PD" -> decodePactorFec(p);
             default -> new Decoded("Unknown (" + tag + ")", null, null, null, false, null);
         };
     }
@@ -115,33 +116,82 @@ public final class OpmodeParser {
         return new Decoded("FAX", null, tx, null, false, null);
     }
 
-    /** Hardware: {@code OP PN w x ? ? ? ?}. */
+    /** Hardware: {@code OP PN w x} *u* {@code ?} *s* {@code ?}. */
     private static Decoded decodePactorListen(byte[] p) {
         return decodePactorWxTrailer("Pactor Listen", p);
     }
 
     /**
-     * Hardware: {@code OP PG w x ? ? ? ?}. Linked ARQ ({@code PTConn}); *w* is live link status.
+     * Hardware: {@code OP PG w x} *u* {@code ?} *s* {@code ?}. Linked ARQ ({@code PTConn}); *w* is live link status.
      */
     private static Decoded decodePactorArq(byte[] p) {
         return decodePactorWxTrailer("Pactor ARQ", p);
     }
 
-    /** Pactor listen / ARQ: *w* then *x* then four trailer bytes. */
+    /**
+     * Hardware: {@code OP PD w x} *u* {@code ?} *s* {@code ?}. Unproto / PTSend (UI FEC).
+     * Traffic ({@code $34}) while sending; Idle ({@code $33}) immediately before end TX.
+     * Not AMTOR {@code FE}.
+     */
+    private static Decoded decodePactorFec(byte[] p) {
+        return decodePactorWxTrailer("Pactor FEC", p);
+    }
+
+    /** Pactor listen / ARQ / FEC: *w* then *x* then four trailer bytes (u ? s ?). */
     private static Decoded decodePactorWxTrailer(String mode, byte[] p) {
         String w = p.length > 4 ? wLabel(p[4] & 0xFF) : null;
         Boolean tx = p.length > 5 ? xr(p[5]) : null;
         boolean standby = w != null && w.equals("Standby");
-        return new Decoded(mode, w, tx, null, standby, mysteryBeforeEtb(p));
+        PactorTrailer trailer = parsePactorTrailer(p);
+        return new Decoded(mode, w, tx, null, standby, trailer.hex, trailer.baud, trailer.longpath);
     }
 
     /**
-     * Hardware: {@code OP Pt $30 x ? ? ? ?}. {@code $30} is a fixed Pactor-standby marker,
+     * Hardware: {@code OP Pt $30 x} *u* {@code ?} *s* {@code ?}. {@code $30} is a fixed Pactor-standby marker,
      * not the *w* sequence.
      */
     private static Decoded decodePactorStandby(byte[] p) {
         Boolean tx = p.length > 5 ? xr(p[5]) : null;
-        return new Decoded("Pactor Standby", "Standby", tx, null, true, mysteryBeforeEtb(p));
+        PactorTrailer trailer = parsePactorTrailer(p);
+        return new Decoded("Pactor Standby", "Standby", tx, null, true,
+                trailer.hex, trailer.baud, trailer.longpath);
+    }
+
+    /**
+     * Last four payload bytes: *u* baud, unnamed, *s* longpath, unnamed.
+     * {@code '1'}/{@code '2'} → 100/200 baud; {@code '0'}/{@code '1'} on *s* → normal/longpath.
+     */
+    private static PactorTrailer parsePactorTrailer(byte[] p) {
+        String hex = mysteryBeforeEtb(p);
+        Integer baud = null;
+        Boolean longpath = null;
+        if (p != null && p.length >= 4) {
+            int u = p[p.length - 4] & 0xFF;
+            int s = p[p.length - 2] & 0xFF;
+            if (u == '1') {
+                baud = 100;
+            } else if (u == '2') {
+                baud = 200;
+            }
+            if (s == '0') {
+                longpath = Boolean.FALSE;
+            } else if (s == '1') {
+                longpath = Boolean.TRUE;
+            }
+        }
+        return new PactorTrailer(hex, baud, longpath);
+    }
+
+    private static final class PactorTrailer {
+        final String hex;
+        final Integer baud;
+        final Boolean longpath;
+
+        PactorTrailer(String hex, Integer baud, Boolean longpath) {
+            this.hex = hex;
+            this.baud = baud;
+            this.longpath = longpath;
+        }
     }
 
     /** {@code x = S} transmit, {@code R} receive. Applies to every mode that includes *x*. */
@@ -216,15 +266,26 @@ public final class OpmodeParser {
         public final boolean standby;
         /** Four bytes before ETB as {@code HH HH HH HH}, or {@code null}. */
         public final String mysteryBytesHex;
+        /** Pactor trailer *u*: 100 or 200, or {@code null} if unknown. */
+        public final Integer pactorBaud;
+        /** Pactor trailer *s*: longpath connect, or {@code null} if unknown. */
+        public final Boolean longpath;
 
         public Decoded(String modeName, String wLabel, Boolean transmit, Integer morseWpm,
                        boolean standby, String mysteryBytesHex) {
+            this(modeName, wLabel, transmit, morseWpm, standby, mysteryBytesHex, null, null);
+        }
+
+        public Decoded(String modeName, String wLabel, Boolean transmit, Integer morseWpm,
+                       boolean standby, String mysteryBytesHex, Integer pactorBaud, Boolean longpath) {
             this.modeName = modeName;
             this.wLabel = wLabel;
             this.transmit = transmit;
             this.morseWpm = morseWpm;
             this.standby = standby;
             this.mysteryBytesHex = mysteryBytesHex;
+            this.pactorBaud = pactorBaud;
+            this.longpath = longpath;
         }
 
         public boolean hasDirection() {
@@ -243,9 +304,13 @@ public final class OpmodeParser {
             return "Pactor ARQ".equals(modeName);
         }
 
+        public boolean isPactorFec() {
+            return "Pactor FEC".equals(modeName);
+        }
+
         /**
-         * {@code Mode: Pactor Listen  Phasing  Rx  mystery bytes: 31 30 30 30}
-         * (omit missing *w* / Tx-Rx / WPM / trailer).
+         * {@code Mode: Pactor ARQ  Traffic  Tx  200 baud}
+         * (longpath when field s is {@code $31}; unnamed trailer bytes omitted when u/s parse).
          */
         public String statusLine() {
             StringBuilder sb = new StringBuilder("Mode: ");
@@ -259,7 +324,13 @@ public final class OpmodeParser {
             if (morseWpm != null) {
                 sb.append("  ").append(morseWpm).append(" WPM");
             }
-            if (mysteryBytesHex != null && !mysteryBytesHex.isBlank()) {
+            if (pactorBaud != null) {
+                sb.append("  ").append(pactorBaud).append(" baud");
+            }
+            if (Boolean.TRUE.equals(longpath)) {
+                sb.append("  longpath");
+            }
+            if (pactorBaud == null && mysteryBytesHex != null && !mysteryBytesHex.isBlank()) {
                 sb.append("  mystery bytes: ").append(mysteryBytesHex);
             }
             return sb.toString();

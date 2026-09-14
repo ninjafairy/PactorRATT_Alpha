@@ -17,7 +17,7 @@ In-repo copy of the Cursor architecture plan. Normative product rules also live 
 
 ### Explicit non-goals
 
-File transfer, multi-user, store-and-forward, BBS, Winlink, encryption, network logging, mobile apps, non-PK-232 TNCs, EAS/per-char confirm coloring, Morse-ID disconnect (`CTRL-F`), auto-`AAB`, Spring/DI frameworks, generic TNC abstraction layers.
+File transfer, multi-user, store-and-forward, BBS, Winlink, encryption, network logging, mobile apps, non-PK-232 TNCs, EAS/per-char confirm coloring, grey→green / TX-empty confirm coloring, Morse-ID disconnect (`CTRL-F`), auto-`AAB`, Spring/DI frameworks, generic TNC abstraction layers.
 
 ---
 
@@ -111,7 +111,7 @@ stateDiagram-v2
 ### Main window (AIM-like)
 
 - Menu: File (Exit), Settings (COM / Program / TNC stub), Help (About).
-- Collapsible sections (persist expand state): **Buddies**, **Heard** (` deâ€¦`), **Mentioned** (patterns TBD).
+- Collapsible sections (persist expand state): **Buddies**, **Heard** (whole-word `de CALL`), **Mentioned** (bare CALL), **`<C>onnect`** (session-only connect frames).
 - Callsign field + **Connect**; **Listen** toggle; mode label; TNC-connected indicator.
 
 ### Connection window (Listen or ARQ)
@@ -122,7 +122,7 @@ stateDiagram-v2
 - Control buttons (ARQ set below).
 - **Status bar:** ISS/IRS, TX on/off, FEC/ARQ/IDLE, link speed, link quality, retries, connected callsign, ticker of last N packet-type reports from TNC (fields stubbed until OPMODE/link docs).
 
-**Transcript colors:** grey = sent to TNC not confirmed; green = confirmed; black = remote / other.
+**Transcript colors:** grey = local outbound (stays grey); black = remote / other.
 
 **Link loss:** status + non-modal notice; compose read-only (copy/select-all OK).
 
@@ -137,15 +137,14 @@ flowchart LR
   Commit -->|ISS| FlushToTnc
   AppTxBuffer -->|become_ISS| FlushToTnc
   FlushToTnc --> TranscriptGrey
-  TranscriptGrey -->|TNC_TX_empty_and_idle| TranscriptGreen
 ```
 
 - **Commit mode (Program setting):**
   - **Line:** Enter commits one line â†’ App TX buffer.
   - **Message:** Enter = newline; **Send** commits compose â†’ App TX buffer.
 - **IRS:** lines stay in App TX buffer only (not transcript).
-- **ISS:** flush entire App TX buffer to TNC (`0x20` data blocks); append to transcript **grey**; further ISS commits append to same open grey block; when TNC TX empty + idle (**discovery deferred**), flip block **green**.
-- **EAS:** off for Alpha (no per-char coloring).
+- **ISS:** flush entire App TX buffer to TNC (`0x20` data blocks); append to transcript **grey**; further ISS commits append to same open grey block. Local outbound stays grey (no confirm recolor).
+- **EAS:** off for Alpha (no per-char coloring, no grey→green).
 - **App TX buffer Edit (IRS queued only):** flush composeâ†’buffer, then bufferâ†’compose.
 - Listen **FEC** send: same pipeline via `PTSend`; return to Listen when clear.
 
@@ -237,12 +236,12 @@ Defer implementation details until docs/hardware trials exist:
 
 - OPMODE / status field parsing for status bar
 - Link block text for incoming ARQ detect
-- TNC TX-empty + idle signal for grey→green
 - `Rcve` (`RC`) = disconnect-now?
-- Monitor regex samples beyond ` de` for Heard; Mentioned patterns
+- Heard / Mentioned: Listen inbound only; persist `config/heard.json` + `mentioned.json` (cap 12)
+- `<C>onnect` frames: Listen inbound `?>… <C>`; session-only; never Mentioned
 - Full Settings→TNC parameter push UI
 
-Skeleton may show placeholder status values and leave grey text grey until confirmation logic exists.
+Skeleton may show placeholder status values. Local outbound stays grey (no confirm recolor).
 
 ---
 
@@ -253,7 +252,7 @@ Skeleton may show placeholder status values and leave grey text grey until confi
 3. **Serial + Host framer** â€” enter Host, `HPOLL OFF`, reader loop, debug hex log.
 4. **Compat + init** â€” fingerprint policy, callsign set, `Pt`, defaults.
 5. **Pactor flows** â€” Listen / Connect / Unproto-FEC / control buttons that are not deferred.
-6. **Status + confirm** â€” fill stubs as OPMODE/TX-empty/incoming-ARQ become known.
+6. **Status** — fill stubs as OPMODE / incoming-ARQ become known. No grey→green.
 
 ---
 
@@ -261,7 +260,7 @@ Skeleton may show placeholder status values and leave grey text grey until confi
 
 - Portable uberjar runs on Win10+ / macOS / Linux with Java 21 without a TNC (UI exercisable).
 - With supported PK-232: open COM, pass compat, init, set callsign, Listen and/or ARQ connect.
-- Line/Message commit; IRS hold in App TX buffer; ISS flush â†’ grey transcript (green when confirmation known).
+- Line/Message commit; IRS hold in App TX buffer; ISS flush → grey transcript (stays grey).
 - Control actions per map (except deferred disconnect-now / Morse ID / AAB).
 - Save chat; toggleable raw Host debug log.
 - No non-goal features implemented.

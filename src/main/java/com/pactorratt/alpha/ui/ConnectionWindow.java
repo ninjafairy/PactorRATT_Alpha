@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Listen or ARQ connection window: transcript, App TX buffer, compose, controls, status.
@@ -69,6 +70,8 @@ public final class ConnectionWindow extends JFrame {
     private boolean localIsIrs = true;
     /** Last OPMODE {@code w} word (Idle/Traffic/Standby/…); null until a decoded reply. */
     private String opmodeWLabel;
+    /** Last Pactor OPMODE {@code u} baud (100 or 200); null until a decoded reply. */
+    private Integer opmodeBaud;
     /** True after a non-Standby OPMODE so later Standby can mark the link dead. */
     private boolean opmodeWasLive;
     /**
@@ -80,9 +83,12 @@ public final class ConnectionWindow extends JFrame {
     private volatile boolean handoverLocked;
     private boolean handoverSawIrs;
     private boolean handoverSeenIssSinceLock;
+    /** Current inbound line (after {@code $08}); Listen newline scan for Heard/Mentioned/Connect. */
+    private final StringBuilder inboundLine = new StringBuilder();
+    private Consumer<String> inboundLineListener;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
-        super(kind == Kind.LISTEN ? "PactorRATT_Alpha — Listen" : "PactorRATT_Alpha — " + titleCall);
+        super(kind == Kind.LISTEN ? "PtR FEC" : "PtR ARQ — " + titleCall);
         this.app = app;
         this.kind = kind;
         this.titleCall = titleCall;
@@ -99,13 +105,17 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * Apply OPMODE {@code w} (link phase) and optional {@code x} (ISS/IRS).
+     * Apply OPMODE {@code w} (link phase), optional {@code x} (ISS/IRS), and optional
+     * Pactor {@code u} baud (100/200) for the ARQ status-bar speed slot.
      * {@code x} uses the same S=Tx/ISS R=Rx/IRS table for every mode that includes *x*.
      * IRS→ISS flushes App TX buffer the same as {@link #flushIss}.
      */
-    public void applyOpmodeLink(String wLabel, Boolean transmit) {
+    public void applyOpmodeLink(String wLabel, Boolean transmit, Integer pactorBaud) {
         if (wLabel != null && !wLabel.isBlank()) {
             this.opmodeWLabel = wLabel;
+        }
+        if (pactorBaud != null && (pactorBaud == 100 || pactorBaud == 200)) {
+            this.opmodeBaud = pactorBaud;
         }
         if (transmit != null && sessionActive && kind == Kind.ARQ) {
             boolean wantIrs = !transmit;
@@ -122,7 +132,6 @@ public final class ConnectionWindow extends JFrame {
                     }
                 }
                 flushIss();
-                return;
             } else if (handoverLocked) {
                 handoverSeenIssSinceLock = true;
             }
@@ -207,6 +216,11 @@ public final class ConnectionWindow extends JFrame {
         noticeLabel.setText(text == null || text.isBlank() ? " " : text);
     }
 
+    /** Listen only: completed inbound lines (no trailing newline), after {@code $08}. */
+    public void setInboundLineListener(Consumer<String> listener) {
+        this.inboundLineListener = listener;
+    }
+
     /** Append remote (inbound Host) text to the transcript. EDT-safe. */
     public void appendRemoteText(String text) {
         if (text == null || text.isEmpty()) {
@@ -233,6 +247,9 @@ public final class ConnectionWindow extends JFrame {
         for (int i = 0; i < normalized.length(); i++) {
             char c = normalized.charAt(i);
             if (c == BACKSPACE) {
+                if (inboundLine.length() > 0) {
+                    inboundLine.deleteCharAt(inboundLine.length() - 1);
+                }
                 if (pending.length() > 0) {
                     if (pending.charAt(pending.length() - 1) != '\n') {
                         pending.deleteCharAt(pending.length() - 1);
@@ -240,12 +257,29 @@ public final class ConnectionWindow extends JFrame {
                 } else {
                     backspaceCurrentTranscriptLine();
                 }
+            } else if (c == '\n') {
+                finishInboundLine();
+                pending.append(c);
             } else {
+                inboundLine.append(c);
                 pending.append(c);
             }
         }
         if (pending.length() > 0) {
             appendTranscript(pending.toString(), UiColors.REMOTE_TEXT);
+        }
+    }
+
+    private void finishInboundLine() {
+        if (kind != Kind.LISTEN) {
+            inboundLine.setLength(0);
+            return;
+        }
+        String line = inboundLine.toString();
+        inboundLine.setLength(0);
+        Consumer<String> listener = inboundLineListener;
+        if (listener != null) {
+            listener.accept(line);
         }
     }
 
@@ -629,9 +663,10 @@ public final class ConnectionWindow extends JFrame {
         } else {
             link = "DEAD";
         }
+        String speed = opmodeBaud != null ? String.valueOf(opmodeBaud) : "--";
         statusBar.setText(String.format(
-                " %s | %s | TX OFF | speed -- | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
-                role, link, titleCall, app.isTncConnected() ? "connected" : "offline"));
+                " %s | %s | TX OFF | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
+                role, link, speed, titleCall, app.isTncConnected() ? "connected" : "offline"));
     }
 
     private void attemptClose() {
