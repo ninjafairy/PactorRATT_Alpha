@@ -1,0 +1,62 @@
+DSP-2232 OPERATING MANUAL
+12.6. 4
+12.6. 5
+3/93
+Path Contacts
+If the station you wigh
+the world, i.e. a long
+is used to lengthen the
+station's call with the
+PACTOR OPERATION
+to contact iB more than half way around
+path station, a special connect command
+PACTOR timing.
+In this case, precede the
+exclamation point :
+PTCONN IN7ML
+If your station doesn't link within a period of time determined
+by the ARQTMO conunand (default 60 seconds) , your station will
+stop transmitting.
+LCD Status and Mode Indicators
+The front panel LCD display provides mode and status information at a
+glance. This is especially useful in PACTOR operation. The following
+describes typical status indications you will gee.
+Type "PTCONN (CALLSIGN of distant station) . "
+The status changes to:
+LCD :
+LEDs:
+PACTOR Phase,
+SEND
+This shows that your •transmitter is in the SEND condition, in the
+"connect" part of an ARQ connect call. Your transmitter will key on
+and off sending the distant station's connect request .
+As soon as your DSP—2232 is synchronized with the distant station, the
+status changes to:
+LCD :
+LEDs:
+PACTOR Tfc,
+SEND and CONnected
+Verify the link by typing <Enter> a few times and watch the display.
+Your traffic will now begin to flow as you type characters.
+If EAS
+(Echo As Sent) is set ON, your typed characters are displayed as they
+The status will change back and forth from IDLE and T fc
+are sent.
+whenever your typing pauses and resumes .
+When errors occur on the link and the distant station sends REQUEST
+(request for repeat), the status will show:
+LCD :
+LEDs :
+PACTOR Error and/or Rqst,
+SEND and CONnected
+ERROR :
+REQUEST :
+Your DSP—2232 has detected errors in the signals
+received from the distant station.
+Your DSP—2232 has received a "request for repeat "
+code from the distant station.
+If the link fails and you lose synchronization with the distant
+station the DSP—2232 goes to standby and the status shows:
+LCD :
+PACTOR, stby
+12-7

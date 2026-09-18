@@ -1,0 +1,129 @@
+Paraqraph
+6.2. 1
+6.2. 2
+2.
+6. 3.1
+6.
+6.
+6.5. 1
+6.5. 2
+6.5.3
+6.
+6.5. 5
+6.
+6.
+6. 5.8
+6.
+6.5. 10
+6.5.11
+6.
+7/92
+DSP
+6.1
+6-1
+6.2
+6-1
+6-1
+6-2
+6-2
+6.3
+6-3
+6-3
+6.4
+4.1
+4.2
+6.5
+6-5
+6-5
+6—6
+5.4
+6—6
+6—6
+5.6
+6—6
+5.9
+6.6
+6-8
+6.1
+6-8
+6.2
+6-8
+6.3
+6.4
+6—9
+6.5
+7.1
+7.2
+7.3
+7.4
+. 6-13
+-2232
+OPERATING MANUAL
+CHAPTER
+Overview
+TABLE
+OF
+CONTENTS
+6
+- BAUDOT
+AND
+ASCII
+RTTY
+OPERATION
+Where to operate Baudot and ASCII RTTY
+DSP-2232 Baudot RTTY
+HF Receiver Settings
+Tuning in Baudot and
+Transmitter Adjustments
+Parameter Settings
+ASCII
+Stations
+Going On The Air
+A Typical Baudot RTTY
+Calling CQ
+Answering a CQ
+Baudot RTTY Operating
+Changing Speed
+Contact
+Tips
+Formatting Your Transmitted
+and
+Received
+Sending a Synchronous Idle or DIDDLE
+Echoing Transmitted characters As
+Sending Only Complete WordB
+Operating on the Wrong Sideband
+Framing Errors
+Unshift-on-space (USOS)
+Sent
+Text
+Shifts
+Paqe
+. 6—6
+. 6—6
+Operating at Commercial or VHF Wide
+The CODE Conunand for International
+Copying Encoded •RTTY Transmissions
+ASCII RTTY Operation
+Starting ASCII Operat ion
+ASCII RTTY operating Tips
+Changing ASCII Baud Rates
+RTTY
+RTTY
+Compat ib i I it y.
+Operating at Commercial or
+Wide
+ASCII
+RTTY
+Shifts. ....
+Other RTTY Commands for ASCII Operation
+Simultaneous RTTY and Packet Operation
+Selecting and Loading Modems
+Displaying Received Data
+Switching Between Ports
+More Thoughts on Port Switching
+TOC-5
+6-10
+6-10
+6-11
+6-11

@@ -1,0 +1,130 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+6.7
+6.7. 1
+7/92
+Simultaneous RTTY and Packet Operation
+Your DSP—2232 can operate on Baudot or ASCII RTTY on Radio Port 1 and
+HF or VHF Packet on Radio Port 2 at the same time. With this feature
+you won't miss any local Packet activity while operating RTTY .
+Before the second radio port can be used for packet operation, a
+modem must be loaded that can access the second port. There are two
+types of RTTY modems available. The f irst type is a single port
+modem which disables packet operation on
+listed below.
+MODEM
+MODEM
+MODEM
+MODEM
+The second
+1
+2
+3
+4
+AFSK Modem,
+AFSK Modem,
+AFSK Modem,
+AFSK Modem,
+170 Hz shift,
+170 Hz shift,
+425 Hz shift,
+850 Hz shift,
+radio port 2.
+Mark=2125 Hz,
+Mark=1445 Hz,
+Mark=2125 Hz,
+Mark=2125 Hz,
+These are
+Space-2295 Hz
+Space-1275 Hz
+Space=2550 Hz
+Space=297S Hz
+type of modem is "Dual Ported", that is allows for RTTY
+operation on radio port I and packet operation on radio port 2 at the
+same time .
+The dual port RTTY modems available in the DSP—2232 are
+listed below.
+MODEM 30: RTTY/TOR 170 Hz:
+MODEM 31: RTTY/TOR 170 Hz:
+Select inq and Load ina Modems
+2125/2295; p2 Packet 300 bps HF
+2125/2295; p2 Packet 1200 bps VHF
+The various modems available in the DSP—2232 can be seen with the
+DIRECT (or y) cornrnand. To display all the available modems simply
+enter the Command Mode of the DSP—2232 and then type DIR as shown.
+DIR
+The DSP—2232 will respond with the following:
+(920716)
+1:
+3:
+10:
+12:
+14:
+16:
+18:
+22:
+25:
+30:
+31:
+33:
+35:
+40:
+42:
+44:
+46:
+51:
+60 :
+cmd :
+RTTY /TOR 170: 2125/2295
+RTTY/TOR 425: 2125/2550
+pl Packet 300 bps HF 2110/2310
+pl Packet 1200 bps VHF
+pl Packet 1200 bps PSK
+pl Packet 4800 bps PACSAT
+pl Packet 9600 FSK K9NG/G3RUH
+p2 Packet 1200 bps VHF
+p2 Packet 2400 bps V. 26B
+2:
+4:
+11:
+13:
+15:
+17:
+20:
+23:
+28:
+RTTY /TOR 170: 2125/2295; p2 Packet
+RTTY/TOR 170: 2125/2295; p2 Packet
+pl Packet 300 bps HF 2110/2310; p2
+RTTY/TOR 170: 1445/1275
+RTTY/TOR 850: 2125/2975
+pl Packet 300 bps HF 1460/1260
+pl Packet 1200 bps PACSAT
+pl Packet 2400 bps V. 26B
+pl Packet 4800 bps PSK
+p2 Packet 300 bps HF 2110/2310
+p2 Packet 1200 bps PACSAT
+p2 Packet 9600 FSK K9NG/G3RUH
+300 bps HF 2110/2310
+1200 bps VHF
+Packet 1200 bps VHF
+pl Packet 1200 bps VHF; p2 Packet 1200 bps VHF
+Morse 750 Hz
+Analog FAX APT
+D SP data 400 bps OSCAR-13
+DSP data Spectrum
+pl Packet 2400 bps MSK
+p2 Packet 1200 bps MSK
+41:
+43:
+45:
+50:
+.52:
+61:
+Analog FAX HF
+Analog SSTV
+RTTY/TOR 1200 ASCII OSCAR-II
+pl Packet 1200 bps MSK
+pl Packet 9600 G3RUH U022 eq
+p2 Packet 2400 bps MSK
+6-10

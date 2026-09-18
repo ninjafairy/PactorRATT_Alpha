@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+What Happens When You Connect
+PACKET RADIO
+4.3. 3.1
+4.3. 3.2
+7/92
+If you are working with a friend who is familiar with packet, you may
+If you are on your own, the following
+want to skip to section 4.4.
+three sections will help you learn what to expect on VHF/UHF packet.
+There are three different kinds of packet stations you are likely to
+encounter in your first Connects: Standard TNCg, Mailbox Systems and
+Network Switches. The following sections discuss each station type.
+Standard TNCs
+When you first turn on your DSP—2232, it becomes a standard AX. 25
+packet TNC ( Terminal Node Controller) . All TNCs and Multimode
+controllers have this capability. When you Connect to a TNC, in most
+cases you will be connecting directly to someone's computer screen.
+If you see an automatic Connect Message (CMSG) similar to the one
+below, you know you have reached a TNC.
+If I don't respond, please
+Welcome to my packet station.
+leave a message and Disconnect .
+If you get a message like this when you connect to another station,
+usually you would type something like "Are you there?"
+If you do not
+see a response from the other station in a minute or so, simply leave
+— just like a telephone answering machine.
+a message
+The TNC at the other station should then hold your message until the
+operator returns to his computer .
+Later we will discuss how your
+DSP—2232 can do the same for messages it receives from others.
+Mailbox Message Systems
+Although Standard TNCs allow incoming messages to be saved, there is
+no way for the owner to leave a message for someone who will connect
+at a future time. The ability to both send and receive messages
+without the owner being present is accomplished by a Mailbox .
+There are many different Packet Mailbox systems in use.
+Some systems
+are large and require the use of a dedicated computer. Other systems
+are small like the personal Mail Drop built into your DSP—2232.
+Large systems are often called Packet Bulletin Board Systems (PBBS)
+since they serve as electronic message centers for a local area.
+PBBS's are a source of information as well as a gateway for messages
+that can be sent to and received from other parts of the country or
+world. You will probably want to locate the local area PBBS nearest
+you and connect to it from time to time.
+Mailbox systems are easy to use and most operate in much the same way.
+Most Mailboxes and other automatic systems usually have Help available
+by sending an "H" or " ? "
+If you connect to a Mailbox such as a
+DSP—2232 Mail Drop you will see something like the following:
+* CONNECTED to KD 7 NM
+(AEA DSP-2232)
+18480 free >

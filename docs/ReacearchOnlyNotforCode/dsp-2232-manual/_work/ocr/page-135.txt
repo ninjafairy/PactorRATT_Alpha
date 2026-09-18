@@ -1,0 +1,41 @@
+DSP-2232 OPERATING MANUAL
+MORSE OPERATION
+8.4. 1
+8. 4.2
+8.4.3
+8.4.4
+8.4. 5
+7/92
+The DSP—2232 Morse Modem
+The DSP—2232 uses a special modem (MODEM 40) for Morse (CW) operation.
+This modem has a center frequency of 750 Hz. A 750 Hz tone is also
+generated when Morse is transmitted and may be fed to a voice grade
+transmitter for Tone modulated CW operation. This is not the way most
+HF transceivers should be used, but VHF FM transceivers can use this
+for transmitting code practice sessions. At this time, this is the
+only Morse modem available in the DSP—2232 .
+Speed Chanqe (MSPEED)
+Use the MSPEED command to change Morse keying speed.
+Type "MSPEED" followed by one or two digits from "5" to "99" and a
+<Enter>. The DSP—2232 responds with the previous Morse speed.
+MSPeed was 20
+MSPeed now xx (whatever new speed digits you typed)
+The number you enter becomes the new gransmit speed and replaces the
+value used previously. The slowest Morse speed is 5 words per minute.
+Echo inq Transmitted Characters As Sent (EAS
+Since Morse can be rather slow, some users like to know just when the
+characters are actually being sent. The EAS command when turned ON
+will Echo characters to the display only when they are transmitted.
+Sending Only. Complete Words (WORDOUT)
+Some Morse users like to have their words sent out only when they are
+compl ete .
+This allows the word you are currently typing to be edited
+as long as you have not typed a <Space> character.
+Turning WORDOUT ON
+activates this feature.
+See the Command Summary for more information.
+Speed Lock (L0CK)
+The LOCK command locks the system to the speed of the received signal.
+This can help the reception of Morse code in the presence of noise.
+To unlock the Morse speed and allow the DSP—2232 to track the received
+signal, type "R" or "MO" followed by an <Enter>.

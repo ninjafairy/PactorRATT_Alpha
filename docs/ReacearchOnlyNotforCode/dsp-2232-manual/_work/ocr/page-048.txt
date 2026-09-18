@@ -1,0 +1,62 @@
+DSP—2232 OPERATING
+8.
+You
+o
+o
+o
+1.
+MANUAL
+PACKET RADIO
+have
+You
+You
+the
+You
+just done the three things necessary in any Packet QSO.
+started the QSO (with yourself) by CONNECT ing. (Step 5)
+sent some information (to yourself) and then received
+information that you sent. (Step 6)
+then ended the QSO by DISCONNEcting. (Step 7)
+Repeat steps 5, 6 and 7 above until you feel comfortable with
+Connecting, exchanging informat ion and Disconnecting. These
+operations will be performed each time you use Packet BO they
+should be second nature to you before going on the air.
+When you feel comfortable Connecting, sending information and
+Disconnecting, you are ready to start listening to VHF packet .
+Turn OFF and remove power from the DSP—2232 .
+o
+o
+Return the Port 1 side—panel AFSK level potentiometer to the
+setting you marked in Step 1.
+Remove the " Loop—back" jumper from the RADIO—I port and
+reconnect your transceiver or receiver set—up in Chapter 3.
+4.3
+7/92
+VHF /_UHF Packet Operation
+We will first listen to (and watch) some of the VHF or UHF Packet
+activity in your Local Area. This will allow you to become a little
+better acquainted with packet in your area before going "On The Air" .
+2.
+3.
+Construct a Radio Cable for the VHF/UHF transceiver you intend to
+use for Packet as described in Chapter 3 and connect your
+transceiver to the RADIO—I connector on the DSP—2232 rear panel.
+Load and run your communications program and enter the Packet
+Mode as done in the Packet Introduction section above.
+Set Radio Port 1 for VHF Packet operation (default) as follows.
+If you are using an AEA program, follow the instructions to
+select the VHF modem on Port 1 by turning the VHF Parameter ON,
+this will automatically set the radio baud rate HBAUD to 1200.
+If you are using a Computer Terminal or a non—AEA terminal
+program, the following sets the VHF mode of the DSP—2232 :
+(Type C while pressing the key down. )
+Type
+Your monitor should respond with the cornmand prompt :
+cmd :
+Then enter VHF ON <Enter>
+Your monitor should respond with:
+Vhf
+Vh f
+was OFF/ON
+now ON/ON
+HBAUD now 1200/0

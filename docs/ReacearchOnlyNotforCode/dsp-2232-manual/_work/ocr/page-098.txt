@@ -1,0 +1,48 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+The following parameters are the most common settings for HF Baudot
+operation. Check the parameters and make sure they are set as follows:
+RBAUD
+RXREV
+TXREV
+MODEM
+45 (this is the most common amateur speed on HF)
+OFF
+OFF
+1
+6.2. 2
+6.2. 3
+7/92
+HF Receiver Settings
+Set your HF receiver (or transceiver) to Lower Sideband (LSB) unless
+you connected your DSP—2232 through the direct FSK keying lines.
+In this case, you should select the FSK operating mode. Adjust the
+volume to a comfortable listening level.
+Tuning in Baudot and ASCII Stat ions
+Tuning in Baudot and ASCII stations properly is critical to guccesgful
+Since HF Baudot and RTTY stations use either 170 Hz or 200
+operat ion .
+Hz Frequency Shift Keying to send data, tuning accuracy is very
+Follow the tuning procedure below carefully for the best
+important .
+results in tuning HF Baudot and ASCII stations.
+o
+o
+o
+o
+Make certain your HF receiver is either in LSB or FSK depending
+on your DSP—2232 set—up.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Tune your receiver carefully between 14.08 and 14.10 MHz (or
+another band where you know there is Baudot or ASCII activity)
+and listen for RTTY stations.
+When you find a station, slowly vary the VFO tuning knob on your
+receiver and 100k for a display on the DSP—2232 tuning indicator
+like the one shown below.
+Tuned In
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too low for the DSP—2232 to copy the signal.
+Slowly tune the V FO and make the frequency higher.
+Frequency
+Too Low

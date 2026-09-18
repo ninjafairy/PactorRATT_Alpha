@@ -1,0 +1,67 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+For example, you are conversing with an HF RTTY station and are in the
+middle of a QSO when a station on VHF connects to you. The following
+shows how your screen would look and suggests how you might handle
+such an occurrence. The underlined text is the text that you type.
+x < Enter >
+Hello you are print inq solid
+here and have an S 7 siqnal
+cmd :
+THANKS BOB, YOUR ALSO A SOLID S7
+HERE AS WELL.
+A: CONNECTED to WX7EEE
+x <Enter>
+Thanks for the signal report Jim
+only runninq
+cmd :
+Hey Bob, I 'm
+this weekend
+k <<Enter>
+IAHe110 Mike
+talking to a
+100 watts here. <CTRL—D>
+going to the hamfest
+if you want a ride.
+1 am on HF RTTY
+station in Boston.
+O: WELL BOB, 1 HAD BETTER BE GOING
+BED. WORK STARTS PRETTY EARLY 7 3.
+I : cmd
+73 it was nice meting you.
+WXIAÄA de WX7BBB SK
+TO
+You send the RTTY stat ion
+a signal report
+The other station responds
+with a signal report }
+WX7EEE connects to you on
+VHF (Radio Port 2) }
+You make another transmission
+to Jim on HF RTTY
+Your friend on VHF packet
+wants to go to the hamfest }
+You switch to Port 2 by
+typing and respond on VHF
+{ Jim on HF RTTY signs off
+with you. }
+{ You switch back to HF with
+the and sign off with Jim }
+7/92
+As you may have noticed, communicating with different modes on the two
+Radio Ports at the same time is almost identical to the method used in
+chapter 4 for Packet and Packet operation. Let 's discuss the sample
+QSOs above to see how the Port switching occurs .
+The first text we see in the sample above is the signal report you are
+sending to Jim, the HF RTTY station you are communicating with.
+Notice that you must type an "x" followed by the Enter key on the
+keyboard to place Radio Port 1 of the DSP—2232 into RTTY Transmit mode.
+When you are through sending your signal report to Jim on HF RTTY, you
+tell the DSP—2232 to return to receive by sending a The
+DSP—2232 then responds with the Command Prompt "cmd: " .
+The next text you see is your signal report received from Jim on RTTY .
+You are in the middle of a QSO with Jim on HF RTTY and all of a sudden
+your friend WX7EEE connects to you. WX7EEE has connected on Radio
+Port 2 (VHF) which is shown by the "A: " before the connect message.
+Remember that the 26 channel designators for Radio Port 2 are A—Z.
+6-12

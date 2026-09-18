@@ -1,0 +1,65 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+The ROUTES command provides routing information about other nodes that
+can be reached.
+A complete discussion of NET/ ROM is beyond the scope of thig manual,
+but we hope the above information will help get you started.
+Certainly the CONNECT, NODES and USERS conunands will allow you to
+navigate through the network, and find new people to talk to.
+Who can 1 Talk To?
+Now that you understand a little about the dif ferent packets and
+packet stations, you are ready to make your first real connection.
+If you do not have a friend on Packet in your local area, then you
+will want to choose a station you can reach. Fortunately the DSP—2232
+has a command called MHEARD that displays the list of the 18 most
+recently heard stations. Check this 1 ist in one of the following ways:
+1
+11
+If you are using an AEA PAKRATT program, follow the instructions
+in the program manual for checking the Packet MHEARD list.
+If you are using a Terminal • or Terminal Program on your computer,
+then first type a <CTRL—C> to make sure you are in the DSP—2232
+Command ( cmd:) mode. Then type the command MHEARD as shown.
+You should then see a display similar to the one below.
+cmd : MHeard
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+N7GMF
+K6RPK
+SEA*
+N7HWD-8*
+KD7NM*
+N7ALW*
+WA7GC1*
+cmd :
+The callsigns in the
+list are the stations heard by your DSP—2232 with
+the most recently heard station at the top of the list. As in the
+Monitored packets, the asterisks ( * ) indicate that the station was
+heard directly by the DSP—2232. The callsigns without an asterisk
+were relayed by another station and so cannot be connected to
+4.3. 5
+7/92
+directly .
+Your First
+Choose one
+list, or a
+If you are
+CONNECT in
+If you are
+The "pl" means the station was heard on radio port 1.
+Real Connect
+of the stations with an asterisk displayed in YOUR MHEARD
+friend that you know is "on the air" near to you.
+using an AEA PAKRATT program, follow the instruct ions to
+Packet mode to the callsign you chose above.
+using a Computer Terminal or a non—AEA program, entering
+the following after the "cmd: "
+cornmand mode prompt will cause the
+DSP—2232 to Connect to the station (Callsign) chosen above:
+CONNECT (Cal 1 sign)

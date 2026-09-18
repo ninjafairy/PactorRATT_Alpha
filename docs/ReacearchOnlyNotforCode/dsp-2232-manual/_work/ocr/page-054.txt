@@ -1,0 +1,67 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+If you get something like this when you connect to another station,
+try typing an "H" or a "?" to get a help list as shown below:
+A ( bort )
+B(ye)
+H(elp)
+J ( log)
+K (ill)
+L (ist)
+R ( ead )
+S ( end )
+Stop Read or List
+Log Off
+Display this message
+Display stations heard
+Kill message number n
+Kill messages you have read
+KM
+List message titles
+L
+. List messages to you
+LM
+Read message number n
+• Read all your unread messages
+RM
+Send a message to SYSOP
+s
+Send a message to station n
+as H(elp)
+Same
+18480 free >
+4.3.3.3
+12/91
+[AEA DSP-2232)
+There are quite a few options available on the Mail Drop, but the most
+commonly used commands are L (ist), R(ead), S (end) and K (ill) message.
+For example, you may first want LIST all the messages that are
+available on a mailbox that you connect to. This is done by simply
+sending "L" or "LIST" command to the system you have just connected.
+If you are interested in any of the message subjects that appear, you
+may then READ the messages that interest you. To read a message,
+simply send the command "R . (message number) " ,
+where (message number)
+is the number of the message you are interested in.
+After you are finished reading messages, you may want to SEND a
+messqge to the SYSOP (short for System Operator) or to another user.
+To send a message simply enter "S (call sign) 't where (call sign) is the
+call of the station you are sending the message to.
+When you are finished Listing, Reading and Sending messages, you will
+want to send the Bye command to log—off (disconnect) from the Mailbox.
+Feel free to experiment with Mailboxes and other packet systems .
+Remember that most automatic systems will send you help on comrnandg if
+For more information on setting up and using
+you send an "H" or " ? "
+your own DSP—2232 Maildrop, see Chapter 5 on Mail Drop Operation.
+Packet Switches and "Nodes "
+When Amateur Packet radio was first beginning there were not many
+stations on the air. Amateurs at that time "digipeated" through many
+stations (up to 8 ) to connect to others over long distances. As more
+users became active on packet, digipeating quickly proved to be an
+inefficient way of relaying packets through even a very few stations.
+To solve this problem, PJnateurs began working on more efficient
+" higher level" ways of routing packets over long distances.
+NET/ROM (tm), ROSE, TCP/IP and TEXNET are some of the higher level
+protocols that emerged and are currently in use around the world.
+4—10

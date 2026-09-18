@@ -1,0 +1,85 @@
+A: 73 Bob.
+I : cmd :
+<Enter>
+WX7EEE
+O: DISCONNECTED:
+WXIAAA
+7/92
+DSP-2232 OPERATING MANUAL
+pl (Ull:
+pl (Ull:
+cmd:C WXIAAA
+CONNECTED to WXIAAA
+Hel 10 name here is Bob.
+Hi Bob, name here is Jim and the
+QTH is Boston Mass.
+A: CONNECTED to WX7EEE
+Nice to meet vou Jim 0TH here is
+Seattle WA. You have a nice signal.
+Hey Bob, I'm going to the hamfest
+this weekend if you want a ride. •
+AHe110 Mike L am on HF right
+now talk inq to a stati•on in Boston.
+O: Thanks Bob, your signal is S—7
+here .
+I am running 100 Watts into a
+tri—bander at 50 ft.
+I OThanks for the report you re
+S—8 and the antenna here is quad.
+I Ayes, L was planning to ge Saturday.
+What time do you want to leave?
+A: I'll pick you up at 8:00 Bob.
+4-31
+PACKET RADIO
+WXIAAA calling CQ on
+Radio Port 1 (HF) }
+You attempt to connect to
+station WXIAAA on HF }
+You ' re connected to WXIAAA }
+You gend him your name
+The other station responds
+with his name and location
+WX7EEE connects to you on
+VHF (Radio Port 2)
+{ You send another packet
+to Jim on HF }
+Your friend on VHF packet
+wants to go to the hamfest
+You switch ports by typing
+and respond on VHF
+Jim on HF gives you a signal
+report. The "O:"
+shows you
+this was from Port
+You switch back to
+the and respond
+You switch to Port
+to say you want
+Your friend on VHF
+to you
+HF with
+to Jim
+2 with
+to go }
+responds
+I'm looking forward to it.
+O: Well, it's getting late
+time to pull the plug Bob .
+Sounds qood, I'll see you
+Saturday morning.
+I OTake care Jim and 73.
+here
+on
+and
+Jim on HF tells you he has
+shut down for the night
+You last sent data on Port 2
+and do not need to send IA
+You gay 73 to Jim on HF }
+Your friend on VHF says 73
+You switch to Port 2 and
+Disconnect from WX7EEE }
+You re now disconnected from
+WX7EEE on VHF
+WXIAAA disconnects from you
+on HF (Port O }

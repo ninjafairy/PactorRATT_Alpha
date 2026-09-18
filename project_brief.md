@@ -1,11 +1,11 @@
 # PactorRATT_Alpha — Project Brief (resume here)
 
-**Last updated:** 2026-09-13  
+**Last updated:** 2026-09-15  
 **Stylized name:** PactorRATT_Alpha (short: PtR_Alpha / PtRa)  
-**Status:** Phase 1 UI, Phase 3+4 TNC init, and Phase 5 Pactor flows are **in and hardware-proven** on a live PK-232. Last package **Build 32**. Grey→green is **out of scope**.  
+**Status:** Phase 1 UI, Phase 3+4 TNC init, and Phase 5 Pactor flows are **in**. Link/Listen/Disc/HO paths are **hardware-proven** on a live PK-232. **ARQ live Compose (Build 33) was reverted 2026-09-15** — outbound is App TX + Send + Flush ISS + Line/Message commit again. Grey→green is **out of scope**.  
 **License:** AGPL-3.0  
 **Support contact (compat popups):** KJ7RBS@gmail.com  
-**Last packaged jar:** `target/PactorRATT_Alpha.jar` copied to `Builds/Most Recent Build/PactorRATT_Alpha.jar` — warning line `Build: N  {date time}` (sequential `N` in `build.number.properties`; last package was **build 32**)
+**Last packaged jar:** `target/PactorRATT_Alpha.jar` copied to `Builds/Most Recent Build/PactorRATT_Alpha.jar` — warning line `Build: N  {date time}` (sequential `N` in `build.number.properties`; last package was **build 46**)
 
 ---
 
@@ -24,18 +24,23 @@ A portable **Java 21 + Swing** desktop chat program that drives a **PK-232 with 
 
 ---
 
-## Where we left off (2026-09-13)
+## Where we left off (2026-09-15)
 
-Packaged **Build 32**. Launch from `Run.txt` / `Builds/Most Recent Build/PactorRATT_Alpha.jar`. Portable I/O is **`{jarDir}/config/`** beside the *running* jar (often a copy under Downloads), not the GitHub tree.
+Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds/Most Recent Build/PactorRATT_Alpha.jar`. Portable I/O is **`{jarDir}/config/`** beside the *running* jar (often a copy under Downloads), not the GitHub tree.
 
-**Hardware-proven (2026-09-11, HO button 2026-09-13):**
+**Just finished (2026-09-15 — source, not yet a new jar):** **Reverted ARQ live Compose.** The 1 s ISS clock, `$08` outbound backspace, locked IRS lines, no-Send editor, and `issOutboundExecutor` / `toHostDataBytes(..., false)` are gone. ARQ is again **App TX + Compose + Send + Flush ISS**, with Program **Line / Message** commit. IRS commits queue in App TX; ISS commits (and Flush ISS / OPMODE IRS→ISS) go to Host ch0 with a trailing CR. Disc/HO after TX clear drains App TX then the control byte. Listen uses the same commit setting; **FEC / End TX** and **CQ** are unchanged.
+
+**Just finished (Build 36):** **TNC → UBIT 10…** debug window. Enable/Disable radios send Host `UB10 ON`/`UB10 OFF`; log shows only CTL `$50` frames (raw hex + decoded). **Hardware-validated on Pactor:** with UBIT 10 ON, *w* changes push `SOH $50 n ETB` (`n` = Idle/Traffic/Error/RQ etc.). Printed UBIT 10 list omitted Pactor; the TNC still does it. Closing the window does not turn UBIT 10 off. Link CONNECTED/DISCONNECTED/Timeout also appear here (same `$50`).
+
+**Hardware-proven (2026-09-11, HO button 2026-09-13, UBIT 10 Pactor 2026-09-14):**
 
 - ARQ window opens on `$50 CONNECTED to <peer>` and dies on `$50 DISCONNECTED: <call>` (colon). Link timeout is `$50 Timeout` then `DISCONNECTED:` — both kill the window.
 - Call no-answer is a **single** `$50 Timeout` (`01 50 54 69 6D 65 6F 75 74 0D 0A 17`) with **no** following `DISCONNECTED:`. Same wire text as the linked-timeout first frame; context is Calling vs linked ARQ.
 - Old firmware after Listen FEC: `PD` → `Pt` → app sends `PN` if Listen is still on. New firmware: returns to `PN` itself; app does nothing.
-- Live-link buttons passed: Disc. after TX clear, Disconnect now (`TC`+`$04`), HO after TX clear, HO/Disc. with text, Seize, and **Clear TX and Handover** (`TC`+`$1A` + HO lock).
+- Live-link buttons passed: Disc. after TX clear, Disconnect now (`TC`+`$04`), HO after TX clear, HO/Disc. with text, Seize, and **Clear TX and Handover** (`TC`+`$1A` + HO lock). After-TX-clear **flush** drains **App TX** then `$04`/`$1A`.
+- **UBIT 10 ON** on Pactor: Host `UB10 ON` / `UB10 OFF` / query `UB10` (space between `10` and ON/OFF). Status changes emit one-byte `SOH $50 n ETB` (*w* `$30`–`$36`). Not in the printed Pactor UBIT 10 sentence; hardware does it. Distinguish from `$50` CONNECTED/Timeout by payload length/text.
 
-**Software finished this stretch (2026-09-10 → 2026-09-13), Builds 25–32:**
+**Software finished this stretch (2026-09-10 → 2026-09-14), Builds 25–33:**
 
 1. Status Monitor names Pactor trailer *u* (100/200 baud) and *s* (`longpath`).
 2. Calling **`<call> no answer`**: `$50 Timeout` while Calling (Build 30); 60 s local timer is fallback. TNC not aborted.
@@ -44,8 +49,10 @@ Packaged **Build 32**. Launch from `Run.txt` / `Builds/Most Recent Build/PactorR
 5. Heard / Mentioned parsers + persist (cap 12) + Stations-tree right-click menus (clear / add buddy / move to top / remove).
 6. **`<C>onnect` frames** (Build 31): `?>… <C>` Listen FEC beacons; never Mentioned/Heard; session-only list; 3 identical in a row **or** last-5 stem gate.
 7. ARQ status **speed** 100/200 from OPMODE *u* (Build 32).
+8. ARQ **live Compose** (Build 33) — **reverted 2026-09-15**. Do not treat as current. App TX + Send + Flush ISS + Line/Message are restored.
+9. Portable I/O docs aligned: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §3, [`PtRa_specification.md`](PtRa_specification.md) §4.1, [`README.md`](README.md) — `{jarDir}/config/` only (no `logs/`, no top-level `buddies.json`).
 
-**Do not reverse:** EDT must never wait on `OP`/`PG` before showing Listen or Calling UI; ARQ window is async from `$50`; never re-lock `SerialPortService.isOpen()` / native COM read on the UI path. Do not send Host `RE`/`PV` to trigger disconnect/handover. Do not invent OPMODE tags. Grey→green stays out of scope.
+**Do not reverse:** EDT must never wait on `OP`/`PG` before showing Listen or Calling UI; ARQ window is async from `$50`; never re-lock `SerialPortService.isOpen()` / native COM read on the UI path. Do not send Host `RE`/`PV` to trigger disconnect/handover. Do not invent OPMODE tags. Grey→green stays out of scope. Do not re-land ARQ live Compose (1 s clock / `$08` outbound) unless asked.
 
 ---
 
@@ -67,6 +74,7 @@ Packaged **Build 32**. Launch from `Run.txt` / `Builds/Most Recent Build/PactorR
 | Host I/O | `HPOLL OFF` (`HPN`) in steady state; `GG` for entry/recovery only; **wait for each command response** (Ch. 4 §4.3); **wait for each data-ack** (Ch. 4 §4.4); all round-trips on **`hostIoLock`** |
 | UI “FEC” | Label only; command is `PTSend` / unproto (`PD` + `n,x`) |
 | FEC params | Program settings: **FEC 200** checkbox → `n=2` else `n=1`; **Retries** spinner 1–5 → `x` (defaults `fec200=false`, `fecRetries=1` → Host `PD1,1`) |
+| CQ | Program settings: **Canned CQ text** + **CQ repeat** 0–10 (default empty / 1). Listen **CQ** button sends the canned line that many times (each on its own line), then `PD` + data + CTRL-D. Repeat 0 or blank canned → nothing. Does not use or clear App TX. |
 | FEC end TX | Embedded CTRL-D (`$04`) in Host data after buffer — **not** Host CMD `RE` |
 | After FEC / CTRL-D | OPMODE is **`PD`** while sending (Traffic) and Idle immediately before end TX. After CTRL-D is consumed, tag leaves `PD`. **Older firmware → `Pt`:** if Listen is still on, send `PN`. **Later firmware → `PN` on its own:** do nothing. Do not send `PN` while still `PD` (including Idle). No `PN`/`Pt` while ARQ is active. |
 | Callsign | One config value → `ML` and `Mf` |
@@ -85,12 +93,13 @@ Packaged **Build 32**. Launch from `Run.txt` / `Builds/Most Recent Build/PactorR
 | Portable I/O | **All program files under `{jarDir}/config/`** — not `logs/`, not temp, not the GitHub tree. `PactorRattAlphaApp.resolvePortableRoot()` = folder containing the running jar (IDE fallback: `user.dir`). Settings `config/settings.json`, buddies `config/buddies.json`, heard `config/heard.json`, mentioned `config/mentioned.json`, host-command groups `config/config.ini` (`[INIT]` after coded init), optional debug log `config/debug-YYYYMMDD-HHMMSS.log`. Save-chat still uses a user-chosen path. |
 | Serial I/O vs UI | `SerialPortService.isOpen()` is a **volatile flag** — never call jSerialComm from the EDT. Native `readBytes`/`writeBytes` **do not** hold `ioLock`. Do **not** re-introduce `synchronized` on `isOpen()` or hold the service lock across a blocking COM read. |
 | Listen ON UI | Open the Listen window **immediately**, then query `OP` / send `PN` on a worker. If OPMODE is not `Pt`/`PN`, close the window, uncheck Listen, warn. |
-| Main-window Connect UI | Show **Calling \<call\>…** + Cancel on the main window (no ARQ window yet). Worker sends `PG`+callsign. ARQ window opens on **`$50` CONNECTED** (same path as inbound). `PG` fail → error dialog, no window. **`$50 Timeout` while Calling** (no `DISCONNECTED:`) shows **`<call> no answer`** (Cancel hidden; TNC not aborted). 60 s local timer is fallback if that frame is missed. Cancel = Abort Host (`PN` if Listen on, else `Pt`), then `OP`. New Connect while calling sends another `PG` (TNC switches target). Connect stays enabled. |
+| Main-window Connect UI | Show **Calling \<call\>…** + Cancel on the main window (no ARQ window yet). Worker sends `PG`+callsign (`!` if **LP:** checked and not already typed). ARQ window opens on **`$50` CONNECTED** (same path as inbound). `PG` fail → error dialog, no window. **`$50 Timeout` while Calling** (no `DISCONNECTED:`) shows **`<call> no answer`** (Cancel hidden; TNC not aborted). 60 s local timer is fallback if that frame is missed. Cancel = Abort Host (`PN` if Listen on, else `Pt`), then `OP`. New Connect while calling sends another `PG` (TNC switches target). Connect stays enabled. |
 | Incoming ARQ | `$50` `CONNECTED to ` + peer text (hardware: `… KJ5XF via LONGPATH`). Open ARQ window; Listen inactive, checkbox stays. Packet `Connect request:` ignored. End: `$50` `DISCONNECTED: CALL` (clean) or `$50` `Timeout` then `DISCONNECTED: CALL` (link timeout). OPMODE `Pt` is fallback only. |
 | COM default | **1200 7N1** (user-selectable; no forced 8N1 on open) |
 | Compat | Supported v7.x continue; listed pre-v7 **hard refuse**; HK/UDC/unknown **warn + email + continue** |
 | UI Connect | **TNC → Connect/Disconnect** = serial/Host session; main-window **Connect** = ARQ `PG` only |
-| Long path | User may type `!CALL`; no dedicated checkbox |
+| TNC status | After a successful TNC Connect, query Host `ML` (not ACK `$00`) and show **mycall: \<value\>** after **TNC: connected**. Hidden while offline / connecting. Query fail does not fail Connect. |
+| Long path | Main-window **LP:** label then checkbox (right of Listen; session-only, starts unchecked). When checked, Connect label is **Connect Longpath** and every outbound `PG` (button + tree double-click) gets a leading `!` unless the call already starts with `!`. Callsign field is not rewritten. User may still type `!CALL` with LP off. |
 | Startup gate | Blocking experimental warning; shows Java + `Build: N  {date time}` |
 | OPMODE identify | CTL `$4F` + payload starting `OP` |
 | Pactor OPMODE | **Not AMTOR.** Hardware: Listen = `OP PN w x` + 4 trailer; Standby = `OP Pt $30 x` + 4 trailer; ARQ = `OP PG w x` + 4 trailer; FEC = `OP PD w x` + 4 trailer. See [`docs/OPmodeResponse.md`](docs/OPmodeResponse.md). |
@@ -103,14 +112,16 @@ Packaged **Build 32**. Launch from `Run.txt` / `Builds/Most Recent Build/PactorR
 | ARQ → dead | **`$50` `DISCONNECTED: <call>`** marks the window dead (notice includes Timeout if that frame came first). After a live OPMODE, `Pt` / *w*=Standby is **fallback** only if `$50` was missed. Early Standby right after `PG` does **not** kill the window. |
 | Linked ARQ / PTSend OPMODE | **ARQ is `PG`**. **FEC/unproto is `PD`** (Traffic `$34` while sending, Idle `$33` just before end TX; *u* = baud). Parser tags `PG`/`PD` → Pactor ARQ / Pactor FEC. AMTOR `FE` is not Pactor FEC. Unknown tags decode as `Unknown (xx)` and do not drive ISS/IRS. |
 | User INIT file | Hand-edit only. `{jarDir}/config/config.ini`. Created on app start if missing. **Re-read every TNC Connect.** `[INIT]` runs **after** coded init. Unknown sections ignored. Settings UI for this is later. |
-| Heard / Mentioned | **Listen inbound only** (after `$08`, scan when a newline completes a line). Not local grey. Not ARQ. Callsign: **1–2 letters + 1 digit + 1–3 letters**, then space or EOL. No SSID. Own `ML` excluded. **Heard:** whole-word `de ` (start of line or after whitespace/punctuation — not the end of `aside`/`made`) immediately followed by that call. **Mentioned:** other matching calls on the same line. A `de CALL` is not also Mentioned for that occurrence. Multiple `de CALL` on one line: each is Heard (last ends up on top). Lists are **independent** (a call may sit on both). Most recent at top; no duplicates; cap **12**; persist `{jarDir}/config/heard.json` + `mentioned.json`. **Connect frames (`?>… <C>`) are never Mentioned or Heard.** |
+| Heard / Mentioned | **Listen inbound only** (after `$08`, scan when a newline completes a line). Not local grey. Not ARQ. Callsign: **1–2 letters + 1 digit + 1–3 letters**, not glued to a letter or digit (space, `>`, other punctuation, or EOL). No SSID. Own `ML` excluded. **Heard:** whole-word `de ` (start of line or after whitespace/punctuation — not the end of `aside`/`made`) immediately followed by that call. **Mentioned:** other matching calls on the same line. A `de CALL` is not also Mentioned for that occurrence. Multiple `de CALL` on one line: each is Heard (last ends up on top). Lists are **independent** (a call may sit on both). Most recent at top; no duplicates; cap **12**; persist `{jarDir}/config/heard.json` + `mentioned.json`. **Connect frames (`?>… <C>`) are never Mentioned or Heard.** |
 | `<C>onnect` frames | Listen inbound (FEC/PTL beacons; not ARQ). Line `?>` + token + ` <C>`. `<C>` = connect frame, **not** a full copy. Token is raw (may be truncated). **Session-only** Stations folder **`<C>onnect`** (no json). Cap 12. Own `ML` excluded. Promote if **3 identical tokens in a row** (valid callsign) **or** last **5** connect frames: two longest tokens identical, every other token a leading prefix of that longest, longest is a valid callsign. |
 | Stations tree menus | Double-click a callsign → fill field + Connect. Right-click **Heard/Mentioned/`<C>onnect` folder** → Clear (empty that list; Connect Clear also drops the in-memory streak window). Right-click **Heard/Mentioned/`<C>onnect` call** → Add buddy (insert at top of Buddies if new) + Clear (remove from this list only). Right-click **Buddies call** → Move to top + Remove. Placeholders `(…)` have no menu. |
+| ARQ Compose | **App TX + Compose + Send + Flush ISS.** Program **Line / Message** commit. **LINE:** Enter commits the current line (Shift+Enter = newline). **MESSAGE:** Enter = newline; Send commits all non-empty lines. **IRS:** commits queue in App TX. **ISS:** commits go to Host ch0 + grey transcript (`toHostDataBytes` appends trailing CR). **IRS→ISS** (OPMODE or Flush ISS): drain App TX to Host. Disc/HO after TX clear: drain App TX then `$04`/`$1A`. |
+| Listen Compose | Same Line/Message commit. Send → App TX. **FEC / End TX** = `PD` + data + CTRL-D. **CQ:** canned CQ × CQ repeat on that FEC path; does not use App TX. |
 | Out of scope | File xfer, BBS, Winlink, encryption, mobile, Morse-ID disconnect, auto-AAB, other TNCs, **grey→green / TX-empty confirm coloring** |
 
-### Session 2026-09-10 → 2026-09-13 (detailed)
+### Session 2026-09-10 → 2026-09-14 (detailed)
 
-Packaged as **Builds 25–32**. This is the work since the 2026-09-08 brief.
+Packaged as **Builds 25–33**. This is the work since the 2026-09-08 brief.
 
 #### 1. OPMODE trailer *u* / *s* (Build 25)
 
@@ -184,6 +195,10 @@ Listen `?>CALL <C>` (hardware PTL). Never Mentioned/Heard. Session-only **`<C>on
 
 Same `applyOpmodeLink` path that sets ISS/IRS and *w* (Traffic/Error/RQ/…) writes **speed 100** or **speed 200** from Pactor trailer *u*. Leave `--` until a decoded baud arrives.
 
+#### 10. ARQ live Compose (Build 33) — **reverted 2026-09-15**
+
+Tried a merged live editor (1 s ISS clock, `$08` outbound, no App TX/Send/Flush ISS). It caused issues on air/use. **Current code is the pre-33 path:** App TX + Send + Flush ISS + Line/Message. Do not re-implement live Compose unless asked. Historical design notes remain in [`docs/textInput_specs.md`](docs/textInput_specs.md) as a discussion file only.
+
 ---
 
 ### Session 2026-08-26 → 2026-09-08 (detailed)
@@ -219,7 +234,7 @@ HO / HO after TX clear / HO with text lock together on press. Stay disabled unti
 
 #### 4. Transcript: IRS→ISS newline + inbound `$08`
 
-- `ensureTranscriptNewline()` runs before local grey paint (App TX drain, ISS `enqueueOrFlush`, Listen `fecEndTx`). Insert `\n` only if the transcript is non-empty and does not already end with `\n`. **No extra CR on RF.**
+- `ensureTranscriptNewline()` runs before local grey paint (Compose drain / Enter, IRS→ISS dump, Listen `fecEndTx`). Insert `\n` only if the transcript is non-empty and does not already end with `\n`. **No extra CR on RF.**
 - Inbound `$08` (BS) is handled in `ConnectionWindow.applyInboundTranscript`: sequential backspace on the **current line only**; does not cross `\n`; extra BS consumed. Debug Monitor stays raw. `$7F` unchanged.
 
 #### 5. ARQ window on `$50` CONNECTED (inbound + outbound)
@@ -238,7 +253,7 @@ Hardware dump:
 
 - Parser: [`LinkMessageParser`](src/main/java/com/pactorratt/alpha/hostmode/LinkMessageParser.java) — `CONNECTED to `; `DISCONNECTED: <call>` (colon); exact `Timeout`.
 - **Do not** open the ARQ window on Connect click / `PG` ACK. `PG` ACK `$00` means “TNC started calling,” not linked.
-- Connect / buddy double-click: main-window top strip **Calling \<call\>…** + **Cancel** next to Mode/TNC. Worker sends `PG`+call (no space; `!` preserved). Another Connect while calling sends another `PG` (TNC switches). Connect stays enabled.
+- Connect / buddy double-click: main-window top strip **Calling \<call\>…** + **Cancel** next to Mode/TNC. Worker sends `PG`+call (no space; `!` from **LP:** or already typed). Another Connect while calling sends another `PG` (TNC switches). Connect stays enabled.
 - `$50` CONNECTED (in or out) → hide Calling, `openArqWindowForLink`, deactivate Listen window (checkbox stays), then `OP`.
 - Cancel = Abort Host (`PN` if Listen on, else `Pt`), hide Calling, `OP`. End of calling (CONNECTED / cancel / 60 s timeout / `PG` fail) also sends `OP`; Mode from OPMODE if no ARQ window (`PN`→Listen, `Pt`→Idle).
 - `$50 Timeout` while Calling (no following `DISCONNECTED:`) hides Cancel and shows **`<call> no answer`**. Does not Abort the TNC. 60 s local timer is fallback. Linked end is `$50` `DISCONNECTED:` (optional leading `Timeout`).
@@ -272,7 +287,7 @@ Code: [`HostCommandIni`](src/main/java/com/pactorratt/alpha/config/HostCommandIn
 | `hostmode` | Framing, demux, session, compat, init, data send, **OPMODE `PN`/`Pt`/`PG`/`PD`**, **`$50` CONNECTED / DISCONNECTED / Timeout**, Heard/Mentioned/`<C>onnect` parse |
 | `serial` | jSerialComm + byte listeners |
 
-Working offline: Stations `JTree`, Listen/ARQ preview windows, commit modes, buddies, menus, portable layout.
+Working offline: Stations `JTree`, Listen/ARQ preview windows, buddies, menus, portable layout.
 
 ### Phase 3+4 — Serial + Host init (done, hardware-proven)
 
@@ -310,30 +325,32 @@ Working offline: Stations `JTree`, Listen/ARQ preview windows, commit modes, bud
 Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRATT_Alpha.jar"
 ```
 
-### Phase 5 — Pactor flows (done; hardware-proven, including Clear TX and Handover)
+### Phase 5 — Pactor flows (in; link/Listen/Disc/HO hardware-proven)
 
 #### Host data channel + §4.4 / §4.8 (done)
 
 - [`HostFrameCodec`](src/main/java/com/pactorratt/alpha/hostmode/HostFrameCodec.java): `encodeData` → CTL `0x2x`; `isDataAck`; `isDataStatusError`; `MAX_HOST_TO_TNC_PAYLOAD = 330`.
 - [`HostSession.sendData`](src/main/java/com/pactorratt/alpha/hostmode/HostSession.java): chunks &gt;330; wait data-ack per block; fail-fast on `$5F…W/Y`; timeout clears `statusQueue` before unlock.
 - **`hostIoLock`:** serializes `sendCommand`, `sendData`, `probeOgg`, `readMemoryByte`, Debug F&F writes, **OPPOLL**, Listen `OP`/`PN`/`Pt`.
-- Text → Host bytes: `\n`→`\r`, trailing CR if missing (`AppController.toHostDataBytes`).
+- Text → Host bytes: `\n`→`\r`; `toHostDataBytes(text)` appends a trailing CR if missing.
 
-#### ARQ App TX → TNC / ISS flush (done; now also OPMODE-driven)
+#### ARQ App TX → TNC / ISS flush (done; OPMODE-driven)
 
-- While **IRS**: commits go to App TX buffer only (not transcript).
-- ARQ **Flush ISS**: buffer → grey transcript + `sendData` ch0; flips local role to ISS.
-- While **ISS**: further commits → grey transcript + immediate `sendData`.
-- **OPMODE *x*:** `S` → ISS (auto-flush App TX on IRS→ISS); `R` → IRS (hold). Same *x* table for every mode that includes *x*.
+- While **IRS**: commits sit in App TX (not sent).
+- **IRS→ISS:** drain App TX to Host + grey transcript (`flushIss` / `drainAppTxBufferToTranscript`).
+- While **ISS**: Line/Message commits go to Host immediately + grey transcript.
+- **Flush ISS** does the same drain even if already ISS (empty buffer still marks ISS).
+- **OPMODE *x*:** `S` → ISS (`flushIss`); `R` → IRS (hold). Same *x* table for every mode that includes *x*.
 - ARQ status slot that used to say `DEAD`/`ARQ` shows **last *w* word** when known (Idle/Traffic/Standby/…). **speed** is **100** or **200** from Pactor OPMODE *u* (same baud byte as Status Monitor).
 - Listen window has **no** ISS flush control (FEC is the Listen send path).
 
 #### Listen FEC / End TX (done)
 
 - Button **FEC / End TX** (Listen only): requires non-empty App TX buffer.
+- Button **CQ** (Listen only): Program canned CQ text copied CQ-repeat times (0–10), each on its own line; same `PD` + data + CTRL-D path. Does not use App TX.
 - Flow: grey transcript + clear buffer → Host `PD`+`n,x` → ch0 data + CTRL-D `$04` → UI mode FEC. Worker polls `OP` until the tag leaves `PD` (Idle is still FEC).
 - **Post-FEC Listen compat:** `Pt` + Listen on → `PN`; already `PN` → no Host change; Listen off + `PN` → `Pt`.
-- Program Settings: **FEC 200** + **Retries** 1–5; `fec200` / `fecRetries` in `settings.json`.
+- Program Settings: **FEC 200** + **Retries** 1–5; **Canned CQ text** + **CQ repeat** 0–10; `fec200` / `fecRetries` / `cannedCqText` / `cqRepeat` in `settings.json`.
 
 #### Listen toggle Host `PN` / `Pt` (done 2026-08-20; window-first 2026-08-21)
 
@@ -373,17 +390,17 @@ Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRAT
 | Disconnect now | Host `TC`, wait ACK, then ch0 `$04` |
 | Clear TX and Handover | Host `TC`, wait ACK, then ch0 `$1A`; lock HO buttons until IRS then ISS again |
 | HO after TX clear | Flush App TX, then ch0 `$1A` in the same block; same HO lock |
+| Flush ISS | Drain App TX to Host + grey transcript; mark local ISS |
 | Seize | CMD `AG` |
 | Abort | Listen checkbox on → `PN`, else `Pt`; then `markArqDead` |
 | HO with text | Canned handover + `$1A` in the same ch0 block; same HO lock |
 | Disc. with text | Canned disconnect + `$04` in the same ch0 block |
-| Flush ISS | App TX → `sendData` + grey; mark ISS |
 
-Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / `SK`).
+Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / `SK`); `cannedCqText` / `cqRepeat` (default empty / 1).
 
 #### Main-window ARQ Connect (wired; window on `$50` CONNECTED)
 
-- Connect / buddy double-click → **Calling \<call\>…** + **Cancel** on the main-window top strip (Mode / TNC row). Worker `PG`+callsign (no space; `!` preserved). No ARQ window yet. New Connect while calling sends another `PG` (TNC switches target).
+- Connect / buddy double-click → **Calling \<call\>…** + **Cancel** on the main-window top strip (Mode / TNC row). Worker `PG`+callsign (no space; `!` from **LP:** unless already typed). No ARQ window yet. New Connect while calling sends another `PG` (TNC switches target).
 - `PG` ACK `$00` = TNC started calling, not linked. Fail/timeout of the Host command → error dialog, hide Calling, `OP` to refresh Mode.
 - **`$50` CONNECTED to \<peer\>** (payload may include `via LONGPATH` + CR LF) → hide Calling, open ARQ window titled with the text after `CONNECTED to `. Same path for inbound. Listen window inactive, checkbox stays on. Then `OP` (ISS/IRS + Mode).
 - **`$50` `DISCONNECTED: <call>`** → mark ARQ dead. If a `$50` `Timeout` frame came first: notice `ARQ ended — Timeout (call).` Else `ARQ ended — DISCONNECTED: call.` Then `OP`. OPMODE `Pt` is fallback only.
@@ -393,7 +410,7 @@ Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / 
 #### Heard / Mentioned (done Build 28; menus Build 29)
 
 - Scan: Listen window inbound only; line complete = `\n` after `$08`. Not grey outbound, not ARQ.
-- Pattern: `1–2 letters + digit + 1–3 letters` then space or EOL. Whole-word `de ` → Heard. Other matches → Mentioned.
+- Pattern: `1–2 letters + digit + 1–3 letters`, not glued to a letter or digit (space, `>`, other punctuation, or EOL). Whole-word `de ` → Heard. Other matches → Mentioned.
 - Persist: `config/heard.json`, `config/mentioned.json` (CRLF JSON arrays, most recent first, cap 12).
 - Own callsign (`settings.json` / `ML`) never added.
 - Tree: double-click Connect. Right-click as in the Stations tree menus decision.
@@ -442,10 +459,11 @@ Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / 
 
 ## What is intentionally not done yet
 
+- Listen/FEC live send — later (still App TX + Send + FEC / End TX)
 - Settings → TNC large parameter editor (not implementing yet)
 - Other `config.ini` groups besides `[INIT]`; Settings UI for host-command groups (hand-edit only for now)
 - Name Pactor trailer bytes 2 and 4 — wait for a capture where either byte is **not** `$30`, or a firmware/manual name. Parser already keeps them; Status Monitor only shows raw trailer hex when *u* does not parse. No code until a second value appears.
-- Optional: refresh [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) portable layout (`config/` vs leftover `logs/`) — later.
+- Status-bar packet-type ticker from UBIT 10 `$50 n` (event stream is hardware-proven; UI still stubbed). Not in coded init yet.
 
 ---
 
@@ -466,20 +484,19 @@ java --enable-native-access=ALL-UNNAMED -jar "C:\Users\Jadon\Documents\GitHub\Pa
 
 Each `mvn package` increments `build.number.properties`. **`config/` is created beside the running jar**, not beside `user.dir` if those differ. **JDK 21+** (testbed has used 23).
 
-**Hardware debug tip:** Open **TNC → Debug Monitor…** and/or **Status Monitor…**, then **TNC → Connect**. OPMODE frames (`01 4F 4F 50 … 17`) appear **only** in Status Monitor. Listen ON should move OPMODE from `Pt` to `PN` (window appears first; Host follows). After Listen FEC, expect `PD` Traffic then `PD` Idle, then `Pt` (app sends `PN` if Listen on) or `PN` (later firmware; no Host change). User `[INIT]` commands appear in Debug Monitor after coded `Pt`. To leave Host Mode: Debug Cmd `HO` Payload `N`.
+**Hardware debug tip:** Open **TNC → Debug Monitor…** and/or **Status Monitor…** and/or **UBIT 10…**, then **TNC → Connect**. OPMODE frames (`01 4F 4F 50 … 17`) appear **only** in Status Monitor. `$50` frames (link text and, if UBIT 10 is Enable, Pactor *w* status-change `n`) appear in UBIT 10. Listen ON should move OPMODE from `Pt` to `PN` (window appears first; Host follows). After Listen FEC, expect `PD` Traffic then `PD` Idle, then `Pt` (app sends `PN` if Listen on) or `PN` (later firmware; no Host change). User `[INIT]` commands appear in Debug Monitor after coded `Pt`. To leave Host Mode: Debug Cmd `HO` Payload `N`.
 
 ---
 
 ## Recommended next steps (implementation order)
 
-There is no required software item left from the Phase 5 list. Remaining work is optional / when a use or capture appears:
+1. Status-bar packet-type ticker from UBIT 10 `$50 n` (Pactor hardware-proven; UI stubbed; not in coded init yet).
+2. Listen/FEC live send — when wanted (leave FEC/End TX as-is until then).
+3. Settings → TNC large parameter editor; extra `config.ini` groups + Settings UI for host commands (not implementing yet).
+4. Name Pactor trailer bytes 2 and 4 **if** a capture shows a value other than `$30`, or a document names them.
+5. Git is managed outside Cursor.
 
-1. Settings → TNC large parameter editor; extra `config.ini` groups + Settings UI for host commands (not implementing yet).
-2. Name Pactor trailer bytes 2 and 4 **if** a capture shows a value other than `$30`, or a document names them.
-3. Optional: refresh [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) portable layout (`config/` vs leftover `logs/`) — later.
-4. Git is managed outside Cursor.
-
-**Do not:** re-lock `SerialPortService.isOpen()` / native read on the UI path; do not wait for `OP`/`PG` before showing Listen windows or the Calling strip; ARQ window opens from `$50` CONNECTED (async), then `OP`. Do not send Host `RE`/`PV` to trigger disconnect/handover.
+**Do not:** re-lock `SerialPortService.isOpen()` / native read on the UI path; do not wait for `OP`/`PG` before showing Listen windows or the Calling strip; ARQ window opens from `$50` CONNECTED (async), then `OP`. Do not send Host `RE`/`PV` to trigger disconnect/handover. Do not re-land ARQ live Compose unless asked.
 
 ---
 
@@ -494,7 +511,7 @@ app/
                             ARQ dead on $50 DISCONNECTED: / linked Timeout,
                             Calling $50 Timeout → <call> no answer (60 s fallback),
                             cancelOutboundCall, arq* Host actions (ch0 $04/$1A, TC+$04, AG, Abort),
-                            sendOutboundChat (ISS), listenFecEndTx (PD+data+CTRL-D),
+                            sendOutboundChat (ISS commit/flush; trailing CR), listenFecEndTx (PD+data+CTRL-D; CQ uses same path),
                             post-FEC OP watch (Pt→PN only if Listen on),
                             OPPOLL scheduler, applyOpmodeDecoded,
                             HostEvent INBOUND_DATA + COMMAND_RESPONSE (OPMODE) + LINK_MESSAGE,
@@ -521,21 +538,22 @@ hostmode/
 serial/
   SerialPortService.java    jSerialComm; volatile opened; native I/O off ioLock
 config/
-  AppConfig, ConfigStore    {jarDir}/config/settings.json (opPoll, fec200, fecRetries)
+  AppConfig, ConfigStore    {jarDir}/config/settings.json (opPoll, fec200, fecRetries, cannedCqText, cqRepeat)
                             + config/buddies.json (CRLF defaults)
                             + config/heard.json + mentioned.json (cap 12)
                             + config/config.ini ([INIT] Host extras after coded init)
   HostCommandIni            parse/ensure config.ini
 ui/
-  MainWindow.java           tree, ARQ Connect, Calling…/Cancel, <call> no answer, Listen toggle, TNC menu
+  MainWindow.java           tree, ARQ Connect, Calling…/Cancel, <call> no answer, Listen, LP: checkbox, mycall:
                             Heard/Mentioned/<C>onnect/Buddies right-click (clear, add buddy, move/remove)
-                            (Debug Monitor + Status Monitor)
-  ConnectionWindow.java     chat UI + ARQ controls + FEC/End TX + *w* status slot + speed from *u*
+                            (Debug Monitor + Status Monitor + UBIT 10)
+  ConnectionWindow.java     ARQ App TX + Send + Flush ISS (Line/Message); Listen App TX + FEC + CQ
                             + OPMODE-driven ISS/IRS + HO lock + inbound $08
                             + ensureTranscriptNewline / applyInboundTranscript
   DebugMonitorWindow.java   coalesced RX; hides OPMODE frames
   StatusMonitorWindow.java  OPMODE-only stream + Mode: line
-  ProgramSettingsDialog.java  commit mode, canned text, FEC 200/Retries, OPPOLL
+  Ubit10MonitorWindow.java  UBIT 10 radios (`UB10 ON`/`UB10 OFF`); `$50` frames + decode
+  ProgramSettingsDialog.java  canned text (HO/Disc/CQ), CQ repeat, FEC 200/Retries, OPPOLL
   StartupWarningDialog.java warning + Java + Build: N  datetime
 util/
   DebugLog.java             optional config/debug-YYYYMMDD-HHMMSS.log
@@ -558,4 +576,4 @@ File transfer, multi-user, store-and-forward, BBS, Winlink, encryption, network 
 
 ## Resume prompt (paste into a new chat)
 
-> Resume PactorRATT_Alpha from `project_brief.md` (last updated 2026-09-13), `docs/OPmodeResponse.md`, and `docs/Alpha_Init_Sequence.md`. Last package **Build 32** in `Builds/Most Recent Build/`. Phase 1 UI, Phase 3+4 TNC init, and Phase 5 Pactor flows are done and hardware-proven (including Clear TX and Handover). **Do not reverse:** EDT never waits on `OP`/`PG`; ARQ window from async `$50` CONNECTED; never lock `SerialPortService.isOpen()` / native COM read on the UI path; never send Host `RE`/`PV` to trigger disc/HO. **ARQ:** open on `$50` `CONNECTED to <peer>`; dead on `$50` `DISCONNECTED: <call>` (colon; Timeout frame first = link timeout notice). OPMODE `Pt` is fallback only. Calling UI then worker `PG`. Call no-answer is `$50 Timeout` alone while Calling (same wire as linked Timeout; no `DISCONNECTED:`); 60 s local `<call> no answer` is fallback. Disc/HO are ch0 `$04`/`$1A` (with-text same block; after-TX-clear flushes App TX; Disconnect now / Clear TX and Handover are `TC` then the control byte). HO lock until IRS then ISS. **Listen:** window first, then `Pt`→`PN`. After FEC (`PD` Traffic then Idle), restore `PN` only if firmware landed on `Pt`. **Heard/Mentioned:** Listen inbound newline only; whole-word `de `; persist cap 12; tree right-click Clear / Add buddy / Move to top / Remove. **`<C>onnect`:** Listen `?>… <C>` never Heard/Mentioned; session-only; 3 identical in a row or last-5 stem gate. **Portable I/O:** `{jarDir}/config/` only. Grey→green is out of scope. **Next:** TNC settings editor / extra `[INIT]` groups when wanted (not yet); name trailer bytes 2/4 if a non-`$30` capture appears; ARCHITECTURE portable-layout refresh later. Git is managed outside Cursor.
+> Resume PactorRATT_Alpha from `project_brief.md` (last updated 2026-09-15), `docs/OPmodeResponse.md`, and `docs/Alpha_Init_Sequence.md`. Last package **Build 46** in `Builds/Most Recent Build/`. Phase 1 UI, Phase 3+4 TNC init, and Phase 5 link/Listen/Disc/HO are hardware-proven. **ARQ live Compose was reverted 2026-09-15.** **Do not reverse:** EDT never waits on `OP`/`PG`; ARQ window from async `$50` CONNECTED; never lock `SerialPortService.isOpen()` / native COM read on the UI path; never send Host `RE`/`PV` to trigger disc/HO. Do not re-land ARQ live Compose unless asked. **ARQ:** open on `$50` `CONNECTED to <peer>`; dead on `$50` `DISCONNECTED: <call>` (colon; Timeout frame first = link timeout notice). OPMODE `Pt` is fallback only. Calling UI then worker `PG` (`LP:` prefixes `!` unless already typed; session-only checkbox right of Listen). Call no-answer is `$50 Timeout` alone while Calling (same wire as linked Timeout; no `DISCONNECTED:`); 60 s local `<call> no answer` is fallback. Disc/HO are ch0 `$04`/`$1A` (with-text same block; after-TX-clear flushes App TX then the control byte; Disconnect now / Clear TX and Handover are `TC` then the control byte). HO lock until IRS then ISS. **ARQ Compose:** App TX + Send + Flush ISS; Program Line/Message commit; IRS queues in App TX; ISS commits go to Host with trailing CR. **Listen/FEC:** still App TX + Send + FEC/End TX; **CQ** = canned CQ text × CQ repeat (0–10) on the same `PD`+CTRL-D path (not App TX). **Listen:** window first, then `Pt`→`PN`. After FEC (`PD` Traffic then Idle), restore `PN` only if firmware landed on `Pt`. **Heard/Mentioned:** Listen inbound newline only; whole-word `de `; persist cap 12; tree right-click Clear / Add buddy / Move to top / Remove. **`<C>onnect`:** Listen `?>… <C>` never Heard/Mentioned; session-only; 3 identical in a row or last-5 stem gate. **UBIT 10 debug:** TNC → UBIT 10…; radios `UB10 ON`/`UB10 OFF`; log is `$50` only. **Hardware:** Pactor *w* changes push `SOH $50 n ETB` when UBIT 10 is ON (printed list omitted Pactor). **Portable I/O:** `{jarDir}/config/` only (see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §3). Grey→green is out of scope. **Next:** status-bar packet-type ticker from UBIT 10 `$50 n` when wanted (not in coded init yet); Listen/FEC live send later; TNC settings editor / extra `[INIT]` groups when wanted; name trailer bytes 2/4 if a non-`$30` capture appears. Git is managed outside Cursor.

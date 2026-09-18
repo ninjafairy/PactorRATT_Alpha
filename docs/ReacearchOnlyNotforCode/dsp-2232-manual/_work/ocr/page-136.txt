@@ -1,0 +1,54 @@
+DSP-2232 OPERATING MANUAL
+MORSE OPERATION
+8.5
+8.6
+12/91
+Special Morse Characters
+The DSP—2232's Morse program contains special keystrokes which you can
+use to make transmission easier, faster and more enjoyable. The most
+frequently used Morse "prosigns" are coded into the keyboard with keyg
+that have no direct representation in standard Morse.
+" reserved" keys are listed below:
+Morse
+Keystroke
+* or
+> or
+Abbreviat ion
+SK
+AS
+AR
+SN
+These special
+Mean inq
+End of QSO
+Wait
+End of message
+Go only
+Break or pause
+Attention
+Understand
+New line
+Umlaut O
+Umlaut U
+Swedish A
+Swedish E
+Morse Code Practice
+Use your computer with your DSP—2232 to develop and improve your
+manual CW sending and receiving skills.
+Set your DSP—2232 for Morse receive operation on Radio Port 1 and
+operate the hand key attached to your radio transceiver .
+In most
+installations your hand keyi.ng will be sent to the DSP—2232 and
+displayed on your monitor if your radio has an audio " input monitor"
+or "sidetone" output and you •ve turned on those monitor functions .
+The frequency of the monitor sidetone must be nearly 750 Hz or the
+DSP—2232 will not be able to copy it.
+Send test words to familiarize yourself with the relationship between
+your hand—keying and the Morse appearing on your screen.
+Practice keying at various speeds; observe how the system decodes your
+" f ist "
+You may be a bit unhappy or surprised at the quality of your
+keying but after a few sessions you ' II notice an improvement.
+Last page of Chapter 8
+— MORSE Operation
+8-5

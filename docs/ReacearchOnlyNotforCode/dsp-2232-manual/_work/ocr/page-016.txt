@@ -1,0 +1,94 @@
+DSP-2232 OPERATING MANUAL
+CHAPTER 1
+CHAPTER 1
+INTRODUCTION
+- INTRODUCTION
+rd
+53
+1.1
+1.1. 1
+1.1.2
+3/93
+Overv i ew
+The DSP—2232 wag designed by AEA to provide you the Amateur the
+complete digital operating position when coupled with a Personal
+Computer or Computer Terminal. The DSP—2232 couples your HF or
+VHF/UHF (or both) voice transceivers to your computer or terminal so
+you can use its keyboard and display to "talk" to other Amateurs.
+Capabilities
+The DSP—2232 allows you to transmit and receive all legal Amateur
+digital modes that are popular on both HF and VHF.
+In addition you
+can send and receive black—and—white Weather FAX. The DSP—2232 can
+receive other modes such as TDM, NAVTEX and bit—inverted Baudot RTTY .
+These capabilities together with SIAM (Signal Identification and
+Acquisition Mode) make the DSP—2232 ideal for the digital Short Wave
+Listener as well.
+The DSP—2232 with your Computer
+receive the following modes:
+or Terminal allows you to transmit and
+o
+o
+o
+o
+o
+o
+o
+AX. 25 Packet, both HF
+Baudot and ASCII RTTY
+AMTOR/SITOR CCIR Rec.
+Morse Code
+HF Weather FAX
+Satellite Operation
+PACTOR operation
+and
+476
+VHF
+and
+625
+( Chapter
+( Chapter
+( Chapter
+( Chapter
+( Chapter
+( Chapter
+( Chapter
+In addition the DSP—2232 receives the following modes:
+o NAVTEX marine broadcasts
+o TDM (Time Divisi.on Multiplex) signals
+o Bit—inverted Baudot RTTY
+( Chapter
+( Chapter
+( Chapter
+The DSP—2232 also has the following special features:
+o SIAM for SWLing
+4)
+7)
+8)
+11)
+12)
+7)
+10)
+10)
+(Chapter 10)
+o PakMaiI Maildrop for Automatic Packet Message Handling (Chapter 5 )
+o AMTOR MailDrop Operation
+(Chapter 7 )
+o KISS mode for TCP/IP and special Packet applications
+(Appendix A)
+(DSP Technical Manual)
+o HOST mode for Host application programs
+Included Components
+Your DSP—2232 Data Controller package contains the following items :
+o
+o
+o
+o
+o
+One DSP—2232 Data Controller
+DSP—2232 Operating Manual (this manual)
+Cables to connect your DSP—2232 to two separate radios
+Connector package to help setup your DSP—2232
+Radio Port "Loop—back" connector with jumper
+RS—232 Serial Cable with a DB—9 and a DB—25 connector
+1-1

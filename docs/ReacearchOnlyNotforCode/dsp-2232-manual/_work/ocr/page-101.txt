@@ -1,0 +1,75 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+o
+(If the other station can't copy these four lines of text, the
+chances are he won •t copy any more than that.
+No need to waste
+time and bandwidth by typing 15 or 20 lines of the game thing. )
+Type <CTRL—D> at the end of your call. The <CTRL—D> puts both
+your radio and the DSP—2232 into the receive mode.
+Always end every transmission with a carriage return to force the
+distant station's screen cursor or teleprinter back to the left margin
+on a new line.
+It's a good operating habit that keeps things neat.
+o
+Wait a bit to see if you get a response.
+If not, you can repeat
+the above procedure .
+6.5
+6.5. 1
+12/91
+Baudot RTTY Operating Tips
+The DSP—2232 can automatically determine the speed of the received
+signals with the SIGNAL IDENTIFICATION (SIAM) mode.
+However, you can
+manually step through all the available RTTY receiving speeds with the
+RBAUD command.
+The following "Function Keys" and immediate commands are included for
+Baudot RTTY operating convenience .
+Immediate Commands from the Command Mode:
+"N"
+" Funct ion Key"
+Forces LETTERS case in receive .
+Forces FIGURES case in receive .
+Switches system to receive mode, forces LETTERS case .
+Switches system to transmit mode and forces immediate
+entry into Converse mode.
+Go to CONVERSE Mode in order to load Transmit type
+ahead buffer.
+characters embedded in transmitted text :
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+0>
+Sends
+Sends
+Sends
+Sends
+Shuts
+Sends
+Sends
+AAB string as a HERE IS message.
+"Who Are You" request to distant station.
+LETTERS shift character .
+FIGURES shift character .
+off transmitter after sending character buffer.
+call sign in Morse and shüts off transmitter.
+the Time if the DAYTIME clock has been set.
+Changing Speed
+Assume you 've been receiving at 45 bauds and wish to increase the baud
+rate in steps.
+From the Command mode, type RB U followed by an
+The DSP—2232 responds with:
+RBaud
+RBaud
+was 45
+now 50
+The RBAUD command sets the Baudot RTTY speed. The most comrnon speed
+is 45 bauds on HF, but other speeds including commercial speeds are
+See the Command Summary for all the supported speeds.
+supported .
+6-5

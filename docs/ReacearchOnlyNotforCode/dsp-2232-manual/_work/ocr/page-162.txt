@@ -1,0 +1,64 @@
+DSP-2232 OPERATING MANUAL
+For the unproto mode:
+PACTOR OPERATION
+After typing" PTSEND", to start an unproto transmission, your DSP—2232
+displays the system status:
+LCD :
+LEDs :
+PACTOR IDLE,
+SEND
+As you send your traffic the status will change back and forth from
+IDLE to Traffic. When you stop typing, the IDLE status iB displayed.
+12.7
+12.7. 1
+3/93
+PACTOR operating Tips
+The following "Special Function Characters"
+included for PACTOR operating convenience.
+Immediate Commands from the Command Mode:
+and immediate commands are
+" PACTO"
+"PTCONN
+"PTSEND"
+"R"
+"PTLIST"
+" PTHUFF
+"PT200 IOFF>"
+"PTOVER
+Selects the PACTOR mode
+Selects the PACTOR mode as above
+Starts a linked connect and forces Converse
+Starts an unproto transmission and forces Converse
+Stops sending immediately, forces PACTOR Standby
+Allows reception of both unproto and linked
+transmissions
+O — prevents compression
+allows automatic use of Huffman compression
+Off — prevents 200 baud operation
+— allows automatic speed selection
+On
+Used to select the changeover character
+Defaults to ($1A)
+Special Function Characters embedded in transmitted text:
+<CTRL-Z>
+Sends your AAB string as a HERE—IS message
+Stops sending after the transmit buffer is empty
+Sends a "Who Are You" request to the other station
+Same as <CTRL—D> but sends your callgign in Morge
+Sends the TIME if the DAYTIME clock has been set
+Changes your DSP—2232 from send (ISS) to receive
+( IRS)
+BBQ Break-ln (ACHG Command)
+In the linked or connected mode, (ARQ) , when you ' re the " Information
+Receiving Station, " you can use the "ACHG" command to interrupt the
+distant station's comments.
+As the " Information Receiving Station, " you normally rely on the
+distant station to send the <CTRL—Z> to "change—over" at the end of
+his comments.
+ACHG is a command that forces both syst.ems to reverse
+the "Information Receiving" and "Information Sending" status of the
+link.
+o
+Use the ACHG command only when really needed to interrupt the
+distant station.
+12-8

@@ -1,0 +1,66 @@
+DSP-2232 OPERATING MANUAL
+o
+snr-
+Cu KEYING OJT
+O
+PARALLEL
+O
+COMPUTER INSTALLATION
+ttC.
+usa
+RESET
+PR 1 N TER
+o
+ASSEHOLCO IN U.s.n.
++t3VOC RCOIO RMIO
+z
+Figure 2—2
+o
+o
+o
+DSP—2232 Rear Panel Connections and Control g
+Port 1
+AGC Level
+O
+O
+o
+O
+o
+o
+o
+o
+Port 2
+o
+o
+Port 2
+AFSK Level
+Port 1
+AFSK Level
+Figure 2-3 DSP-2232 Side Panel AFSK Controls
+Connecting Your Computer or Computer Terminal
+2.3
+2. 3.1
+7/92
+o
+o
+MAKE SURE THE DSP-2232 AND YOUR COMPUTER ARE SWITCHED OFF
+Locate the DSP—2232 Serial Cable. Connect the 9—pin Female
+connector to the RS—232 connector on the DSP—2232 rear panel.
+Connect the other end of this cable (Female DB—25) to the RS—232
+Serial Port of your personal computer or Computer Terminal.
+Details on connecting to common machinea are listed below.
+NOTE: Thig cable wag designed to connect directly to a 25—pin IBM—PC
+compatible RS—232 port. Many machines on the market today support
+thig configuration.
+Some legs—common machineg are ligted in gection
+2.6.
+P leage be certain you have properly connected the DSP—2232 to
+your RS—232 computer or Terminal then proceed to section 2.4.
+IBM-PC/.XT/AT and Compatibles
+IBM compatible 25—pin RS—232 serial port g should connect directly to
+the supplied serial cable.
+Some IBM compatible machines are equ ipped
+with a 9 —pin serial port.
+For these machines a DB—9 to DB—25 adapter
+should be obtained from a Radio Shack store or a computer dealer.
+2-3

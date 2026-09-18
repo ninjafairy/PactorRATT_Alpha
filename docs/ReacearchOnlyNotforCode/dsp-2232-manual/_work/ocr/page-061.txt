@@ -1,0 +1,55 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+Understanding all types of packet frames ig not necessary to operate
+packet .
+Packet operators should however understand that there are
+many types of control frames that do not contain printable data.
+Your DSP—2232 can display these frames, but most users only want to
+For this reason, the MONITOR comrnand
+see frames with information.
+default (4) does not display all the packets that the DSP—2232 hears.
+NOTE :
+If you will be leaving your DSP—2232 on to accept connects
+from others while your computer ig off, set MONITOR to O
+(zero) and type a <CTRL—S> to hold the data.
+If you are using an AEA program, you must set the MONITOR
+command to O, but the our programs automatically perform the
+<CTRL—S> function for you .
+4.4. 5.1
+4.4. 5.2
+4.4. 5.3
+12/91
+Monitoring the Packet Networking Switches
+There are other types of AX. 25 frames used by networking switches that
+the DSP—2232 does not normally display. These other frames can be
+seen by turning the MPROTO command ON. Some of the packets monitored
+with MPROTO ON will contain information that may interfere with the
+screen on your terminal or computer causing it to look "funny"
+For
+this reason the MPROTO command default is OFF.
+If you are hearing packets that sound strong but are not displayed,
+setting MONITOR to 6 and MPROTO ON should show them. If you are
+curious about the packets that do not print, you may find the cornmand
+WHYNOT useful. When WHYNOT is turned ON, the DSP-2232 will give a
+reason why each packet was not displayed. If you are interested in
+exactly how the packets are represented, turn on the TRACE command.
+See the Command Summary for more information about WHYNOT and TRACE.
+Monitor inq Other Stations While Connected
+When you are NOT connected to another station, the MONITOR command
+discussed above determines what packets are displayed. When you ARE
+connected, the MCON command determines what packets are shown .
+The default of MCON is O which tells the DSP—2232 NOT to monitor any
+packets while you are connected. Most users like. t.his so they are not
+disturbed with monitored channel data when they are communicating with
+If it is desired to monitor channel activity while
+another station.
+you are connected, then remember to set MCON to an appropriate Monitor
+number from the list above or the command summary.
+Selective Monitor inq
+After you have monitored channel activity for a while, you may decide
+there are only a few stations you wish to display. The DSP—2232 will
+let you do this with the Monitor—TO (MTO) and Monitor—FROM (MFROM)
+commands. With the MBELL command, you can even be alerted when a
+certain station transmits on the frequency. These commands work in
+conjunction with MONITOR and MCON commands.
+4-17

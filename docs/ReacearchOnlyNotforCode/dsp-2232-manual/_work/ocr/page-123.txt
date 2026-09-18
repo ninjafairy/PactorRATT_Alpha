@@ -1,0 +1,57 @@
+7.6. 8.7
+7.6. 8.8
+12/91
+DSP-2232 OPERATING MANUAL
+7-13
+AMTOR AND NAVTEX OPERATION
+(READ n [Minen
+The "R n" cornmand lets thes remote user read any of the message numbers
+displayed in the LIST command. The command operates as described in
+Chapter 5 except that the column headers are not displayed .
+S callsign (SEND callsian)
+Due to the nature of AMTOR, character errors may occur at any time, so
+extra safeguards are built into the system. In AMTOR, the Mail Drop
+echoes the actual SEND command, then asks for conf irmation by sending
+"CFM YES/NO+?" .
+If the remote user's reply is "N", the Mail Drop
+cancels the SEND command and gives the "GA" cornmand prompt instead.
+If the reply is "Y",
+the message can then be sent as shown below.
+In the SEND cornmand, the words "AT " "FROM" and "BID" must be used in
+place of the "@,
+< and "$" signs used in packet. Hierarchical
+addresses are also supported in AMTOR mode, but not forwarding. You
+the SYSOP may edit any message so it can be forwarded in Packet mode.
+Since <CTRL—Z> is not available in the AMTOR character set, the "/EX"
+command or must be used to end all AMTOR Mail Drop messages.
+After the " / EX" or " + ? " has been detected, the MailDrop will confirm
+that the message has been sent by returning the message "FILED MSG n"
+to the remote user. ön
+WX7BBB DE WX7AAA GA+?
+s wx2zzz at wx2yyy
+S WX2zzz AT WX2YYY
+18340 FREE.
+CFM YES/NO
+Going to the Hamfest?
+GA MSG, '/EX' TO END.+?•
+example of sending a message is shown below:
+I haven't heard from you and
+you are going to the Hamfest
+Hope to see you there. 73
+/ ex
+WX7BBB DE WX7AAA FILED MSG 1
+wondered if
+next month?
+{Mail Drop prompt
+{User' s SEND command}
+{Mail Drop echoes SEND cotnmand
+and awaits confirmation}
+{User confirms}
+{Mail Drop Subject prompt}
+{User enters Subject}
+{Mail Drop Send prompt}
+{Message text}
+{Message text}
+{Message text}
+{User ends message}
+{Mail Drop prompt

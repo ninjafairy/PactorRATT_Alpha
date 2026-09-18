@@ -1,0 +1,199 @@
+DSP-2232
+7-2
+2.
+2.5
+2.6
+7-3
+3.4
+3.5
+7-5
+3.6
+4.1
+4.2
+4.3
+7-8
+4.5
+4.6
+7.5
+7.6
+6.1
+6.2
+6.3
+6.4
+4.1
+6.5
+6.8
+8.4
+. 7-13
+7.1
+. 7-14
+7.2
+. 7-15
+7.3
+7.4
+. 7-17
+7.5
+7.8
+OPERATING
+Overv iew .
+Where to
+MANUAL
+CHAPTER 7
+TABLE
+OF
+CONTENTS
+- AMTOR AND NAVTEX OPERATION
+Paragraph
+7.2. 1
+7.2.2
+7. 2.3
+7.
+7.
+7.3. 1
+7.3. 2
+7.3. 3
+7.
+7.
+7.
+7.
+7.
+7.4. 4
+7.
+7.
+7.
+7.
+6.
+7. 6.6
+7.
+6. 8.1
+6.8. 2
+6.8. 3
+6.
+6.8.5
+6.8. 6
+6.
+6.8. 8
+7.5. 1
+7.5. 2
+7.5. 3
+7.8. 1
+7.8. 2
+7/92
+operate AMTOR
+DSP-2232 AMTOR Parameter
+Settings
+Entering Your SELective CALI ing
+Entering Your SELective CALI ing
+Enter the AMTOR Mode
+HF Receiver Settings
+Tuning in AMTOR Stations
+Transmitter Adjustments
+Going On The Air
+calling CQ in FEC AMTOR
+Answering an FEC AMTOR CQ
+ARQ AMTOR Operating Fundamentals
+Code
+Code
+Ending an ARQ AMTOR contact
+LCD Status and Mode Indicators
+AMTOR Operating Tips
+ARQ Break-ln (ACHG cormand)
+Entering Your Auto—AnswerBack
+(AAB)
+(MYSELCAL)
+(MYIDENT)
+Shifts
+Operating AMTOR with Other Modems
+Speed Change Not Permitted
+Echoing Transmitted Characters as
+and
+Sent
+(EAS)
+Sending Only Cqnplete Words (WORDOUT )
+Operating on the Wrong Sideband
+Monitoring ARQ AMTOR contacts with ALIST
+AMTOR Mail Drop Operation
+Special Operation Considerations
+Settings For AMTOR MailDrop Operation
+Starting AMTOR MailDrop Operation
+Local Logon to the MailDrop
+Remote Logon to your AMTOR MailDrop
+Cal ler Prompts
+Monitor Mail Drop Operation
+SYSOP Mail Drop Commands
+Remote
+A
+B
+H
+J
+K
+L
+R
+S
+User Mail Drop Commands
+( ABORT)
+(BYE)
+(HELP)
+( JLOG )
+n (KILL
+n (LIST
+n (READ
+( Remote
+only )
+( Remote Only)
+n (Mine))
+[Mine) )
+n [Mine))
+callsign (SEND call sign)
+Simultaneous AMTOR and Packet Operation
+Selecting and Loading Modems
+Displaying Received Data
+Switching Between Ports
+More Thoughts on Port Switching
+Dual Port AMTOR/Packet Mail Drop
+Operat ion
+Packet Mail Drop Command Settings
+AMTOR Mail Drop Command Settings
+Dual Port Mail Drop Operation Notes
+AMTOR Switching—Time Considerations
+Suggested AMTOR Operating Settings...
+Possible Areas
+NAVTEX Operation
+for
+AMTOR
+Performance Improvement
+rroc-6
+Paqe
+. 7-1
+. 7-1
+. 7-5
+. 7—6
+. 7-8
+. 7-8
+. 7-8
+. 7-8
+7-10
+• 7-10
+. 7-10
+. 7-10
+7-11
+. 7-12
+7-12
+. 7-12
+. 7-12
+. 7-12
+7-12
+7-12
+7-12
+7-12
+. 7-13
+7-14
+7-15
+7-18
+7-18
+7-18
+7-18
+7-19
+7-19
+7-20
+7-21

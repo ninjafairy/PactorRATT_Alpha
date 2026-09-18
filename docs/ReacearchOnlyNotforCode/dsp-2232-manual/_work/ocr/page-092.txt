@@ -1,0 +1,109 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+5. 5.2
+5.5. 3
+5.5 . 4
+12/91
+LIST Messages
+You • re logged on and have gotten the Mail Drop's prompt :
+(AEA DSP-2232) 16508 free > {MailDrop•g prompt}
+Now, type " L"
+to LIST all the
+messages in the
+Mail Drop.
+{The LIST comrnand}
+{The Mail Drop responds}
+Msg#
+5 BY
+4 BY
+1 BY
+Size
+184
+287
+178
+56
+To
+WXIAAA
+ALL
+QST
+ALL
+From @
+WX2BBB
+WX2BBB
+WX2BBB
+WX2BBB
+BBS
+Date
+O I—Jun—
+O I—Jun—
+O I—Jun
+T ime
+90 20:15
+01-Jun-90 18:42
+90 17:30
+-90 10:22
+Title
+Hello Joe
+Question
+Ma 11 box
+APLINK
+(AEA DSP-2232J 16508 free
+READ Messaqes
+You 've seen the list of messages
+the Mail Drop' s prompt :
+>
+{Mail Drop' B prompt }
+and
+wish to READ
+yours .
+You 've seen
+(AEA DSP-22321
+Now, type "R
+16508 free
+to READ the
+From
+one message number to
+> {Mail Drop's prompt
+you in the MailDrop.
+{The READ 6 conunand}
+Mail Drop responds}
+Msg#
+Size To
+{The
+Date
+@ BBS
+notice
+T ime
+Title
+Hello Joe
+144 WXIAAA WX2BBB
+Hello Joe. Did you get the
+01-Jun-90 20:15
+about next month's meeting of the
+Radio Society at the Firehouse?
+Will you be going?
+— I need a ride.
+73.
+[AEA DSP-2232J 16508 free
+KILL Messages
+You tve read the message addressed to
+you see the Mail Drop's prompt :
+{The message header}
+{The message}
+V, ? ) > {Mail Drop's prompt}
+you and
+message
+wish to KILL it.
+Again
+(AEA DSP-2232]
+Now, type "K # "
+[AEA DSP-2232)
+16508 free
+to KILL one specific
+16704 free
+5-8
+v t ? ) > {Mail Drop' g prompt}
+in the Mail Drop.
+{The KILL 6 command}
+{Mail Drop confirms}
+> {Mail Drop's prompt

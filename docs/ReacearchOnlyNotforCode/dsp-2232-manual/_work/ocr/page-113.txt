@@ -1,0 +1,49 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.2. 6
+12/91
+Tuninq in AMTOR Stations
+Tuning in AMTOR stations properly is critical to successful operation.
+Since HF AMTOR stations use either 170 Hz or 200 Hz Frequency Shift
+Keying to send data, tuning accuracy is very important .
+FoI low the
+procedure below for the best results.
+Make certain your HF receiver is either in LSB or F SK depending
+o
+on your DSP—2232 set—up.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Tune your receiver carefully between 14.065 and 14.085 MHz (or
+o
+another band where you know there is AMTOR activity) and listen
+for the "chirp chirp" of ARQ or the steady data of FEC stationg.
+When in the AMTOR Standby mode as you are now, you will not
+NOTE :
+To print these
+be able to print the "chirping" ARQ signals.
+stations, you must be in the AMTOR Listen (ALIST) mode.
+When you find a station, slowly vary the VFO on your receiver and
+o
+look for a display on the DSP—2232 tuning indicator as shown.
+Tuned In
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too low for the DSP—2232 to copy the
+Slowly tune the V FO and make the frequency higher.
+signal .
+Frequency
+Too Low
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too high for the DSP—2232 to copy the
+signal .
+Slowly tune the VFO and make the frequency lower.
+Frequency
+Too High
+Adjust the volume of the received signal so that the DCD LED
+o
+lights when a properly tuned FEC AMTOR station is being received.
+After you have an FEC AMTOR station tuned in, you should start seeing
+If you have tuned in "chirping" ARQ AMTOR
+the copy on your screen.
+stations, you will not print anything until you enter the ALIST mode.
+If you just want to receive, see Chapter 10 on SIGNAL IDENTIFICATION.
+7-3

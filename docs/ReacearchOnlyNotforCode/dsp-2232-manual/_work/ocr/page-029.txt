@@ -1,0 +1,63 @@
+2.6. 1
+2.62
+2.63
+2. 6.4
+2.6. 5
+12/91
+DSP-2232 OPERATING MANUAL
+2.6
+2-10
+COMPUTER INSTALLATION
+Detailed RS—232 Connections for Other Computers
+If the type of computer you plan to use with the DSP—2232 wag not
+mentioned in the beginning of thig chapter, you may find specific
+connection information in the sections below. You will also need a
+Communications program to use with your computer which AEA can not
+provide. See section 2.7 for information regarding Cornmunication
+programs for many of these machines.
+Some computers require a serial port adapter card that incorporates
+the necessary RS—232—C interface circuitry. The IBM—PC and Apple I I
+series of computers are good examples of this.
+Computers that do not have a serial port or do not permit use of a
+suitable adapter or level converter cannot be used with the DSP—2232.
+Apple II Series
+The Apple II, 11+ and Ile computers require an RS—232 Serial card to
+The most popular we know about is the
+connect to your DSP—2232.
+Super—Seri al Card which should be available from your Apple dealer.
+Commodore C—64 C—128 and Vic 20
+Commodore, OMNI TRON IX and other manufacturers sell a signal level
+converter that is installed in the User Port Connector on the rear of
+the computer. The converter changes the computer's internal TTL
+voltage levels to the proper RS—232—C voltage levels and polarities .
+IBM PCir
+The PCjr uses standard RS—232—C voltage levels; however, the
+connector is not standard and is hard to find. Pin—out information
+Some dealers
+can be found in the IBM PCjr Technical Reference Manual.
+sell a 'IBM PCjr Adapter Cable for Serial Devices' that converts the
+connector on the PCjr to standard The cable attaches
+between the PCjr and the DSP—2232 Serial Cable.
+Tandy Color Computer
+The coco series (except for the Micro coco) uses a four—pin DIN
+connector for its serial interface. Wire a cable as shown below.
+All
+necessary parts
+coco
+4
+2
+3
+should be
+available from your Radio Shack dealer.
+DSP-
+8201
+2232 (DB9S)
+3
+Tandy. Model 100 / 102
+and
+NEC
+The Model 100/102 and NEC 8201 have built—in standard RS—232 serial
+You'll need a DB—25
+ports which are compatible with the DSP—2232 .
+male—male gender changing adapter to use the supplied DSP—2232 Serial
+Cable.

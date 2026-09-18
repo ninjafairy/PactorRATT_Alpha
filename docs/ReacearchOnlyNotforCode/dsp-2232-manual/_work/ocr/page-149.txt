@@ -1,0 +1,57 @@
+DSP-2232 OPERATING MANUAL
+SATELLITE OPERATION
+CHAPTER 11
+SATELLITE OPERATION
+rd
+11.1
+11.2
+7/92
+Overv iew
+Amateurs have always been experimenters and innovators of comrnunicationg
+technology. This has certainly been true in the area of satellite
+communications. The satellites amateurs have designed and built relay
+CW, SSB (voice) and now digital signals over large distances without
+the need of ionospheric propagation which ig not always reliable.
+The space program began for amateurs with the launch of the first
+satellite (OSCAR 1) in 1961. OSCAR, which stands for Orbital Satellite
+Carrying Amateur Radio is the general term used to refer to most
+amateur satellites once in orbit. Since that time some 20 gatelliteg
+for amateur use have been launched and more are being planned.
+The first satellites were .beacons only and did not actually "relay"
+signals.
+By the mid 1960s however transponders capable of
+retransmitting CW and SSB signals were added to the satellites.
+Since
+that time digital modes have been added first for telemetry reception
+In the most recent satellites
+and then for two way communications use.
+digital transmissions. have even been used to return pictures to earth.
+The special problems of satellite comrnunications including weak signals
+and Doppler shift make for some special modem requirements. Your
+DSP—2232 supports the 1200 bits/ sec BPSK (Binary Phase Shift Keying)
+as well as the 9600 bits/ sec FSK modems currently used in amateur
+In fact, the Digital Signal Processing
+satellite communications.
+technology used in the DSP—2232 is ideal for satellite use because
+new and experimental modems can be programmed in software.
+Preparat ion
+Satellite operation requires some specialized equipment and operating
+techniques that cannot possibly be covered in this single chapter.
+If you are new to this area of amateur radio, we strongly recommend
+obtaining a good introduction to satellite operation from the ARRL or
+other source. A guide such as this will discuss setting up a
+satellite station, where to find and how to track the satellites ag
+well as the satellite operating practices you will need to know.
+While an introductory reference guide will get you started with
+satellite operation, the most current information is obtained from
+AMSAT. AMSAT is the Radio Amateur Satellite Corporation and is made
+up of amateurs interested in designing, building, and using
+communication satellites . A membership in AMSAT helps support future
+amateur satellite efforts as well as provides you with the most
+current satellite and space communication information.
+AMSAT bulletins are also distributed on the amateur packet network,
+Satellite
+Compuserve, and other computerized information sources .
+users should pay attention to these bulletins as they are both
+interesting and sometimes crucial to the life of the satellites.
+11-1

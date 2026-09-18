@@ -1,0 +1,66 @@
+2. 6.6
+2. 6.7
+12/91
+DSP-2232 OPERATING MANUAL
+DSP-2232
+COMPUTER INSTALLATION
+Other Computers with RS—232—C Ports
+If your computer has an RS—232 port, consult your computer manuals to
+see which pins are used for Transmit—Datar Received—Data and Signal—
+Ground. Read the manufacturer's recommendations for connecting the
+serial port to a modem and connect your DSP—2232 in the game way.
+Your DSP—2232 is conf igured as Data Communications Equipment (DCE)
+which receives data on pin 3 of the 9—pin DB—9 connector or pin 2 of
+the 25 pin cable supplied with the unit. Most computers and terminal g
+are configured as Data Terminal Equipment (DTE) transmitting data on
+pin 3 of a DB—9 or pin 2 of a DB—25 RS—232 connector.
+o
+o
+o
+If your computer is configured as DTE:
+Use the supplied RS—232 cable with a Gender changing adapter if
+necessary. These are available from Radio Shack ( Part # 26—243)
+and other computer stores .
+If your computer is configured as DCE:
+You may want to purchase a Null Modem adapter from Radio Shack
+(Part # 26—1496) or other computer store.
+You may also wire your own cable directly to the DSP—2232 's DB—9
+connector by wiring the Transmit Data (TXD), Receive Data (RXD)
+and the Signal Ground
+to
+diagrammed
+coco
+TXD
+RXD
+GND
+below:
+As a default
+the
+provides
+a DB—9S (Female) connector as
+DSP-2232 (DB9S)
+5
+XON/XOFF software flow—control
+to the computer or terminal. The command XFLOW can be turned OFF
+to enable hardware handshake if your computer requires it.
+Hardware flow control is achieved with RTS/CTS (pins 7 and 8) of
+the 9—pin connector on the DSP—2232 's rear panel.
+Other Computers with Non—standard Serial Ports
+Computers with non—standard serial ports must meet the following
+condit ions :
+o
+o
+o
+The signal levels must be compatible with The DSP—2232
+requires the voltage levels from the computer be greater than +3
+volts in the "asserted" state and O volts or less in the "non—
+asserted" state.
+The signal polarity must conform to the RS—232—C standard.
+O or negative—voltage state must correspond to logical " 1 "
+the positive—voltage state to logical "O. "
+The
+and
+The computer must be able to correctly receive a signal that
+meets asynchronous RS—232—C specifications. The DSP—2232
+supplies signals that meet this specification.
+2-11

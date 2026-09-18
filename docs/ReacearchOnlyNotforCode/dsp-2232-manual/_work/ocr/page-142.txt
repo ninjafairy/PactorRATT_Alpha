@@ -1,0 +1,54 @@
+DSP-2232 OPERATING MANUAL
+FACSIMILE OPERATION
+9.6. 1
+9.6. 2
+7/92
+This forces a synchronization—lock, and starts the printer printing
+regardless of what kind of signal is being monitored. Since this
+synchronization lock was not sent by the transmitting station, the
+picture will probably not be correctly positioned on the page.
+Rather, it will likely appear to be split in half with the left half
+of the picture on the right half of the page, and the right half of
+the picture on the left half of the page.
+To correct for thist a justification command has been included that
+allows the user to shift the entire image to the left in 1/2 inch
+inc rementg .
+For example if the left—edge of the picture appears
+roughly 4—1/2 inches away from the left edge of the paper, issuing the
+cornmand JUSTIFY 9 will shift the left edge of the picture to the left
+4—1/2 inches (9 X 0.5 inch) correcting its justification.
+The DSP—2232 will respond with:
+JUstify now 9
+This procedure will not be necessary if the DSP—2232 synchronizes from
+the transmitted facsimile signal. This procedure is also not
+necessary if you are using an Am PAKRATT with FAX program. AEA
+programs allow the image to be justified after it has been received.
+To stop the printer, you may either exit the facsimile mode by
+changing to another mode or enter the RCVE command, which puts the
+DSP—2232 back into facsimile standby receive. Standby receive is the
+same as if you have just entered the FAX mode from another mode. The
+DSP—2232 will wait until it receives the synchronization signal from a
+facsimile station before beginning to print again.
+Facsimile Operating Tips
+The following section contains tips and information on FAX reception
+for those printing directly to a graphics printer.
+If you are using
+an AEA PAKRATT WITH FAX program, consult the program manual for more
+inform#ion and helpful hints.
+Settinq PRTYPE for Your Printer
+Before FAX can be printed on the printer you have connected, you must
+choose the correct printer type with the PRTYPE Comrnand. Most
+printers these days support either the Epson or the IBM 8—bit image
+graphics formats.
+For this reason the DSP—2232 defaults to the Epson
+format .
+See the PRTYPE command in the Command Summary if your printer
+supports a different graphics standard.
+Printinq Direction (LEFTRITE)
+Weather FAX as well as most other facsimile prints from left to right,
+but occasionally you may find a station that is reversed.
+If you come
+across such a transmission, you may simply issue the command LEFT RITE
+OFF to correct this. The DSP—2232 will respond with:
+LEftr ite now OFF
+9—6

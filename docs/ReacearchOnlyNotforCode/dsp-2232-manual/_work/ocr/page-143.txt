@@ -1,0 +1,53 @@
+DSP-2232 OPERATING MANUAL
+FACSIMILE OPERATION
+9. 6.3
+9.6. 4
+9.7
+9.7.1
+9.8
+7/92
+Invert inq Black and White (FAXNEG)
+You may occasionally come across a station that appears to be
+inverted; that is print ing black where you expect white, and leaving
+white where you expect black.
+In this case you may issue the command
+FAXNEG ON. The DSP-2232 will respond with:
+FAXNeg now ON
+What was before printing black will now be white,
+Printing Density (GRAPHICS)
+and vice versa.
+How the graphics will look on your printer depends on the setting of
+the GRAPHICS command. There are 7 graphics commands providing
+horizontal dot densities from 480 dots to 1, 920 dots horizontally
+across a page. The default setting is 960 which Epson compatible
+graphics printers can reproduce. eee the GRAPHICS command description
+in the Cornmand Summary for a complete description of this command.
+Printing Other Services
+Most of the weather services in the US use a facsimile scan speed of
+2 lines per second, which corresponds to FSPEED 2 (Default) .
+Facsimile photographs often use 1 line per second, which is FSPEED I.
+Some foreign services use speeds of 4 lines per second, which is
+Speeds of 1.5 and 3 lines per second are also supported.
+FSPEED 4.
+See the command summary for more information on F SPEED .
+When different horizontal scan speeds are used, the number of lines
+per vertical inch can also vary. If nothing is done to change the
+number of lines printed by the printer, the pictures may appear
+squashed or elongated. The ASPECT command resolves this by allowing
+from one to six lines to be printed out for every six lines received.
+The default setting is ASPECT 2 which means that 2 out of 6, or 1 out
+of every 3 horizontal lines is printed. This is the most common
+setting you will use for WEFAX, but other services may require using
+other values to print pictures without aspect ratio distortions.
+The DSP-2232 FAX Modem
+The DSP—2232 uses a special modem (MODEM 41) for HF WEFAX operation.
+This modem has a bandwidth of 800 Hz and a center frequency of 1900
+Hz. The APT FAX modem (Modem 42) may also be selected for black &
+white Facsimile operation. To select this modem, set the default FAX
+modem to be modem 42. This is done from a terminal program of from
+the dumb terminal modem of the PC—PAKRATT program by setting the
+command QFAX to 42 .
+Transmittinq FAX
+The DSP—2232 does support FAX transmission, but attempting to do this
+without an AEA's PC-PAKRATT 11 WITH FAX program is difficult. We
+recommend you consider this program if FAX transmission is desired.

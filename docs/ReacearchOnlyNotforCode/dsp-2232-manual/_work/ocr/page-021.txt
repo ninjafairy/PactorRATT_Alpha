@@ -1,0 +1,69 @@
+DSP-2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+2.2. 1
+Connect inq Power
+o
+0
+O
+o
+o
+MAKE SURE YOUR POWER SUPPLY IS OFF AND UNPLUGGED BEFORE WIRING
+Locate the DSP—2232 Power Cable in the acceggory bag. Strip Off
+just enough insulation from the endg to connect it to your 12—14
+Volt DC requ lated power supply.
+The Center pin of the coaxial power plug iB POSITIVE. Connect
+the lead with the White stripe to the POSITIVE (+) lead on your
+power gupply. Check this with an Ohm—meter if you have one.
+Connect the golid Black (GROUND) lead to the NEGATIVE (-) lead of
+your power supply.
+(The AEA AC—4 Wall Trangformer ig already
+wired correctly. )
+Connect the power plug to the 13 VDC Power
+rear of the DSP—2232.
+DO NOT CONNECT YOUR
+Plug in your power supply or AC—4 and turn
+DSP—2232 by depressing the Power Switch on
+Receptacle on the left
+COMPUTER YET.
+on power. Turn on the
+the rear of the unit.
+left should light and
+occurs, then switch
+At power—on, the
+soon display the
+OFF the DSP-2232
+If the STATUS display
+insure that 12—14 VDC
+pin is POSITIVE.
+If the STATUS display
+LCD STATUS display on the
+words "Pregg
+If thig
+and move on to section 2.3.
+does not light, then re—check the above gtepg to
+is available at the power plug and the center
+lights, but a message other than "Press *" is
+displayed, then the DSP—2232 has probably been initialized. If the
+DSP—2232 has been initialized it is ready to communicate with a
+computer or terminal at a specific baud rate (probably 300, 1200,
+2400, 4800 or 9600 baud).
+If you know what this baud rate iB then you
+should continue with the installation at section 2.3 keeping this in
+mind .
+If you do not know what baud rate the DSP—2232 has been initialized to
+then you should reset the DSP—2232 by pressing the rear—panel RESET
+switch at the same time you turn on the power switch. After thig is
+done, the "Press *" message should be observed on the LCD STATUS
+display.
+If the above did not produce the "Press *" message, then contact AEA
+Technical Support Department as described in the front of thig manual.
+osp-Z232
+o
+DSP
+OIGITN- SIGNN- PRCESSOR
+TUNE
+MULTI-MODE DATA CONTROLLER
+Figure 2—1
+12/91
+DSP—2232 Front Panel Controls and indicators
+2-2

@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.12
+7 / 92
+Packet Meteor Scat tor Extens ion
+A new packet protocol extension has been added for meteor scatter
+work that allows a Master/ Slave packet connection to be established.
+This is done to reduce the possibility of simultaneous transmissions
+by both sides of a packet connection over a long meteor scatter path.
+This experimental protocol is activated by turning User BIT 18 ON
+(UBIT 18 ON). When UBIT 18 is ON (default OFF) the packet station
+who initiates a packet connect will become the Master station and the
+station who acknowledges the connect becomes the Slave.
+After a Meteor Scatter connection has been established, the Master
+station will continually send either information frames (I—frames)
+or polling frames and await an acknowledgement from the slave. The
+Master station therefore sends packets constantly, even if all its
+I—frames have been acknowledged. The slave station sends nothing,
+not even I—frames, . until it receives a polling frame from the master.
+The Slave station may only Send an I—frame to the Master after a
+poli frame has been received.
+The packet timing of the Master station is critical for proper Meteor
+Scatter operation.
+In a normal AX. 25 packet connect, the FRACK timer
+counts down until it reaches zero and then a Retry of a poll frame is
+sent. The FRACK timer counts in units of seconds however and a finer
+timing resolution is desirable for Meteor Scatter work. A new timer
+called FRICK has been added which t imes in 10 msec increments. The
+FRICK timer can be set from 0 (disabled) to 250 which corresponds to
+a time of up to 2.5 Seconds.
+See the Command Summary for a complete
+description of the FRICK timer.
+The following settings are recommended for this method of Meteor
+Scatter work. Both packet stations should use these same settings.
+UBIT 18 ON
+RETRY O
+AX25L2V2 ON (default)
+MAXFRAME 1
+(CHECK doesn't matter)
+FRICK n, where n is large enough to allow the other station time
+Note :
+to send the start of an acknowledgement frame
+Do not operate the unit with multiple packet connections while
+In contrast to FRACK, which provides
+FRICK is active (1-250).
+one retry timer per multi—connect channel, there is only one
+Each logical
+FRICK timer on each radio port of the DSP—2232.
+channel will try to use the same FRICK timer, causing
+interference to the operation of the other channels.
+Digipeaters should not be used when in the Meteor Scatter mode.
+The FRICK timer (unlike FRACK) does not allow any extra time when
+digipeater stations are specif i ed .
+To return to normal AX. 25 packet operation turn User BIT 18 OFF.
+Also, be sure to disable the FRICK timer (by setting FRICK to O)
+when you are through operating in Meteor Scatter mode.

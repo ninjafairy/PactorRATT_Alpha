@@ -1,0 +1,44 @@
+DSP-2232 OPERATING MANUAL
+FACSIMILE OPERATION
+The DSP—2232 LED bar—graph should be tuned so that the facsimile
+signal is roughly centered in the display as shown in the middle of
+Figure I below. If the audio frequency ig too low, the bar—graph will
+If the audio frequency ig
+look something like the left—most display.
+too high, it will look something like the right—most display.
+Facsimile tuning is not especially critical when copying WEFAX, but a
+properly tuned signal is needed when printing facsimile photographg.
+Frequency too low
+Tuned In
+Frequency too High
+9. 4.3
+9.5
+7/92
+Figure 1:
+Facsimile tuning indicator conditiong for FAX tuning
+DSP—2232 Facsimile Parameter Settings
+To start receiving WEFAX broadcasts on your computer screen, follow
+the setup instructions in your PAKRATT WITH FAX program manual.
+To start receiving FAX on your graphics compatible printer, you first
+must tell the DSP—2232 that there is a parallel printer connected by
+issuing the
+PRCon
+PRCon
+command PRCON ON. The DSP—2232 will respond with:
+was OFF
+now ON
+Now all that ig necessary is to put the DSP—2232 into FAX mode by
+typing FAX. The DSP—2232 will respond with:
+Opmode now FAX
+Receiving Facsimile Broadcasts
+The DSP—2232 is now in the Facsimile Standby—Receive mode which means
+it i 3 waiting for a synchronization signal from a facsimile
+transmitter to begin a new picture. Verify this by entering the
+OPMODE comrnand. The DS? —2232 should respond with:
+Opmode FAX
+STBY RCVE
+At thig point make sure the receiver volume is high enough go that the
+If you do not
+DCD LED lights, otherwise the printer may not print.
+want to wait for the beg inning of a new picture, you may type
+Lock

@@ -1,0 +1,158 @@
+Paragraph
+4.11
+4.11. 1
+4.11. 2
+4.11.3
+4.12
+5.1
+5.1. 1
+5.1. 2
+5.1. 3
+5.
+5.2. 1
+5.2.2
+5.
+5.
+5.
+5. 4.4
+5.
+5.
+5.
+5.
+5.4. 9
+4.9. 1
+5.
+5.
+4.10
+4.11
+5.
+5.5. 1
+5. 5.2
+5.5. 3
+5.
+5.
+5.
+5.6
+5.
+7.2
+7/92
+DSP-2232
+4-36
+4-36
+4-37
+4-37
+4-40
+5-1
+1.4
+5-2
+5.3
+5.4
+4.1
+4.2
+4.3
+4.5
+4.6
+5-5
+4.8
+5-8
+5.4
+5.5
+5.6
+. 5-10
+6.1
+7.1
+. 5-11
+. 5-12
+OPERATING
+MANUAL
+CHAPTER 4
+TABLE
+OF
+CONTENTS
+- PACKET
+RADIO ( Continued )
+Extension
+Packet Lite HF Packet Protocol
+Enabling Packet Lite
+Compatibility With Standard AX. 25 Stations
+Packet Lite Protocol Enhancement
+Packet Meteor Scatter Extension
+Summary
+CHAPTER 5
+- MAILDROP OPERATION
+Overview of PakMaiI Operation
+RAM Space for Message Storage
+System Commands
+Your MailDrop Callsign
+Start and Stop MailDrop
+Local Logon
+Operation
+Monitor Mail Drop Operation
+caller Prompts
+SYSOP Mail Drop Commands
+Remote
+A
+B
+E
+H
+J
+K
+L
+R
+S
+v
+Sample
+User MailDrop
+( ABORT)
+(BYE)
+(Edit # )
+Cormands
+( HELP)
+( JLOG )
+n (KILL
+n
+(Mine) )
+(LIST [Mine))
+n (READ n [Mine]
+callsign (SEND call sign)
+Sending Other
+Types
+- The
+of
+Messages
+with
+SEND
+( VERS ION )
+(HELP)
+Mail Drop
+Session
+Remote
+User' s
+Connect and Logon...
+LIST Messages
+READ Messages
+KILL Messages
+SEND Messages
+Log Off and Disconnect
+Point
+Point
+of
+of
+Sample Mail Drop Session
+Message Numbers... .
+Auto—Forwarding with the
+— Mail Drop
+SYSOP •
+s
+DSP-2232 MailDrop
+Paqe
+. 5-1
+. 5-5
+. 5—6
+View..
+V Lew
+5-11
+5-11
+Mail Drop Settings for Auto—Forwarding
+Enter ing a Message for Reverse Forwarding
+TOC-4

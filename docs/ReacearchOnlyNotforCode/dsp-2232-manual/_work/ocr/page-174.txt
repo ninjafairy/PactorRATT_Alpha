@@ -1,0 +1,46 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+12.10. 6
+Sometimes you might not want to be bothered with anything from the
+Radio Port you are not using. For these times either Radio Port may
+be turned OFF with the RADIO command. For example, let •g gay that in
+the above example QSO you wanted to work HF packet and did not want to
+be interrupted with any VHF connects. Typing the following cormand
+would cause Radio Port 2 to be disabled.
+cmd:RADIO /0
+RAdio was 1/2
+RAdio now 1/0
+When a DSP—2232 Radio Port ig disabled, the front panel LCD status
+indicator for that port will be extinguished ag a reminder.
+Dual Port PACTOR(Packet Maildrop Operation
+Your DSP—2232 MailDrop will operate both on Packet and PACTOR and can
+be used to allow message traffic that originates on PACTOR to be
+reverse—forwarded into the Packet network. Similarly, traffic
+originating on Packet may be picked up by remote stations on PACTOR.
+Before you begin dual port Packet/ PACTOR MailDrop operation, be sure
+that you are familiar with the operation of Packet, PACTOR and the
+MailDrop as describeä in Chapters 4, 5 and 7 of this manual. A1 BO be
+sure that appropriate modems are selected. The more experience you
+have with each of these modes will help when setting up a dual port
+Mail Drop system.
+12.10.6.1 Packet Mail Drop Command Settings
+First set up the packet side of the MailDrop (on Radio Port 2) by
+setting MYCALL and MYMAIL. You may also want to enter a custom MTEXT
+to let others know about the PACTOR feature. Be sure to set 3RDPARTY ,
+MDMON, MDPROMPT and MMSG as desired.
+If you will be reverse
+forwarding to a full—service BBS, you must set HOMEBBS to the callsign
+of that BBS.
+Do not forget to turn MAILDROP ON. As a test you should
+connect to your own maildrop via a digipeater or network node to make
+sure the radio link is working properly and the user prompts are what
+you desire.
+12.10.6.2 PACTOR Mail Drop Command Settinqs
+Once the Packet side is working properly, the PACTOR side of things on
+Radio Port 1 must be configured. First be sure that MYCALL
+ig entered properly. You may want to customize the PACTOR
+Mail Drop prompt (MDPROMPT) or compose a message to ALL that tells
+remote users about your system. Finally, remember to turn TMAIL ON
+and enter the PACTOR mode of the DSP—2232 to start the PACTOR MailDrop.
+3/93
+12-20

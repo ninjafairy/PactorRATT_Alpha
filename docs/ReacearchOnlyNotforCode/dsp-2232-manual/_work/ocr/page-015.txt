@@ -1,0 +1,204 @@
+Paraqraph
+12
+7.
+7.5
+12
+7.8
+9.1
+9.2
+9.3
+9.4
+12. 1
+9.
+9.5
+9.6
+9.8
+9.
+9.
+9.
+12. 10.1
+12.10.2
+12. 10.3
+12.10. 5
+10.
+10.
+10.
+12.11. 1
+12.11.2
+DSP-2232 OPERATING MANUAL
+7.1
+7.2
+7.3
+12-10
+12-10
+12-11
+12.8
+12-11
+12.9
+12-12
+12-12
+12-13
+12-13
+12-13
+12 14
+12-14
+12-14
+12-14
+12-14
+12-15
+12-15
+12-15
+12.10
+12-16
+10.4
+12-17
+12-19
+10.6
+12-20
+12-20
+12-21
+12.11
+12-22
+12-22
+DSP-2232
+DSP-2232
+DSP-2232
+DSP-2232
+TABLE
+PACTOR operating Tips
+ARQ Break-in (ACHG
+Command )
+Entering Your Auto—Angwer Back
+(AAB)
+PACTOR Modem Frequencies and Shi ftB
+Automatic Speed Change
+Echoing Transmitted Characters Ag Sent
+Sending Only Complete Words (WORDOUT )
+Operating on the Wrong Sideband
+Little Used PACTOR Commands
+Monitoring ARQ PACTOR contacts with PTLIST
+PACTOR MailDrop Operation
+Special Operating Considerations
+Settings For PACTOR MailDrop Operat ion
+Starting PACTOR Mail Drop Operation
+(EAS)
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+12.
+4.
+9.8. 1
+9.8.2
+9. 8.3
+8.
+9.8. 5
+8.6
+9.8.8
+8.9
+9.8.10
+6.1
+6.2
+6.3
+Local Logon to the MailDrop
+Remote Logon to your PACTOR
+Caller Prompts
+Monitor MailDrop Operation
+SYSOP Mail Drop Commands
+Mail Drop
+Remote
+A
+B
+H
+J
+K
+L
+R
+S
+v
+User MailDrop Commands
+(ABORT)
+(BYE)
+( HELP)
+(JLOG)
+n (KILL
+( Remote
+n (MINE)
+Only )
+(LIST [MINE))
+n (READ n [MINE))
+callsign (SEND call sign)
+(VERSION)
+(HELP)
+Simultaneous PACTOR and
+Selecting Modems
+Packet
+Operat ion
+Selecting a Default PACTOR Modem
+Displaying Received Data
+Switching Between Ports
+More Thoughts on Port switching
+Dual Port PACTOR/Packet Maildrop Operation..
+Packet Mail Drop Command Settings
+PACTOR Mail Drop Command Settings
+Dual Port Mail Drop Operation Notes..
+PACTOR Switching Time Considerations
+Suggested PACTOR Operating Settings
+OF CONTENTS
+Page
+12-8
+. 12-8
+12—9
+12—9
+12—9
+• 12-10
+. 12-12
+• 12-12
+. 12-13
+. 12-13
+. 14
+. 12-14
+. 12-15
+. 12-15
+. 12-16
+. 12-17
+. 12-20
+. 12-21
+c
+Possible
+SPECIFIC
+Areas For PACTOR Performance
+APPENDICES
+COMMAND SUMMARY
+SCHEMATIC DIAGRAM
+Improvement
+APPENDIX
+APPENDIX
+APPENDIX
+APPENDIX
+APPENDIX
+3/93
+PARTS
+PARTS
+RADIO
+PICTORIAL
+LIST
+CONNECTIONS
+TOC-9

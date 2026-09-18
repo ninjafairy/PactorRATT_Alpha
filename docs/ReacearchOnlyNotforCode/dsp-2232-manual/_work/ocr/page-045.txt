@@ -1,0 +1,57 @@
+4.1. 1
+4.1.2
+12/91
+DSP-2232 OPERATING MANUAL
+CHAPTER 4
+PACKET RADIO
+4.1
+Overv iew
+1.
+4-1
+PACKET RADIO
+In the last several years Packet has grown to become perhaps the most
+popular digital mode on the amateur bands. Although Packet can be
+found on HF (primarily on the 20 meter band) it is most popular on the
+VHF and UHF FM bands. This chapter will start with general Packet
+operation and then discuss VHF and UHF Packet.
+Packet on the HF bands
+requires some special considerations, so we will leave it until the
+end of this chapter.
+Your DSP—2232 can operate HP or VHF Packet (on Radio port 2) and any
+other digital mode on Radio port 1 at the same time. This feature can
+come in handy allowing you to keep an "ear" on local packet activity
+while operating on any of the other digital modes normally found on
+HF. Sorting out the data from both Radio ports also requires some
+special considerations and will be discussed later in the chapter
+after HF Packet operation has been covered.
+Gettinq Started
+You can learn quite a bit about Packet operat ion with the
+DSP—2232 before even connecting it to a transceiver.
+For your first
+packet practice, the DSP—2232 will be connected in a "loopback"
+circuit as done in the "Quick Check" performed in Chapter 2 .
+In this
+configuration, the DSP—2232 will "talk to itself" which allows you to
+become familiar with packet before actually going on the air.
+Making the Loopback Connect ion
+Make sure the DSP—2232 is turned OFF and power is removed before
+performing one of the following.
+1
+11
+Locate the 5—pin DIN plug with the WIRE "Loop—back" jumper and
+insert it into the RADIO—I connector on the DSP—2232 rear panel.
+If you cannot locate the pre—made "Loop—back" jumper and have a
+spare Radio cable, you may construct the following:
+2.
+3.
+4.
+5.
+Get the unused Radio Cable from Chapter 3.
+Strip about 1/4 inch of insulation from the Green and White
+wires at the "radio" end of the cable.
+Join the Green and White wires by twisting them together
+gently.
+Insert the 5—pin DIN connector end of the cable into the
+" RADIO—I" connector on
+Go on to section 4.2.
+the DSP—2232's rear panel.

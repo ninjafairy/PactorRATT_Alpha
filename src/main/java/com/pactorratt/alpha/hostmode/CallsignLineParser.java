@@ -11,20 +11,22 @@ import java.util.regex.Pattern;
 /**
  * Scan a completed Listen inbound line for Heard ({@code de CALL}), Mentioned (bare CALL),
  * and connect frames ({@code ?>… <C>}).
- * Callsign: 1–2 letters, 1 digit, 1–3 letters, then space or end of line. {@code de} is a
+ * Callsign: 1–2 letters, 1 digit, 1–3 letters, not glued to a letter or digit on either
+ * side (space, {@code >}, other punctuation, or end of line are all OK). {@code de} is a
  * whole word (not the end of {@code aside}/{@code made}).
  * {@code <C>} marks a connect/calling beacon, not a complete copy. Those tokens never go
  * to Heard or Mentioned. Promote via {@link #promoteConnect}.
  */
 public final class CallsignLineParser {
 
-    /** 1–2 letters, 1 digit, 1–3 letters; not glued to a longer alphanumeric token. */
+    /** 1–2 letters, 1 digit, 1–3 letters; not glued to a letter or digit on either side. */
     private static final String CALL_BODY = "[A-Za-z]{1,2}[0-9][A-Za-z]{1,3}";
+    private static final String NOT_ALNUM = "[A-Za-z0-9]";
     private static final Pattern CALLSIGN = Pattern.compile("(?i)^" + CALL_BODY + "$");
     private static final Pattern HEARD_DE = Pattern.compile(
-            "(?i)(?<![A-Za-z0-9])de (" + CALL_BODY + ")(?=$| )");
+            "(?i)(?<!" + NOT_ALNUM + ")de (" + CALL_BODY + ")(?!" + NOT_ALNUM + ")");
     private static final Pattern BARE_CALL = Pattern.compile(
-            "(?i)(?<![A-Za-z0-9])(" + CALL_BODY + ")(?=$| )");
+            "(?i)(?<!" + NOT_ALNUM + ")(" + CALL_BODY + ")(?!" + NOT_ALNUM + ")");
     /** Entire line: {@code ?>} raw-token space {@code <C>}. Token may be truncated. */
     private static final Pattern CONNECT_FRAME = Pattern.compile("^\\?>(.*) <C>$");
 

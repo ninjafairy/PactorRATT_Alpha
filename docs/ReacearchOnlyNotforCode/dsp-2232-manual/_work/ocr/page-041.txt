@@ -1,0 +1,40 @@
+DSP-2232 OPERATING MANUAL
+2.
+RADIO INSTALLATION
+Connect the radio to a dummy load.
+Be prepared to monitor your
+transmissions with another nearby radio such ag a handheld
+transceiver .
+Verify that your DSP—2232 and FM radio are connected ag shown in
+Figure 3—6 below.
+3.
+4.
+5.
+to
+E X E RNC•L
+REAR
+S PIN OIN PLUG
+CLIP SHIELO
+THIS
+Figure 3—6 Connect ions
+TO SPE*ER N.JOto
+NOTE:
+12/92
+If you are using an AEA program such as PC-PAKRATT 11 or MACRATT,
+you must enter the Dumb Terminal mode to access the CALIBRATE
+Mode as described below.
+Enter the Calibrate mode by typing: "CAL <Enter>. "
+In the Calibrate mode only, the "K" key toggles the
+transmitter PTT line on and off. The "SPACE BAR" toggles
+the DSP—2232 's tone generator from "Mark" (the lower pitched
+tone) to Space" ( the hiqher pitched tone) The DSP—2232
+has a transmit watchdog timer circuit that unkeys your
+transmitter automatically after sixty ( 60) seconds. As you
+perform the following adjustments, unkey periodically, then
+rekey the transmitter by typing "K. "
+Press the "K" key on the keyboard to key the transmitter.
+should hear a continuous tone in the monitor receiver.
+You
+Tap the space bar several times until the higher pitched of the
+two tones ( "space") is heard.
+3-9

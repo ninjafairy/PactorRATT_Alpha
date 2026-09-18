@@ -1,0 +1,9 @@
+# DSP-2232 Manual — Format Decision
+
+The DSP-2232 conversion follows the same pattern as the existing PK-232 docs: **chapter-split Markdown** plus a small machine-readable command catalog. `PK232_HostMode_Reference.md`, `HostCommands - Trimmed.md`, `Pactor_Chapter.md`, and `ARCHITECTURE.md` already train later agents to look up Host mnemonics, defaults, hex framing, and mode procedures in Markdown headings and tables. Matching that layout means a coding agent can treat the DSP-2232 files as a sibling corpus instead of learning a new schema.
+
+**Rejected alternatives.** A single 176-page Markdown or plain-text dump is too large for reliable retrieval and buries commands inside page noise. HTML adds tags without helping command lookup. JSON/YAML-only extracts cannot carry the procedural prose (init sequences, radio wiring, mode changeovers) that the existing Pactor and Host Mode chapters depend on. A structured-only extract would also force guessing field names for OCR-garbled tables.
+
+**Chosen layout.** Keep the full OCR text, cleaned and headed, split by manual chapter under `docs/dsp-2232-manual/`. `INDEX.md` is the AI entry point (device identity, file map, topic lookup). `commands.json` is a best-effort catalog of command name / Host mnemonic / default / mode when those fields are readable — never invented. Cite `(PDF p.N)` on chapter headings and important commands so agents can return to the scan.
+
+**Why this helps code generation.** Serial/host work needs exact tokens (`Pt`, `HOST ON`, `0x4F`), defaults, and timing. Chapter files give that in the same heading/table style as `HostCommands - Trimmed.md`. The JSON catalog is a fast index, not a replacement for the chapter text. Warranty/FCC pages stay as stubs; figures that OCR cannot read are marked `[?]` or noted as unreadable rather than guessed.

@@ -1,0 +1,58 @@
+DSP-2232 OPERATING MANUAL
+WXIAAA
+WX2DDD
+xxxx
+PACKET RADIO
+WX3ccc
+WX2EEE
+4.4. 4.1
+4.4. 5
+12/91
+This time, type the connect command like this:
+CONNECT WX3ccc VIA WX2DDD, WX2EEE
+Type the digipeaters' call signs in the exact order of the intended
+path from your station to the station with which you wish to connect.
+You can specify a routing list of up to eight intermediate stations.
+In practice this does not work very well, and Networking Switches such
+as NET/ ROM have replaced digipeating for the most part.
+Still, it is
+sometimes necessary to digipeat through one or two stations.
+Are You biqipeater?
+Your packet station can be a digipeater for other stations.
+You don't
+have to "do" anything
+your DSP—2232 will digipeat other stations —
+unless vou tell it not to! with the DFROM command.
+If your transmitter is keyed when you 're not using it, or during lulls
+in your own conversations, you • re being used as a digipeater by some
+other stations. This won't bother your chat with your partner.
+If you wish to monitor the other stations that are using you as a
+digipeater then set the command MDIGI ON.
+Monitor inq Other Stations
+Use the MONITOR command to determine what kinds of packets you will
+"MONITOR" takes a
+see when you are NOT connected to another station .
+numerical value between "O" and "6. "
+Each higher number adds more
+detail to your monitoring. The meanings of the MONITOR numbers are:
+o
+1
+2
+3
+4
+5
+6
+Monitoring is disabled.
+Only unnumbered, "unconnected" frames are displayed. This
+setting will display Beacons, but not display connected stations.
+Numbered ( I) frames are also displayed. Use this setting to
+monitor connected conversations in progress on the channel.
+Connect request ( frames and disconnect ( "D") request packets
+in addition to the above are displayed.
+This is your DSP—2232's default value.
+Unnumbered aeknowledgment
+(UA) of connect and disconnect frames are also displayed.
+Receiver Ready (RR), Receiver Not Ready (RN), Reject (RJ), and
+Frame Reject (F R) supervisory frames are also displayed.
+Poll/ Final bit and sequence
+numbers of monitored frames are shown.

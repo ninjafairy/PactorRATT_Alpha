@@ -1,0 +1,55 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+o
+o
+Type <CTRL—D> to stop sending when the transmit buffer is empty.
+<CTRL—D> breaks the link and returns your DSP—2232 to
+Command Mode .
+Type <CTRL—F> to break the link and send your Morse ID.
+Your DSP—2232 sends your call sign in Morse code, and then shuts
+off your transmitter.
+Type <CTRL—C> to return to Command Mode, then type "R" to break
+the link.
+The "R" command breaks the ARQ link immediately and returns your
+system to AMTOR Standby. This can be used as an " Emerqency.
+Shutdown" if you need to take your transmitter off the air.
+7. 3.6
+12/91
+LCD Status and Mode Indicator
+The LCD STATUS indicator and the LEDs on the front of the DSP—2232 are
+there to help give you the unit's status at a glance. This is
+especially true in AMTOR operation. The following describe typical
+STATUS indications you will see.
+Type "ARQ (SELCALL of. distant station) . "
+The STATUS changes to:
+STATUS :
+LEDs:
+AMTOR ARQ Phase
+SEND lit
+This shows that your transmitter is in the SEND condition, in the
+"phasing" part of an ARQ selective call. Your transmitter will key on
+and off sending the distant station's SELCALL. As soon as your
+DSP—2232 is synchronized with the distant station, the STATUS
+changes to:
+STATUS :
+LEDs :
+AMTOR ARQ Tfc
+SEND lit
+Verify the link by typing a few <Enter>s; watch the display. Your
+traffic will now begin to flow as you type characters.
+If EAS is set
+ON, your typed characters are displayed as they are acknowledged by
+the distant station. The STATUS will change back and forth from Idle
+and T fc whenever your typing pauses.
+If errors occur on the link and the distant station sends RQ (Request
+for Repeat), the STATUS will show:
+STATUS :
+LEDs:
+ERROR :
+RQ:
+AMTOR ARQ ERROR and/or RQ
+SEND lit
+Your DSP—2232 has detected errors in the signals
+received from the distant station
+Your DSP—2232 has received a "request for repeat "
+code from the distant station

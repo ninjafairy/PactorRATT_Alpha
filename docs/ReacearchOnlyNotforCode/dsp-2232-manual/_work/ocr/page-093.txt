@@ -1,0 +1,53 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+5.5. 5
+5.5. 6
+12/91
+SEND Messages
+You 've killed the message and wish to SEND a reply to the Mail Drop' B
+operator, WX2BBB. Again you see the Mail Drop's prompt. Remember the
+number after the right bracket " ) " shows you how much memory space ig
+available in the Mail Drop. Always verify that the Mail Drop hag enough
+memory remaining for the length of message you intend to send.
+[AEA DSP-2232) 16704 free > {MailDrop'g prompt}
+Now, type "S (callsign] " to SEND a message to the Mail Drop's SYSOP. If
+you omit the call sign, the Mail Drop will address the message to the
+MYMAIL or MYCALL call sign. Messages sent with the S command are
+considered Private unless they are sent to "ALL" or to "QST"
+S WX2BBB
+Subj ect :
+1 WILL BE GOING
+Enter message,
+-Z (CTRL-Z) or /EX to
+YEAH, 1 GOT THE MAILING
+AND WILL
+BE GLAD TO PICK YOU UP.
+WHAT TIME
+DO YOU WANT ME THERE? IS MARY
+GOING? CUL. WXIAAA
+[AEA DSP-2232J
+16508 free (A, B, H, J,
+{The " SEND call sign" command}
+{Mail Drop's Subject prompt}
+{Your subject entry}
+{Mail Drop answers you}
+end
+{Type your message to WX2BBB}
+{End the message with / EX}
+> {Mail Drop's prompt}
+NOTE :
+If the message was ended with the " /EX" ,
+contain a " / E" when the message is read.
+the <CTRL—Z> to end messages .
+the last line will
+To avoid this, use
+LQ_g Off and Disconnect
+You 're f inished with this session. Time to log off the Mail Drop.
+[AEA DSP-2232) 16508 free > {MailDrop's prompt}
+Now, type "B" (for Bye) to LOG OFF the Mail Drop.
+{The Bye command}
+The Mail Drop issues an immediate disconnect command to your DSP—2232
+and the connection is over.
+* * DI S CONNECTED
+{DSP—2232is status line}
+5-9

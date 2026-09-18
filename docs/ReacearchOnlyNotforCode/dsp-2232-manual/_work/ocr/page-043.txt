@@ -1,0 +1,68 @@
+DSP-2232 OPERATING MANUAL
+RAD 10
+INSTALLATION
+3.5. 2
+12/91
+SSB Transceiver Final Adiustments
+Digital modes with an SSB radio require some different settings of
+the radio's operating controls for proper AMTOR and packet operation.
+Be sure to observe the following setting precautions:
+o
+o
+o
+o
+Set VOX to OFF.
+Set speech compression to OFF .
+Set AGC to FAST (if available) .
+Disconnect the ALC cables between your SSB radio and any external
+RF amplifier you wish to use in AMTOR or packet radio service.
+Remember
+- Baudot and ASCII RTTY and Mode B (FEC) AMTOR are
+continuous key—down condit ions
+— Your radio's dutv cycle is 100% for
+the duration of each transmission.
+If your SSB radio isn't designed
+for continuous full—power operation, you must operate vour radio at
+reduced output power .
+Consult the manufacturer's specif i cations for
+details on the operating duty cycle.
+NOTE :
+1.
+2.
+3.
+4.
+5.
+6.
+8.
+NOTE :
+Make all connections with all power off .
+Connect your DSP—2232 and SSB radio as shown in Figure 3—6.
+Turn on your DSP—2232 and your computer and start your terminal
+program.
+Connect your SSB radio to a dummy load such as the AEA DL—1500.
+an audio
+If your SSB radio has a "monitor" facility, i.e. ,
+output that lets you listen to the audio signals entering the
+microphone or phone patch jacks, turn that monitor circuit on.
+Set the radio's MODE selector to LSB ( lower sideband) .
+Set the radio's meter switch to the "ALC" position.
+If the
+radio doesn't have an "ALC" indication, set the meter switch to
+" I p" or "lc" to read plate/collector current.
+If a current
+reading isn't available, set the meter to indicate power output.
+If you are using an AEA program such as PC—PAKRATT II,
+COM—PAKRATT or MACRATT, you must enter the Dumb—Terminal mode
+( see program manual) to access the CALIBRATE Mode described below.
+Enter the Calibrate mode by typing: "CAL "
+In the Calibrate mode only, the " K" key toggles the
+transmitter PTT line on and off . The " SPACE BAR" toggles
+the DSP—2232's tone generator from "Mark" (the lower pitched
+The DSP-2232
+tone) to "Space" (the hiqher pitched tone) .
+has a transmit watchdog timer circuit that unkeys your
+transmitter automatically after sixty ( 60) seconds. As you
+perform the following adjustments, unkey periodically, then
+rekey the transmitter by typing "K. "
+Adjust the transceiver's Microphone Gain control to its minimum
+setting.

@@ -1,0 +1,60 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.3. 6
+12/91
+After pressing you should observe the SEND LED light.
+Your monitor should soon display:
+*** CONNECTED to (Callsign)
+If you see this, you have just Connected to your first packet station.
+Identify what type of station you have connected to, and respond
+appropriately. After you have connected to a few stations, you should
+skip to section 4.4 to learn more about the DSP—2232 packet features.
+I 'm Havinq Trouble Connectinq
+If the station you are trying to connect to ig connected to someone
+else, you may see the following message:
+*** BUSY from (Callsign) DISCONNECTED
+If you see this, simply wait a few minutes and try again or try
+connecting to a different station from your MHEARD list.
+If the distant station cannot hear you, you may see the following:
+*** Retry count exceeded
+* DISCONNECTED :
+A number of different things can cause this to occur.
+It may simply
+be that the station you are trying to connect to is out of your
+transmitter's range.
+It is possible however that something more
+serious is wrong, so you should check the following before proceeding:
+o
+o
+o
+o
+o
+o
+The Loopback Test in section 4.2 functions properly.
+Your DSP—2232 's AFSK Output Level control, microphone gain, and
+deviation are set properly as discussed in Section 3.5.1.
+All cables and connectors are properly installed.
+Your radio's volume and squelch are set for local conditions.
+You are following the correct procedure for Connecting.
+Remember that this procedure is slightly different for AEA
+PAKRATT programs than it is for terminals or terminal—programs .
+The "VHF" cornrnand is "ON" for VHF/UHF operation.
+RESET the DSP-2232 with the RESET cormand or RESET switch and
+start over with section 4.2 of this chapter.
+If none of the above correct the problem, ask one of your area' s
+experienced packet operators to listen to your transmissions.
+Both
+you and your partner should set MONITOR and MCON to 6, and then send
+Each station should display packets sent by the other.
+some packets .
+o
+o
+If only one station is "hearing" packets, check the modulator and
+transmitter of that station and the demodulator and receiver of
+the other station.
+Experiment with the TXDELAY parameter for the sending TNC. Try
+If thig solves the problem,
+setting TXDELAY 64 for a long delay.
+decrease TXDELAY to the smallest value that works all the time.
+If you still cannot connect to other stations, then you should contact
+AEA Technical Support as outlined in the PREFACE of this manual.

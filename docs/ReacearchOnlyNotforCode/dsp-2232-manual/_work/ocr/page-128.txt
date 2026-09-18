@@ -1,0 +1,55 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7. 7.5
+7.7. 5.1
+7.7. 5.2
+7.7. 5.3
+7/92
+Dual Port AMTOR/Packet Maildrop Operat ion
+Your DSP—2232 Mail Drop will operate both on Packet and AMTOR and can
+be used to allow message traffic that originates on AMTOR to be
+reverse—forwarded into the Packet network. Similarly, traffic
+originating on Packet may be picked up by remote stations on AMTOR.
+Before you begin dual port Packet/ AMTOR Mail Drop operation, be sure
+that you are familiar with the operation of Packet, AMTOR and the
+Mail Drop as described in Chapters 4, 5 and 7 of this manual. Also be
+sure that a dual port .modem such as MODEM 31 is loaded. The more
+experience you have with each of these modes will help when getting up
+a dual port Mail Drop system.
+Packet Mail Drop Cornmand Sett inqs
+First set up the packet side of the Mail Drop (on Radio Port 2) by
+getting MYCALL and MYMAIL. You may also want to enter a custom MTEXT
+to let others know about the AMTOR feature. -Be sure to set 3RDPARTY ,
+MDMON, MDPROMPT, and MMSG, as desired.
+If you will be reverse
+forwarding to a full—service BBS, you must set HOMEBBS to the callsign
+of that BBS. Do not forget to turn MAILDROP ON. As a test you should
+connect tc your own maildrop via a digipeater or network node to make
+sure the radio link is working properly and the user prompts are what
+you desire.
+AMTOR Mail Drop Command Sett inqs
+Once the Packet side is working properly, the AMTOR side of things on
+Radio Port I must be configured. First be sure that MYSELCAL and
+MY IDENT are entered properly. You may want to customize the AMTOR
+MailDrop prompt (TMPROMPT) or compose a message to ALL that tells
+remote users about your system. Finally, remember to turn TMAIL ON
+and enter the AMTOR mode of the DSP—2232 to start the AMTOR Mail Drop.
+Dual Port Mail Drop Operat ion Notes
+With the above parameters set, packet connections to the MY MAIL
+callsign on Radio Port 2 will be sent to your Mail Drop if you or a
+If you or any other station is
+remote AMTOR station is not using it .
+using your Mail Drop, the remote user attempting the packet connection
+will be sent a "*** Busy" message.
+Similarly, a remote AMTOR station linking to you will be given access
+to your Mail Drop provided no one else is using it.
+If you or a remote
+packet station is using your Mail Drop, the AMTOR station may link to
+you, but will not be given access to your Mail Drop. For this reason,
+you may wish to disable Radio Port 1 (by turning the RADIO parameter
+to 0/2) when logging into your own Mail Drop for maintenance. This
+will prevent remote AMTOR stations from linking with you .
+If you will be Reverse Forwarding messages into the Packet network, be
+sure to check your Mail Drop often for new messages. Remember that you
+must use the Edit command in the Mail Drop to select which messages
+will be Reverse Forwarded.

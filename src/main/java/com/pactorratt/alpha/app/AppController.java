@@ -4,6 +4,8 @@ import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.ConfigStore;
 import com.pactorratt.alpha.config.HostCommandIni;
 import com.pactorratt.alpha.hostmode.CallsignLineParser;
+import com.pactorratt.alpha.hostmode.CompatResult;
+import com.pactorratt.alpha.hostmode.DigitalLedState;
 import com.pactorratt.alpha.hostmode.HostEvent;
 import com.pactorratt.alpha.hostmode.HostFrameCodec;
 import com.pactorratt.alpha.hostmode.HostSession;
@@ -11,10 +13,13 @@ import com.pactorratt.alpha.hostmode.LinkMessageParser;
 import com.pactorratt.alpha.hostmode.OpmodeParser;
 import com.pactorratt.alpha.hostmode.TncInitializer;
 import com.pactorratt.alpha.serial.SerialByteListener;
+import com.pactorratt.alpha.ui.CompatWarningDialog;
 import com.pactorratt.alpha.ui.ConnectionWindow;
 import com.pactorratt.alpha.ui.DebugMonitorWindow;
+import com.pactorratt.alpha.ui.DisplayMonitorWindow;
 import com.pactorratt.alpha.ui.MainWindow;
 import com.pactorratt.alpha.ui.StatusMonitorWindow;
+import com.pactorratt.alpha.ui.Ubit10MonitorWindow;
 import com.pactorratt.alpha.ui.UiColors;
 import com.pactorratt.alpha.util.DebugLog;
 
@@ -92,6 +97,8 @@ public final class AppController {
     private volatile ConnectionWindow activeArqWindow;
     private DebugMonitorWindow debugMonitorWindow;
     private StatusMonitorWindow statusMonitorWindow;
+    private Ubit10MonitorWindow ubit10MonitorWindow;
+    private DisplayMonitorWindow displayMonitorWindow;
     private final List<ConnectionWindow> deadArqWindows = new ArrayList<>();
 
     private volatile HostSession hostSession;
@@ -105,6 +112,8 @@ public final class AppController {
     private volatile HostSession pendingSession;
 
     private volatile boolean tncConnected;
+    /** Last Host {@code ML} query value, shown after TNC status. Cleared when not connected. */
+    private volatile String tncMycall = "";
     private AppMode mode = AppMode.IDLE;
 
     /**
@@ -363,6 +372,46 @@ public final class AppController {
         }
     }
 
+    public void openUbit10Monitor() {
+        runOnEdt(() -> {
+            if (ubit10MonitorWindow == null || !ubit10MonitorWindow.isDisplayable()) {
+                ubit10MonitorWindow = new Ubit10MonitorWindow(this);
+                ubit10MonitorWindow.setVisible(true);
+            } else {
+                ubit10MonitorWindow.toFront();
+            }
+        });
+    }
+
+    public void onUbit10MonitorClosed(Ubit10MonitorWindow window) {
+        if (ubit10MonitorWindow == window) {
+            ubit10MonitorWindow = null;
+        }
+        if (!tncConnected && !isAnyMonitorOpen()) {
+            closeRetainedDebugSession();
+        }
+    }
+
+    public void openDisplayMonitor() {
+        runOnEdt(() -> {
+            if (displayMonitorWindow == null || !displayMonitorWindow.isDisplayable()) {
+                displayMonitorWindow = new DisplayMonitorWindow(this);
+                displayMonitorWindow.setVisible(true);
+            } else {
+                displayMonitorWindow.toFront();
+            }
+        });
+    }
+
+    public void onDisplayMonitorClosed(DisplayMonitorWindow window) {
+        if (displayMonitorWindow == window) {
+            displayMonitorWindow = null;
+        }
+        if (!tncConnected && !isAnyMonitorOpen()) {
+            closeRetainedDebugSession();
+        }
+    }
+
     private boolean isDebugMonitorOpen() {
         DebugMonitorWindow w = debugMonitorWindow;
         return w != null && w.isDisplayable();
@@ -373,8 +422,19 @@ public final class AppController {
         return w != null && w.isDisplayable();
     }
 
+    private boolean isUbit10MonitorOpen() {
+        Ubit10MonitorWindow w = ubit10MonitorWindow;
+        return w != null && w.isDisplayable();
+    }
+
+    private boolean isDisplayMonitorOpen() {
+        DisplayMonitorWindow w = displayMonitorWindow;
+        return w != null && w.isDisplayable();
+    }
+
     private boolean isAnyMonitorOpen() {
-        return isDebugMonitorOpen() || isStatusMonitorOpen();
+        return isDebugMonitorOpen() || isStatusMonitorOpen() || isUbit10MonitorOpen()
+                || isDisplayMonitorOpen();
     }
 
     /**
@@ -429,6 +489,11 @@ public final class AppController {
         return tncConnected;
     }
 
+    /** Host {@code ML} query text, or empty when the TNC is not connected. */
+    public String tncMycall() {
+        return tncMycall == null ? "" : tncMycall;
+    }
+
     public boolean isTncBusy() {
         return tncBusy.get();
     }
@@ -474,6 +539,153 @@ public final class AppController {
         } catch (IOException e) {
             return e.getMessage() == null ? "Host command write failed." : e.getMessage();
         }
+    }
+
+    /**
+     * Query Host {@code UB10} (Ch. 4 §4.2: no space after mnemonic; query is bit number only).
+     * {@code callback} runs on the EDT with {@code true}/{@code false}, or {@code null}
+     * if the TNC is offline or the reply could not be parsed.
+     */
+    public void queryUbit10(Consumer<Boolean> callback) {
+        Objects.requireNonNull(callback, "callback");
+        HostSession session = openHostSessionOrNull();
+        if (session == null) {
+            runOnEdt(() -> callback.accept(null));
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            Boolean enabled = null;
+            try {
+                HostSession.CommandResponse response = session.sendCommand("UB10", ARQ_HOST_TIMEOUT_MS);
+                enabled = parseUbitEnabled(hostQueryValue(response));
+                debugLog.info("UBIT 10 query: " + (enabled == null ? "(unknown)" : enabled));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("UBIT 10 query interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "failed" : e.getMessage();
+                debugLog.info("UBIT 10 query failed: " + msg);
+            }
+            Boolean result = enabled;
+            runOnEdt(() -> callback.accept(result));
+        }, "ubit10-query");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Read-only peek of 8536 ports B/C (digital LED drive). {@code callback} runs on the EDT.
+     * {@link DigitalLedPeek#error} is set when the TNC is offline or the Host round-trip fails.
+     */
+    public void peekDigitalLeds(Consumer<DigitalLedPeek> callback) {
+        Objects.requireNonNull(callback, "callback");
+        HostSession session = openHostSessionOrNull();
+        if (session == null) {
+            runOnEdt(() -> callback.accept(DigitalLedPeek.fail("No open TNC serial session.")));
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            DigitalLedPeek result;
+            try {
+                int[] ports = session.readLedDrivePorts(ARQ_HOST_TIMEOUT_MS);
+                DigitalLedState state = DigitalLedState.fromPorts(ports[0], ports[1]);
+                debugLog.info(String.format("LED peek B=$%02X C=$%02X", ports[0], ports[1]));
+                result = DigitalLedPeek.ok(state);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("LED peek interrupted");
+                result = DigitalLedPeek.fail("LED peek interrupted.");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed." : e.getMessage();
+                debugLog.info("LED peek failed: " + msg);
+                result = DigitalLedPeek.fail(msg);
+            }
+            DigitalLedPeek done = result;
+            runOnEdt(() -> callback.accept(done));
+        }, "led-peek");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** Result of a digital LED port peek. */
+    public static final class DigitalLedPeek {
+        public final DigitalLedState state;
+        public final String error;
+
+        private DigitalLedPeek(DigitalLedState state, String error) {
+            this.state = state;
+            this.error = error;
+        }
+
+        static DigitalLedPeek ok(DigitalLedState state) {
+            return new DigitalLedPeek(state, null);
+        }
+
+        static DigitalLedPeek fail(String error) {
+            return new DigitalLedPeek(null, error);
+        }
+    }
+
+    /**
+     * Set UBIT 10 via Host {@code UB10 ON} / {@code UB10 OFF} (verbose args after a space;
+     * Ch. 4 §4.2) and wait for the command reply. {@code onDone} runs on the EDT with
+     * {@code null} on success, or an error string.
+     */
+    public void setUbit10(boolean enabled, Consumer<String> onDone) {
+        Objects.requireNonNull(onDone, "onDone");
+        HostSession session = openHostSessionOrNull();
+        if (session == null) {
+            runOnEdt(() -> onDone.accept("No open TNC serial session."));
+            return;
+        }
+        String cmd = enabled ? "UB10 ON" : "UB10 OFF";
+        Thread worker = new Thread(() -> {
+            String error = null;
+            try {
+                HostSession.CommandResponse response = session.sendCommand(cmd, ARQ_HOST_TIMEOUT_MS);
+                Boolean parsed = parseUbitEnabled(hostQueryValue(response));
+                if (!response.ok() && parsed == null) {
+                    error = cmd + " failed, status=0x" + Integer.toHexString(response.statusCode);
+                } else if (parsed != null && parsed != enabled) {
+                    error = "TNC UBIT 10 is still " + (parsed ? "ON" : "OFF") + " after " + cmd + ".";
+                } else {
+                    debugLog.info("UBIT 10 set " + (enabled ? "ON" : "OFF"));
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                error = "UBIT 10 command interrupted.";
+            } catch (IOException e) {
+                error = e.getMessage() == null ? "Host I/O failed." : e.getMessage();
+            }
+            String result = error;
+            runOnEdt(() -> onDone.accept(result));
+        }, "ubit10-set");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Host query value after {@code UB}: {@code Y}/{@code ON} or {@code N}/{@code OFF},
+     * optionally prefixed by the bit number ({@code 10 ON}).
+     */
+    static Boolean parseUbitEnabled(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String v = raw.trim().toUpperCase(Locale.ROOT);
+        if (v.startsWith("UBIT")) {
+            v = v.substring(4).trim();
+        }
+        if (v.startsWith("10")) {
+            v = v.substring(2).trim();
+        }
+        if (v.equals("Y") || v.equals("ON") || v.equals("YES")) {
+            return Boolean.TRUE;
+        }
+        if (v.equals("N") || v.equals("OFF") || v.equals("NO")) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     /** Disc. after TX clear — flush App TX, then ch0 {@code $04} in the same block. */
@@ -631,9 +843,7 @@ public final class AppController {
     }
 
     /**
-     * ISS chat / App TX flush: send text as Host channel-0 data (CR line endings), chunked per
-     * Ch. 4 §4.8 inside {@link HostSession#sendData}. Runs off the EDT.
-     * Offline / no session: notice only (caller already painted grey transcript).
+     * ISS flush / commit: send text as Host channel-0 data, chunked per Ch. 4 §4.8.
      */
     public void sendOutboundChat(ConnectionWindow window, String text) {
         if (window == null) {
@@ -655,10 +865,13 @@ public final class AppController {
         Thread worker = new Thread(() -> {
             try {
                 byte[] bytes = toHostDataBytes(payloadText);
+                if (bytes.length == 0) {
+                    return;
+                }
                 session.sendData(0, bytes, ARQ_HOST_TIMEOUT_MS);
                 int chars = bytes.length;
                 runOnEdt(() -> noticeWindow(window,
-                        "ISS outbound — sent " + chars + " char(s) to TNC (grey until TX-empty)."));
+                        "ISS outbound — sent " + chars + " char(s) to TNC."));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("ISS outbound interrupted");
@@ -678,28 +891,33 @@ public final class AppController {
      * then CTRL-D ({@code $04}) so the TNC returns to receive after TX clear.
      * After OPMODE leaves {@code PD}, restore Listen only if the TNC landed on {@code Pt}
      * (older firmware). Newer firmware returns to {@code PN} on its own — do not send {@code PN}.
-     * Caller paints grey transcript and clears the App TX buffer before calling.
+     * Caller paints grey transcript first. FEC / End TX also clears App TX; CQ does not.
      */
     public void listenFecEndTx(ConnectionWindow window, String text) {
+        listenFecEndTx(window, text, "FEC / End TX");
+    }
+
+    public void listenFecEndTx(ConnectionWindow window, String text, String actionName) {
+        String action = actionName == null || actionName.isBlank() ? "FEC / End TX" : actionName;
         if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
             return;
         }
         String payloadText = text == null ? "" : text;
         if (payloadText.isBlank()) {
-            noticeWindow(window, "FEC / End TX — nothing to send.");
+            noticeWindow(window, action + " — nothing to send.");
             return;
         }
         if (!tncConnected) {
-            noticeWindow(window, "FEC / End TX — TNC not connected (transcript only).");
+            noticeWindow(window, action + " — TNC not connected (transcript only).");
             return;
         }
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
-            noticeWindow(window, "FEC / End TX — no open Host session (transcript only).");
+            noticeWindow(window, action + " — no open Host session (transcript only).");
             return;
         }
         if (!fecBusy.compareAndSet(false, true)) {
-            noticeWindow(window, "FEC / End TX — already in progress.");
+            noticeWindow(window, action + " — already in progress.");
             return;
         }
 
@@ -721,20 +939,20 @@ public final class AppController {
                 withEnd[body.length] = RECEIVE_CHAR_CTRL_D;
                 session.sendData(0, withEnd, ARQ_HOST_TIMEOUT_MS);
                 sent = true;
-                String sentNotice = "FEC / End TX — sent " + pdCmd + " + " + body.length
+                String sentNotice = action + " — sent " + pdCmd + " + " + body.length
                         + " char(s) + CTRL-D (grey until TX-empty).";
                 runOnEdt(() -> noticeWindow(window, sentNotice));
                 watchPostFecListenCompat(session);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                resultNotice = sent ? null : "FEC / End TX — interrupted.";
-                debugLog.info("FEC / End TX interrupted");
+                resultNotice = sent ? null : action + " — interrupted.";
+                debugLog.info(action + " interrupted");
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
                 if (!sent) {
-                    resultNotice = "FEC / End TX — " + msg;
+                    resultNotice = action + " — " + msg;
                 }
-                debugLog.info("FEC / End TX failed: " + msg);
+                debugLog.info(action + " failed: " + msg);
             } finally {
                 fecBusy.set(false);
                 if (!sent) {
@@ -854,7 +1072,7 @@ public final class AppController {
 
     /**
      * Normalize to Host data bytes: {@code \r\n}/{@code \n} → {@code \r}, US-ASCII.
-     * Appends a trailing CR if the text is non-empty and does not already end with one.
+     * Appends a trailing CR if missing.
      */
     static byte[] toHostDataBytes(String text) {
         if (text == null || text.isEmpty()) {
@@ -865,6 +1083,59 @@ public final class AppController {
             normalized = normalized + '\r';
         }
         return normalized.getBytes(StandardCharsets.US_ASCII);
+    }
+
+    /**
+     * Host {@code ML} query (Ch. 4 §4.3.1): reply is {@code ML} + verbose value, not ACK {@code $00}.
+     * Empty on timeout or a blank payload — does not fail TNC Connect.
+     */
+    private String queryMycall(HostSession session) {
+        if (session == null || !session.isOpen()) {
+            return "";
+        }
+        try {
+            HostSession.CommandResponse response = session.sendCommand("ML", ARQ_HOST_TIMEOUT_MS);
+            String value = hostQueryValue(response);
+            debugLog.info("ML query: " + (value.isEmpty() ? "(empty)" : value));
+            return value;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            debugLog.info("ML query interrupted");
+            return "";
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "failed" : e.getMessage();
+            debugLog.info("ML query failed: " + msg);
+            return "";
+        }
+    }
+
+    /**
+     * ASCII after the two-letter mnemonic. Query replies have no status byte; skip a leading
+     * {@code $00} if firmware still sends one. Strip a verbose {@code MYcall} prefix.
+     */
+    static String hostQueryValue(HostSession.CommandResponse response) {
+        if (response == null || response.frame == null || response.frame.payload == null) {
+            return "";
+        }
+        byte[] payload = response.frame.payload;
+        if (payload.length < 3) {
+            return "";
+        }
+        int start = 2;
+        if (payload[start] == 0x00) {
+            start++;
+        }
+        if (start >= payload.length) {
+            return "";
+        }
+        String raw = new String(payload, start, payload.length - start, StandardCharsets.US_ASCII)
+                .replace("\r", "")
+                .replace("\n", "")
+                .trim();
+        if (raw.length() >= 6 && raw.regionMatches(true, 0, "mycall", 0, 6)) {
+            raw = raw.substring(6).trim();
+        }
+        return raw;
     }
 
     private void sendHostOk(HostSession session, String mnemonic)
@@ -1178,6 +1449,9 @@ public final class AppController {
     /** Updates the connected flag and refreshes MainWindow (EDT-safe). */
     public void setTncConnected(boolean connected) {
         this.tncConnected = connected;
+        if (!connected) {
+            tncMycall = "";
+        }
         runOnEdt(() -> {
             if (mainWindow != null) {
                 mainWindow.refreshConnectionState();
@@ -1274,11 +1548,7 @@ public final class AppController {
             return result;
         }
         pendingSession = result.session;
-        int choice = showConfirmOnEdt(
-                result.message + "\n\nContinue connecting?",
-                "TNC compatibility warning",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
+        int choice = showCompatWarningOnEdt(result.compat);
         if (connectCancelled.get() || Thread.interrupted()) {
             if (connectCancelled.get()) {
                 tncInitializer.abort(result.session);
@@ -1311,6 +1581,7 @@ public final class AppController {
             hostSession = result.session;
             pendingSession = null;
             attachHostEventListener(result.session);
+            tncMycall = queryMycall(result.session);
         } else if (result.session != null && result.session.isOpen()) {
             retainOrCloseOnFailure(result.session);
         }
@@ -1330,6 +1601,9 @@ public final class AppController {
                     String label = result.firmwareLabel == null ? "" : result.firmwareLabel;
                     debugLog.info("TNC connected" + (label.isEmpty() ? "" : " (" + label + ")"));
                     syncOpPollScheduler();
+                    if (ubit10MonitorWindow != null && ubit10MonitorWindow.isDisplayable()) {
+                        ubit10MonitorWindow.refreshUbit10FromTnc();
+                    }
                     if (mainWindow != null && mainWindow.isListenSelected() && !hasActiveArq()) {
                         enterListenHostThenUi();
                     }
@@ -1365,8 +1639,15 @@ public final class AppController {
         });
     }
 
-    /** TNC menu Disconnect: close Host session and clear connected flag. */
+    /** TNC menu Disconnect: leave Host Mode, close the session, and clear connected flag. */
     public void disconnectTnc() {
+        disconnectTnc(false);
+    }
+
+    /**
+     * @param waitForClose if true, block until {@code HON} and port close finish (program exit).
+     */
+    private void disconnectTnc(boolean waitForClose) {
         connectCancelled.set(true);
         Thread worker = connectThread;
         if (worker != null && worker.isAlive()) {
@@ -1392,11 +1673,21 @@ public final class AppController {
             tncInitializer.abort(session);
             tncInitializer.abort(pending);
         }, "tnc-disconnect");
-        closer.setDaemon(true);
+        closer.setDaemon(!waitForClose);
         closer.start();
+        if (waitForClose) {
+            try {
+                closer.join(4000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private void showStartupMessageOnEdt(String message) throws InterruptedException {
+        if (!config.isDisplayStartup()) {
+            return;
+        }
         if (SwingUtilities.isEventDispatchThread()) {
             showStartupMessageDialog(message);
             return;
@@ -1446,6 +1737,9 @@ public final class AppController {
     }
 
     private void showCompatInfoOnEdt(String message) {
+        if (!config.isDisplayStartup()) {
+            return;
+        }
         if (SwingUtilities.isEventDispatchThread()) {
             showCompatInfoDialog(message);
             return;
@@ -1509,6 +1803,20 @@ public final class AppController {
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;");
+    }
+
+    private int showCompatWarningOnEdt(CompatResult compat) throws InterruptedException {
+        if (SwingUtilities.isEventDispatchThread()) {
+            return CompatWarningDialog.show(mainWindow, compat);
+        }
+        final int[] choice = {JOptionPane.CLOSED_OPTION};
+        try {
+            SwingUtilities.invokeAndWait(() ->
+                    choice[0] = CompatWarningDialog.show(mainWindow, compat));
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new InterruptedException("Compat warning dialog failed: " + e.getMessage());
+        }
+        return choice[0];
     }
 
     private int showConfirmOnEdt(String message, String title, int optionType, int messageType)
@@ -1814,6 +2122,8 @@ public final class AppController {
     /**
      * Main-window Connect / buddy double-click: send Host {@code PG}+callsign (PTConn) without
      * opening an ARQ window. The window opens on {@code $50} CONNECTED (same path as inbound).
+     * If main-window {@code LP:} is checked, prefix {@code !} unless the call already has one.
+     * Does not rewrite the callsign field.
      */
     public void requestConnect(String remoteCallsign) {
         if (!tncConnected) {
@@ -1838,6 +2148,10 @@ public final class AppController {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
+        if (mainWindow != null && mainWindow.isLongpathSelected() && !call.startsWith("!")) {
+            call = "!" + call;
+        }
+        final String pgCall = call;
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
             JOptionPane.showMessageDialog(mainWindow,
@@ -1847,8 +2161,8 @@ public final class AppController {
             return;
         }
 
-        int epoch = beginCalling(call);
-        final String hostCmd = "PG" + call;
+        int epoch = beginCalling(pgCall);
+        final String hostCmd = "PG" + pgCall;
         Thread worker = new Thread(() -> {
             try {
                 HostSession.CommandResponse response =
@@ -1859,11 +2173,11 @@ public final class AppController {
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                debugLog.info("PTConn interrupted for " + call);
+                debugLog.info("PTConn interrupted for " + pgCall);
                 runOnEdt(() -> failCallingIfCurrent(epoch, "Connect interrupted."));
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                debugLog.info("PTConn failed for " + call + ": " + msg);
+                debugLog.info("PTConn failed for " + pgCall + ": " + msg);
                 runOnEdt(() -> failCallingIfCurrent(epoch, "Connect failed: " + msg));
             }
         }, "arq-ptconn");
@@ -2059,7 +2373,9 @@ public final class AppController {
         activeArqWindow.setSessionActive(true);
         activeArqWindow.setVisible(true);
         if (mainWindow != null) {
+            mainWindow.hideCallingDialog();
             mainWindow.refreshModeLabel();
+            SwingUtilities.invokeLater(mainWindow::hideCallingDialog);
         }
         debugLog.info("ARQ window opened for " + call);
         syncOpPollScheduler();
@@ -2076,7 +2392,17 @@ public final class AppController {
     public void openPreviewArqWindow() {
         ConnectionWindow preview = new ConnectionWindow(this, ConnectionWindow.Kind.ARQ, "PREVIEW");
         preview.setSessionActive(false);
+        preview.startArqTxPreview();
         preview.showNotice("Offline preview window — not linked.");
+        preview.setVisible(true);
+        deadArqWindows.add(preview);
+    }
+
+    /** Offline UI helper: open a Listen/FEC window for layout testing (no Host I/O). */
+    public void openPreviewFecWindow() {
+        ConnectionWindow preview = new ConnectionWindow(this, ConnectionWindow.Kind.LISTEN, "PREVIEW");
+        preview.setSessionActive(false);
+        preview.showNotice("Offline preview — TNC not connected. Layout only.");
         preview.setVisible(true);
         deadArqWindows.add(preview);
     }
@@ -2137,7 +2463,7 @@ public final class AppController {
 
     public void shutdown() {
         stopOpPollScheduler();
-        disconnectTnc();
+        disconnectTnc(true);
         if (debugMonitorWindow != null) {
             debugMonitorWindow.dispose();
             debugMonitorWindow = null;

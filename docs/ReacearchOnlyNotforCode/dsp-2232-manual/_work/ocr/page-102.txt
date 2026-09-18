@@ -1,0 +1,54 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+6.5. 2
+6.5. 3
+6.5. 4
+6. 5.5
+6.5. 6
+6.5. 7
+12/91
+Formattinq Your Transmitted and Received Text
+The default configuration of the DSP—2232 RTTY parameters are set for
+natural conversation and traffic.
+Somet imes it is desired to alter
+how your text looks on the screen of the station you are talking to.
+The cornmands ACRRTTY and ALFRTTY allow for customizing the Carriage
+Return and Linefeed characters in your transmitted text.
+To allow for changina how received text is displayed on your screen or
+printer, see the ACRDISP and ALFDISP comrnands in the Comrnand Summary.
+MARS operators have some special requirements for RTTY operation and
+displaying text. To accomxnodate these, the CRADD and MARSDISP
+commands are included and should be reviewed in the Command Summary.
+Sending Synchronous Idle or DIDDLE
+Some RTTY users like to send an idle signal when no data is being
+transmitted. To allow for this the DSP—2232 has the DIDDLE corrunand.
+See the Command Summary for more information.
+Echoinq Transmitted Characters As Sent
+Since Baudot RTTY at 45 baud is rather slow, some users like to know
+when the characters are actually being sent. The EAS command when ON
+echoes characters to the display only when they are sent over the air.
+Send ina Only Complete Words
+Some RTTY users like to have their words sent out only when they are
+complete. This allows the word you are currently typing to be edited
+as long as you have not typed a <Space> character. Turning WORDOUT ON
+activates this feature.
+See the Command Summary for more information.
+Operat inq on the Wrona Sideband
+In RTTY operation it is important to operate on the correct sideband,
+otherwise other stations will not be able to copy your transmissions .
+If you find another station operating on the wrong sideband, you can
+reverse your receive sense with the RXREV command so you will not have
+to change sidebands yourself.
+Similarly, if someone tells you that you are on the wrong sideband,
+you can correct your transmit signal sense with the TXREV command.
+See the Command summary for more information on these commands.
+Framing errors
+Baudot and ASCII RTTY operation traditionally do not check for errors
+and tend to be prone to receiving "garbage" .
+The DSP-1232 has the
+ability to check for framing errors on received characters which
+can reduce the amount of "garbage" characters on the screen. TO
+reduce the amount of erroneous characters printed on the screen, turn
+the command RFRAME ON (default OFF) .
+See the Command Surnmary for a
+complete description of the RFRAME command.

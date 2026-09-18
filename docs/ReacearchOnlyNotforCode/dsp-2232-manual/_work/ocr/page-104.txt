@@ -1,0 +1,51 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+6.6
+6.6. I
+6.6. 2
+7 / 92
+ASCII RTTY Operation
+ASCII RTTY operation is almost identical to Baudot operation but there
+are a few differences you must know. Because the ASCII code u geg
+seven bits to define a character (instead of the five bits used in the
+Baudot/Murray code), the probability of receiving errors is somewhat
+higher. For these reasons, ASCII is not used widely on the HP amateur
+bands. However, some commercial and military HF stations as well as
+WIAW do use ASCII.
+Start inq ASCII Operation
+First you must enter the ASCII mode of the DSP—2232.
+If you are using an AEA PARRATT program, follow the instructions in
+the program manual to enter the ASCII mode.
+If you are using a terminal, simply type "ASCII" or "AS" from the
+Command Mode followed by the <Enter> key to enter the ASCII mode.
+The DSP—2232 responds by displaying the previous mode:
+Opmode
+was BAudot
+Opmode
+now AScii
+Your DSP—2232's front panel STATUS display will show that you are in
+the ASCII mode on Radio Port 1 and the CMD LED will be lit.
+The following parameters are the most common settings for HF ASCII
+operation. Check the parameters and make sure they are set as follows:
+ABAUD
+RXREV
+TXREV
+MODEM
+110 (or whatever speed you wish)
+OFF
+OFF
+1
+Some VHF Bulletin Boards and MSOs use ASCII at 110 and 300 bauds,
+most commonly on two meters.
+ASCII RTTY Operatinq Tips
+Follow the general operating procedures shown in the sections above
+for Baudot RTTY. As in Baudot operation, you can step the system
+through all the available receiving speeds.
+The following "Special Funct ion Characters" and immediate commands are
+included for ASCII RTTY operating convenience.
+Immediate Commands From the Command Mode :
+Switches system to receive mode.
+Switches system to transmit mode and forces immediate
+entry into Converse mode.
+Go to CONVERSE Mode in order to load the Transmit type
+ahead buffer.

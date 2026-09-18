@@ -1,0 +1,51 @@
+o
+11.6
+11. 6.1
+7/92
+DSP-2232 OPERATING MANUAL
+11—4
+SATELLITE OPERATION
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too high for the DSP—2232 to copy the
+signal .
+Slowly tune the VFO and make the frequency lower.
+Frequency
+Too High
+Adjust the volume of the received signal so that the DCD LED
+lights when a properly tuned BPSK signal is being received.
+Note that the rear panel Satellite UP/ DOWN Doppler shift compensation
+outputs are not yet functional with the 1200 bits/ sec BPSK PACSAT
+modem. Satellites that use this mode include the following:
+o
+o
+o
+o
+o
+AMSAT OSCAR 16
+DOVE OSCAR 17
+WEBER OSCAR 18
+LUSAT OSCAR 19
+FUJI OSCAR 20
+9600 bits/ sec Direct •FSK Operation
+A modem that has gained some popularity in Packet and Packet satellite
+use is the 9600 bits/ sec FSK G3RUH and K9NG compatible modems.
+UoSAT OSCAR 14 uses this modem to both uplink and downlink data.
+This modem is number 18 in the DSP—2232 and is selected by entering
+the comrnand MODEM 18 for radio port 1 or MODEM 28 for radio port
+2 at the cornmand prompt. Modem 52 has been optimized for 9600
+bits/ sec operation on UO—22.
+You may find this modem provides
+better performance when operating this satellite.
+As mentioned above, this is modem is a direct FSK variety and must be
+connected directly to the modulator stage of an FM transmitter in
+order to transmit properly. Unfortunately most FM transmitters do
+not provide connections to this internal stage and so it must be
+found on the schematic and connected to internally by the user.
+Similarly, the receive connection for this 9600 bits/ sec modem must
+be made directly to the discriminator circuit of an FM receiver.
+A few manufacturers do provide external connections to discriminator
+audio but Gnfortunately for most receivers this connection must be
+determined from the schematic diagram.
+F SK Transmitter and Receiver Settinas
+As indicated above, the satellite transmitter and receiver should be
+set to the FM position.

@@ -1,0 +1,55 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+o
+o
+When you finish typing your comments or traffic to the other
+station and wish to let the distant station transmit, you should
+type "KKK" or "BTU" to let the other station know that you are
+going to change the link direction.
+Then, type a <CTRL—Z> (Hold the "CTRL" key down while typing
+the Z) to turn the link over to the other station.
+<CTRL—Z> iB the character defined by the PTOVER command that
+switches vour system from being the Information Sending
+Station (ISS) to the Information Receiving Station (IRS) and
+switches the distant system from being the information receiving
+station to the information sending station.
+12.6. 3.1
+3/93
+The FCC requires station identification once every ten minutes.
+It's
+sufficient to begin with "QRA (mycall)'t or end your transmission with
+"QRA (mycall) " before the <CTRL—Z> changeover code, or use the
+<CTRL—B> "HERE—IS" to send your own Auto—AnswerBack message.
+For the
+"HERE-IS"
+command to function, you must have your AAB text entered.
+See appendix A for the AAB conunand.
+Ending an ARO PACTOR Contact
+When you 've finished your "final finals" to the distant station and
+both stations are ready to end the PACTOR ARQ contact, you can end
+the contact and terminate the link in several different ways:
+o
+o
+o
+o
+Type <CTRL—D> to stop sending after the transmit buffer is empty.
+<CTRL—D> breaks the link and returns your DSP—2232 to Command Mode
+in PACTOR Standby. This is the best way to end a PACTOR contact.
+Type <CTRL—F> to stop sending after the transmit buffer ig empty,
+send your Morse ID and return to PACTOR Standby and Command Mode.
+Your DSP—2232 sends your call sign (in MYCALL) in Morse code, and
+then shuts off your transmitter and returns to PACTOR Standby
+and Command Mode.
+This is the best way to end a contact if you
+want to identify your station in Morse code as well.
+Wait until all the text has been sent, then type <CTRL—C> to
+return to Command Mode, then type "R" to break the link. The
+DSP—2232 will go into the PACTOR Standby mode.
+Type <CTRL—C> to return to Command Mode, then type "R <Enter>
+R <Enter>" to break the link imrnediately! If there are
+characters left in the transmit buffer, they will not be sent.
+This method should only be used for an emergency shutdown as it
+does not send the control signal to the other station that
+informs it you are shutting down. As a result, the other station
+will continue to send until its internal timer turns it off.
+12-6

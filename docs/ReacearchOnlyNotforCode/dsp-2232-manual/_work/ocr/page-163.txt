@@ -1,0 +1,42 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+12.7.2
+12.7.3
+12.7.4
+3/93
+Enter inq Your Auto—AngwerBack (AAB)
+AEA PACTOR allows you to request the identity of the Btation you are
+converging with by sending your DSP—2232 a This causes the
+DSP—2232 to gend an inquiry (WRU) request to the other station.
+For thig reason, you should get your own Auto—AngwerBack (AAB) message
+to "DE YOUR-CALL"
+Your DSP—2232 will automatically gend the AAB
+message when another station requests your identity, and
+then stop Bending.
+PACTOR Modem Frequenc ies and Shifts
+All PACTOR operation uses 200 Hz shift FSK modems. Modem 5 , (default)
+6, 32 or 34 are the best choices for PACTOR use. Modem 5 is a single
+port PACTOR modem using the standard 2110 Hz and 2310 Hz tones.
+Modem 6 allows the lower tone (1460 Hz and 1260 Hz) pair to be used.
+Modems 32 and 34 are dual port PACTOR/PACKET modems allowing
+simultaneous HF or VFH packet operation on radio port 2 while
+operating PACTOR on radio port 1.
+MODEM 5 AFSK PACTOR Modem, 200 Hz shift, Mark=2110 Hz, space=2310 Hz
+MODEM 6 AFSK PACTOR Modem, 200 Hz shift, Mark=1460 Hz, space-1260 Hz
+MODEM 32: PACTOR 200:
+MODEM 34: PACTOR 200:
+Automatic Speed Chanqe
+(Dual Port modems )
+2110/2310; p2 Packet 300 bps HF 2110/2310
+2110/2310; p2 Packet 1200 bps VHF
+If the command PT200 is set on, the linked PACTOR mode will
+automatically change the transmitted data rate from 100 bps to 200 bps
+if a certain number of error—free 100 bps packets are received in a
+row. If the error rate at 200 bps is excessive, the data rate will
+automatically revert to 100 bps. There may be some propagation
+conditions that will cause the system to vacillate between the two
+data rates. This may be prevented by setting PT200 to OFF, which will
+force 100 bps operation .
+thresholds .
+See the UCMD command to control these
+12-9

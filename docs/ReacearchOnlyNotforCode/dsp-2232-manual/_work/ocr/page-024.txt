@@ -1,0 +1,55 @@
+DSP-2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+2.4. 1
+2.4.2
+12/91
+Terminal Proqrams for IBM PCs and Compatibles
+Although you can use almost any terminal program with your IBM PC or
+close compatible, AEA currently sells the PC—PAKRATT II w/ FAX program
+which provides many features not available in "telephone modem"
+see your AEA dealer for information on PC-PAKRATT 11 w/ FAX.
+prog rams .
+If you already have the PC—PAKRATT II program, follow the program
+manual and install the software on your computer.
+You should algo
+read through the PACKET OPERATION chapter of the PC-PAKRATT 11 manual.
+Familiarity with Packet operation of PC—PAKRATT will be necessary for
+performing a quick—check of the DSP—2232 in section 2.5 of THIS
+manual.
+As we mentioned above, an AEA program is not required to use the
+DSP—2232. Many terminal programs can be found throughout the amateur
+radio community or can be downloaded from Compuserve, GEnie and from
+many telephone bulletin boards .
+A partial list of PC programs tested with the DSP—2232 includes:
+PROCOMM, CROSSTALK-XVI, SMARTCOMN, RELAY, BITCOM, QMODEM, PC-TALKf
+CTERM, HAMCOM, HAMPAC, YAPP and the terminal program included with
+Microsoft Windows 3.0 (tm) .
+Follow the installation directions that come with the Terminal program
+you wish to use. Once installed on the computer, you should start the
+program and set the communication parameters for the following:
+Data Rate
+Data bits
+Parity
+Stop bits
+= 1200 bits per second (Bauds)
+= EVEN
+Once these settings have been achieved and the correct serial
+communications port chosen, you may proceed to section 2.5.
+Terminal Programs for the Macintosh
+Although you can use almost any terminal program with your Macintosh,
+AEA presently sells the MACRATT with FAX program which provides many
+features not available in "telephone modem" programs .
+See your AEA
+dealer for information on MACRATT with FAX.
+If you already have the MACRATT program, please follow the program
+manual and install the software on your Mac.
+You should also read
+through the PACKET OPERATION chapter of the MACRATT manual .
+Familiarity with Packet operation of MACRATT will be necessary for
+performing a quick check of the DSP—2232 in section 2.5 of THIS
+manual.
+As we mentioned above, an AEA program is not required to use the
+DSP—2232. Many terminal programs can be found throughout the amateur
+radio community and can be downloaded from Compuserve, GEnie and from
+many telephone bulletin boards.
+2-5

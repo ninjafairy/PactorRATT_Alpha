@@ -1,0 +1,63 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.8. 2
+7/92
+Display inq Received Data
+When a port 2 only modem is loaded, radio port 1 is effectively
+disabled. This can be desirable when operating packet on radio
+port 2 and you do not want to be disturbed with any HF signals or
+noise that may be received on radio port 1.
+When a Dual Port modem such as MODEM 33 is loaded in the DSP—2232,
+received data is displayed from both Radio Ports at the game time.
+This allows you to operate on HF and not miss any local Packet
+connects or information from DX spotting nets .
+The DSP—2232 displays monitored packets by prefacing each packet with
+a port designator "pl" for radio port 1 and "p2" for radio port 2.
+For instance, let 's gay that dual port modem number 33 is loaded and
+you are monitoring HF packet activity on Radio Port 1, and VHF packet
+You might see something like the following:
+activity on Radio Port 2.
+pl [Ul):
+pl (UIJ:
+p2 [1, P;ltl):
+Hello Bob, how are you?
+p2
+pl [C, P)
+pl (UA,F)
+pl
+Hello Bob, how are you?
+WXIAAA calling CQ on
+Radio Port 1 (HE')
+An Information Frame from
+WY7DDD to WY7EEE monitored
+on Radio Port 2 (VHF)
+Acknowledgment of the above
+I—Frame on Radio Port 2
+WX2BBB attempting to connect
+to WXIAAA on Radio Port 1 }
+WXIAAÄ acknowledging the
+connect request }
+An Information Frame from
+WX2BBB to WXIAAA monitored
+on Radio Port 1 (HF)
+The first packet shown above is an Unprotocol "CQ" packet from WXIAÄÄ
+that was received on Radio Port I. We know this was received on
+Port 1 because of the "pl" shown in front of the packet.
+Remember from the section on Multi—connect packet operation that
+(Packets received on Radio port 1 will be on one of the ten logical
+f rom
+channels numbered 0—9. ) The second packet is another "CQ"
+it was
+WXIAAA. Again, there is a "pl" in front of it so we know
+also received on Radio Port I .
+The third packet is an Information—Frame, or simply an "I—Frame" that
+on Radio
+wag monitored on Radio Port 2 . We know this was received
+Port 2 because of the "p2" shown before the packet.
+one of the
+Remember that Packets received on Radio port 2 will be on
+26 logical channels designated A—Z.
+The fourth packet is an acknowledgment to the previous I—Frame
+received on Radio Port 2.
+Again, the "p2" in front of the packet
+tells us it was received on Radio Port 2.

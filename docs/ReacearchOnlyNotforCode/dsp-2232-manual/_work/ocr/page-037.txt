@@ -1,0 +1,59 @@
+DSP-2232 OPERATING MANUAL
+RADIO INSTALLATION
+o
+o
+o
+o
+o
+Connect the Shield/ Drain wire (Silver wire with no insulation) to
+the Microphone GROUND connection if your transceiver has one.
+If your transceiver does not have a separate Microphone or Audio—
+in Ground connection, then thig wire should connect to the Bingle
+Ground along with the Brown wire.
+See the next step.
+Connect the BROWN wire to the main GROUND on the connector. This
+Ground is the one used for the PTT and receive audio. You should
+connect the Silver Shield/ Drain wire to this GROUND only if there
+is not a separate Microphone Ground as described in the previous
+step .
+Connect the RED wire to the Push—To—Ta1k (PTT) terminal on the
+connector. At this t ime, check the manual to determine whether
+your transceiver uses positive (+) or negative (
+PTT.
+The DSP—2232 comes from the factory set for Positive PTT since
+most transceivers use this method of keying. This will be
+discussed in more detail in the Adjustment sections below. If
+you are connecting a Handheld transceiver to your DSP—2232, you
+will probably need a resistor and/or capacitor to isolate this
+connection from the AFSK audio.
+Check APPENDIX E.
+Connect the WHITE wire to the MICROPHONE AUDIO terminal on the
+connector. This connection carries the low level Audio Frequency
+Shift Keying (AVSK) to the transmitter's microphone audio
+section. If you are connecting a Handheld transceiver to your
+DSP—2232, you will probably need a resistor and/or capacitor to
+isolate this connection from the PTT. Check APPENDIX E .
+Connect the GREEN wire to the RECEIVER AUDIO terminal on the
+connector. For the DSP—2232 to operate properly, we recommend at
+least 200 mV RMS of receive audio be available. If you are
+connecting to an Accessory Jack, make sure the available level is
+at least 200 mV RMS.
+For CW work 400 mV may improve operation.
+If you will be using a Packet Radio channel that is shared with
+voice users then you should connect the BLACK wire to the SQUELCH
+status pin of the connector. This will prevent the DSP—2232 from
+transmitting when there is a received signal strong enough to
+open the Squelch. If you connect this pin you may have to change
+the setting of the SQUELCH command in the DSP—2232. Most VHF/UHF
+Packet channels are no longer shared with voice users so this
+connection will probably not be needed.
+This completes the minimum necessary connections for transmit and
+receive operation with the DSP—2232.
+If you are interested in using
+the DSP—2232 to transmit Morse code (CW) or transmit RTTY using F SK
+inputs on your HF transceiver, the following three sections (3. 3.6,
+3.3.7, and 3.3.8) should be read.
+If you will not be using any of the connections described in the
+following sections, then skip ahead to the Final Adjustment section
+3.4 where you will set levels and prepare to go "On the Air" .
+12/92

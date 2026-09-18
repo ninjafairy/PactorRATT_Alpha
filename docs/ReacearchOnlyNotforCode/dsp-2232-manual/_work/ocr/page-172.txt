@@ -1,0 +1,59 @@
+DSP-2232 OPERATING MANUAL
+Hello you are print inq solid
+here and have an S7 signal
+Thanks Bob, you 're also a solid S7
+here ag well.
+A: CONNECTED to WX7EEE
+Thanks for the siqnal report Jim
+on Iv runninq 100 watts here.
+Hey Bob, I'm going to the hamfest
+this weekend if you want a ride.
+I AHe110 Mike L am on HF PACTOR
+talk inq to a station in Boston.
+O: Well Bob, I had better be going
+bed. Work starts pretty early 73.
+| 073 Jim it was nice meet inq vou.
+WXIAAA de WX7BBB SK
+to
+PACTOR OPERATION
+You gend the PACTOR Btation
+a Bignal report }
+The other station regpondg
+with a signal report
+WX7EEE connecte to you on
+VHF (Radio Port 2)
+{ You make another transmission
+to Jim on HF PACTOR
+{ Your friend on VHF packet
+wants to go to the hamfest
+{ You switch to Port 2 by
+typing to answer on VHF
+{ Jim on HF PACTOR signs off
+with you.
+{ You switch back to HF with
+and sign off with Jim }
+3/93
+As you may have noticed, communicating with different modes on the two
+Radio Ports at the same time is almost identical to the method used in
+chapter 4 for Packet and Packet operation. Let's discuss the sample
+QSOs above to see how the Port switching occurs.
+The first text we see in the sample above is the signal report you are
+sending to Jim, the HF PACTOR station you are communicating with.
+This example assumes you have already set up the ARQ PACTOR contact
+with the ARQ command discussed earlier in the chapter. When you are
+through sending your signal report to Jim on PACTOR, you turn the link
+over to become the IRS by sending the The DSP—2232 then
+responds by sending a blank line to the display to break up the
+received text.
+The next text you see is your signal report received from Jim on
+PACTOR .
+You are in the middle of a QSO with Jim on PACTOR and all of a sudden
+your friend WX7EEE connects to you on Packet. WX7EEE has connected on
+Radio Port 2 (VHF) which is shown by the "A:" before the connect
+message. Remember that the 26 channel designators for Radio Port 2
+are A—Z.
+Before you respond to WX7EEE on VHF, you send a transmission to Jim on
+PACTOR telling him how much power your transmitter is running. When
+you are finished with your text, you again command the DSP—2232 to be
+the IRS by sending a <CTRL-Z>.
+12-18

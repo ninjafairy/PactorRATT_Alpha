@@ -1,0 +1,46 @@
+7.6. 5
+12/91
+DSP-2232 OPERATING MANUAL
+7-11
+AMTOR AND NAVTEX OPERATION
+Since AMTOR transmissions do not self—identify, your Mail Drop will
+force the remote user to identify in one of three possible ways.
+The first way is automatic:
+Your Mail Drop will send "STAND BY" and then the WRU request to the
+remote user. Always be sure you have entered a proper Auto—Answerback
+(AAB) message consisting of "QRA YOURCALL YOUR MYSELCAL YOUR MY IDENT"
+as described earlier in this chapter.
+The second way covers beginning AMTOR users:
+AMTOR users who have not entered a proper Auto—AnswerBack response or
+for some reason have the WRU feature disabled cannot be automatically
+identified by your Mail Drop. In this case, your Mail Drop will ask the
+calling station to identify as follows:
+After 10 seconds your Mail Drop will ask the calling station to
+identify by sending "QRZ? DE "your callsign+?" to the calling station.
+The calling station then has 3 minutes to respond with its call sign.
+The ID must contain either "QRA" or "DE" and must end with " + ? " .
+An Amateur with the call WX7BBB would send the following:
+QRA WX7BBB +?
+If no satisfactory IV occurs within 3 minutes from the establishment
+of the link, the link is automatically shut down.
+The third way covers experienced users:
+Experienced AMTOR users may want to save time by simply sending QRA
+followed by their callsign immediately after establishing the link.
+For example station WX7BBB may simply enter the following immediately
+after establishing the ARQ link.
+QRA WX7BBB +?
+The DSP—2232 then sends the user the MTEXT string if the Mail Drop
+message command (MMSG) is ON. The default text is shown below:
+WELCOME TO MY AEA DSP-2232 MAILDROP.
+TYPE H FOR HELP.
+Caller Prompts
+The command prompt that the Mail Drop sends the remote user in AMTOR is
+shortened from that used in the Packet mode and is shown below:
+WX7BBB DE WX7AAA GA+?
+TMPROMPT is the AMTOR Mail Drop message prompt sent to a remote station
+by your Mail Drop. The default prompt is:
+GA subj / GA msg,
+/ EX' to end.
+Text before the first slash is sent to the user as the subject prompt;
+text after the slash is sent as
+the message text prompt.

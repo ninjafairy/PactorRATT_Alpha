@@ -1,0 +1,1168 @@
+{
+  "device": "AEA DSP-2232 Data Controller",
+  "source_pdf": "docs/dsp2232-manual.pdf",
+  "page_count": 176,
+  "coverage": "Operating manual chapters 1-12 only. Appendix command summary is NOT in this PDF.",
+  "host_mnemonics": "Not printed in this scan. Do not invent Host two-letter codes. Cross-check PK-232 docs/HostCommands - Trimmed.md only as a sibling AEA family reference.",
+  "defaults_extracted_from_prose": {
+    "MYCALL_factory": "DSP (invalid on air; dual-port printout DSP/DSP)",
+    "autobaud_bps": [110, 300, 600, 1200, 2400, 4800, 9600, 19200],
+    "TBAUD_extra_bps": [150, 200, 400, 38400],
+    "XFLOW_default": "ON (XON/XOFF); OFF enables RTS/CTS on DB-9 pins 7 and 8",
+    "HF_packet_vs_VHF_defaults": {
+      "SLOTTIME": {"HF": 12, "VHF": 30},
+      "PACLEN": {"HF": "64 or less", "VHF": 128},
+      "MAXFRAME": {"HF": 1, "VHF": 4},
+      "FRACK": {"HF": 8, "VHF": 5},
+      "VHF": {"HF": "OFF", "VHF": "ON"},
+      "HBAUD": {"HF": 300, "VHF": 1200},
+      "MODEM": {"HF": 10, "VHF": 12}
+    },
+    "PACTOR": {
+      "enter": ["PACTOR", "PT"],
+      "port": 1,
+      "unproto": "PTSEND",
+      "listen": "PTLIST",
+      "PTOVER_default": "CTRL-Z",
+      "ARQ_trx_ms": 100,
+      "shift_hz": 200,
+      "tones_hz": ["2110/2310", "1460/1260"],
+      "UCMD_0": "default 3, max 30",
+      "UCMD_1": "default 6, max 30",
+      "UCMD_2": "default 2, max 9",
+      "UCMD_3": "default 5, max 60"
+    },
+    "power": "+13 VDC (12-16 VDC) at 1100 mA; coax center pin positive"
+  },
+  "commands": [
+    {
+      "name": "AAB",
+      "host": null,
+      "pages": [
+        12,
+        15,
+        101,
+        105,
+        117,
+        118,
+        121,
+        160,
+        162,
+        163
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "ACHG",
+      "host": null,
+      "pages": [
+        12,
+        15,
+        117,
+        122,
+        162,
+        168
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "ADELAY",
+      "host": null,
+      "pages": [
+        175
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "ALIST",
+      "host": null,
+      "pages": [
+        5,
+        12,
+        113,
+        117,
+        119,
+        147
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "ARXTOR",
+      "host": null,
+      "pages": [
+        5
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "AUDELAY",
+      "host": null,
+      "pages": [
+        9,
+        64
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "AXDELAY",
+      "host": null,
+      "pages": [
+        9,
+        65
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "AXHANG",
+      "host": null,
+      "pages": [
+        9,
+        65
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "BEACON",
+      "host": null,
+      "pages": [
+        59,
+        78
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CFROM",
+      "host": null,
+      "pages": [
+        9,
+        79
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CHECK",
+      "host": null,
+      "pages": [
+        9,
+        67,
+        84
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CHSWITCH",
+      "host": null,
+      "pages": [
+        9,
+        67,
+        68,
+        74,
+        99,
+        107,
+        114,
+        125,
+        133,
+        134,
+        171
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CMSG",
+      "host": null,
+      "pages": [
+        53,
+        59
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CODE",
+      "host": null,
+      "pages": [
+        5,
+        6,
+        11,
+        14,
+        103,
+        120,
+        147
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CONSTAMP",
+      "host": null,
+      "pages": [
+        62
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CONVERSE",
+      "host": null,
+      "pages": [
+        64,
+        71,
+        74,
+        99,
+        101,
+        104,
+        114,
+        133
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CSTATUS",
+      "host": null,
+      "pages": [
+        9,
+        68,
+        77,
+        109,
+        127,
+        173
+      ],
+      "examples": [
+        "cmd:CSTATUS"
+      ],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "CTEXT",
+      "host": null,
+      "pages": [
+        59,
+        64,
+        86
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "DAYTIME",
+      "host": null,
+      "pages": [
+        6,
+        62,
+        89,
+        101,
+        105,
+        117,
+        134,
+        162
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "DIRECT",
+      "host": null,
+      "pages": [
+        72,
+        106,
+        124,
+        170
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "EAS",
+      "host": null,
+      "pages": [
+        12,
+        13,
+        15,
+        102,
+        105,
+        116,
+        118,
+        135,
+        161,
+        164
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "EXPERT",
+      "host": null,
+      "pages": [
+        6
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "FAXNEG",
+      "host": null,
+      "pages": [
+        13,
+        143
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "FRACK",
+      "host": null,
+      "pages": [
+        9,
+        65,
+        69,
+        84
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "FULLDUP",
+      "host": null,
+      "pages": [
+        79,
+        150
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "GRAPHICS",
+      "host": null,
+      "pages": [
+        13,
+        143
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "GUSERS",
+      "host": null,
+      "pages": [
+        6
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "HID",
+      "host": null,
+      "pages": [
+        79
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "HOMEBBS",
+      "host": null,
+      "pages": [
+        95,
+        96,
+        128,
+        174
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "HOST",
+      "host": null,
+      "pages": [
+        16
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "KISS",
+      "host": null,
+      "pages": [
+        16
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "LEFTRITE",
+      "host": null,
+      "pages": [
+        13,
+        142
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "LOCK",
+      "host": null,
+      "pages": [
+        13,
+        135
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MAILDROP",
+      "host": null,
+      "pages": [
+        10,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        120,
+        121,
+        128,
+        166,
+        174
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MAXFRAME",
+      "host": null,
+      "pages": [
+        66,
+        69,
+        84
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MDCHECK",
+      "host": null,
+      "pages": [
+        86,
+        87,
+        90,
+        96,
+        120,
+        167
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MDMON",
+      "host": null,
+      "pages": [
+        86,
+        94,
+        122,
+        128,
+        167,
+        174
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MDPROMPT",
+      "host": null,
+      "pages": [
+        86,
+        128,
+        167,
+        174
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MFILTER",
+      "host": null,
+      "pages": [
+        8,
+        62
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MHEARD",
+      "host": null,
+      "pages": [
+        6,
+        56,
+        57,
+        71,
+        89
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MMSG",
+      "host": null,
+      "pages": [
+        86,
+        121,
+        128,
+        167,
+        174
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MODEM",
+      "host": null,
+      "pages": [
+        49,
+        69,
+        72,
+        73,
+        98,
+        103,
+        104,
+        105,
+        106,
+        107,
+        118,
+        124,
+        125,
+        128,
+        135,
+        137,
+        143,
+        150,
+        152,
+        155,
+        156,
+        163,
+        169,
+        170
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MONITOR",
+      "host": null,
+      "pages": [
+        50,
+        57,
+        60,
+        61,
+        64,
+        65,
+        68,
+        69,
+        86
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MOPITT",
+      "host": null,
+      "pages": [
+        6
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MSPEED",
+      "host": null,
+      "pages": [
+        13,
+        135
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MSTAMP",
+      "host": null,
+      "pages": [
+        8,
+        62
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYALIAS",
+      "host": null,
+      "pages": [
+        6,
+        79
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYCALL",
+      "host": null,
+      "pages": [
+        27,
+        46,
+        47,
+        50,
+        78,
+        85,
+        86,
+        93,
+        95,
+        120,
+        128,
+        158,
+        160,
+        166,
+        174
+      ],
+      "examples": [
+        "cmd:MYCALL"
+      ],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYGATE",
+      "host": null,
+      "pages": [
+        5,
+        6,
+        78
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYIDENT",
+      "host": null,
+      "pages": [
+        12,
+        112
+      ],
+      "examples": [
+        "cmd:MYIDENT"
+      ],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYMAIL",
+      "host": null,
+      "pages": [
+        78,
+        85,
+        93,
+        95,
+        128,
+        174,
+        175
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYPTCALL",
+      "host": null,
+      "pages": [
+        14,
+        158,
+        166
+      ],
+      "examples": [
+        "cmd:MYPTCALL"
+      ],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "MYSELCAL",
+      "host": null,
+      "pages": [
+        12,
+        85,
+        111,
+        112,
+        114,
+        118,
+        120,
+        121,
+        128
+      ],
+      "examples": [
+        "cmd:MYSELCAL"
+      ],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PACLEN",
+      "host": null,
+      "pages": [
+        9,
+        66,
+        69
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PACTOR",
+      "host": null,
+      "pages": [
+        5,
+        6,
+        14,
+        15,
+        16,
+        18,
+        85,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PLIST",
+      "host": null,
+      "pages": [
+        5
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PRTYPE",
+      "host": null,
+      "pages": [
+        13,
+        140,
+        142
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PT200",
+      "host": null,
+      "pages": [
+        162,
+        163,
+        165
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PTCONN",
+      "host": null,
+      "pages": [
+        161,
+        162
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PTLIST",
+      "host": null,
+      "pages": [
+        15,
+        159,
+        162,
+        165
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PTOVER",
+      "host": null,
+      "pages": [
+        160,
+        162
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "PTSEND",
+      "host": null,
+      "pages": [
+        162
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "QSIGNAL",
+      "host": null,
+      "pages": [
+        145,
+        146
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "RADIO",
+      "host": null,
+      "pages": [
+        8,
+        9,
+        10,
+        15,
+        26,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        110,
+        127,
+        128,
+        158,
+        171,
+        174,
+        175
+      ],
+      "examples": [
+        "cmd:RADIO"
+      ],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "REINIT",
+      "host": null,
+      "pages": [
+        6
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "RELINK",
+      "host": null,
+      "pages": [
+        9,
+        67
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "RETRY",
+      "host": null,
+      "pages": [
+        9,
+        65,
+        66,
+        84
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "SIAM",
+      "host": null,
+      "pages": [
+        5,
+        6,
+        14,
+        16,
+        101,
+        145,
+        146,
+        147,
+        148
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "TBAUD",
+      "host": null,
+      "pages": [
+        19
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "TMAIL",
+      "host": null,
+      "pages": [
+        85,
+        86,
+        120,
+        128,
+        166,
+        174
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "TRANS",
+      "host": null,
+      "pages": [
+        19,
+        58,
+        78
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "TXDELAY",
+      "host": null,
+      "pages": [
+        9,
+        57,
+        64
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "UCMD",
+      "host": null,
+      "pages": [
+        163,
+        165
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "UCMD 0",
+      "host": null,
+      "pages": [
+        165
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "UCMD 1",
+      "host": null,
+      "pages": [
+        165
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "UCMD 2",
+      "host": null,
+      "pages": [
+        165
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "UCMD 3",
+      "host": null,
+      "pages": [
+        165
+      ],
+      "examples": [],
+      "notes": [
+        "default mentioned near OCR: 3"
+      ],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "USOS",
+      "host": null,
+      "pages": [
+        11,
+        103
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    },
+    {
+      "name": "WORDOUT",
+      "host": null,
+      "pages": [
+        12,
+        13,
+        15,
+        102,
+        105,
+        118,
+        135,
+        164
+      ],
+      "examples": [],
+      "notes": [],
+      "source": "AEA DSP-2232 Operating Manual OCR; Host mnemonic not printed in this scan"
+    }
+  ]
+}

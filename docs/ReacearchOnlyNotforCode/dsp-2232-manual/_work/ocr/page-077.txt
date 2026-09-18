@@ -1,0 +1,51 @@
+4.8. 3.3
+DSP-2232 OPERATING MANUAL
+4-33
+PACKET RADIO
+The last packet you sent was to WX7EEE on VHF so you decide to reply
+to him f irst. This way you do not have to change Ports. After your
+reply to WX7EEE, you change to Port I with IQ and send your good—byes
+to Jim on HF.
+Your friend WX7EEE on VHF says 73 and signs off with you. After two
+stations agree to sign off, one of them must initiate a Disconnect.
+You decide to disconnect from WX7EEE by first switching to Port 2 with
+and then entering Cornmand mode with a <Ctr1—C>. Once you see the
+Command prompt (cmd: ) , enter the the Disconnect "D" command.
+Shortly after you do this you see the display
+" DISCONNECTED: WX7EEE" from the DSP-2232.
+Jim on HF has decided to initiate the disconnect with you so the final
+packet you see is the "O: *** DISCONNECTED: WXIAAA" frame from Port 1.
+More Thouqhts on Port Switching
+One problem of having more than one Radio Port is remembering which
+port you are currently using. In the dual port sample QSOg above,
+this was not a problem, but after it has been hours or days since you
+have used your DSP—2232, you may • forget which port you last used.
+With AEA Pakratt Software programs, the on—screen status will always
+show which port you are using so this is not a problem. With other
+programs, you will have to query the DSP—2232 with the CSTATUS SHORT
+command. The CSTATUS command displays the status of the logical
+channels of Port 1 and Port 2 of the DSP-2232. The CSTATUS SHORT
+command displays the status of the active channel and any other
+connected packet channels . After completing the sample QSOs above,
+the DSP—2232 would display the following.
+cmd:CSTATUS S
+Ch. A - 10 DISCONNECTED
+This reminds you that Channel A is your current I /O channel. Any text
+that you type in the Converse mode will be sent to channel A on Radio
+If you had been connected to any other packet stations, the
+Port 2 .
+callsign and channel would have also shown in the display.
+Sometimes you might not want to be bothered with anything from the
+For these times either Radio Port may
+Radio Port you are not using.
+For example, let's say that in
+be turned OFF with the RADIO command.
+the above example QSO you wanted to work HF packet and did not want to
+Typing the following cornmand
+be interrupted with any VHF connects.
+would cause Radio Port 2 to be disabled.
+cmd:RADIO /0
+RAdio was 1/2
+RAdio now 1/0
+When a DSP—2232 Radio Port is disabled, the front panel LCD STATUS
+indicator for that port will be extinguished as a reminder.

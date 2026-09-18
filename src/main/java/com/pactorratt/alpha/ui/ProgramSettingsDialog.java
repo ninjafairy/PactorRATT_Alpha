@@ -29,14 +29,18 @@ public final class ProgramSettingsDialog extends JDialog {
         JTextField callsign = new JTextField(config.getCallsign(), 12);
         JRadioButton line = new JRadioButton("Line (Enter commits line)", config.getCommitMode() == CommitMode.LINE);
         JRadioButton message = new JRadioButton("Message (Send commits compose)", config.getCommitMode() == CommitMode.MESSAGE);
-        ButtonGroup group = new ButtonGroup();
-        group.add(line);
-        group.add(message);
+        ButtonGroup commitGroup = new ButtonGroup();
+        commitGroup.add(line);
+        commitGroup.add(message);
 
         JCheckBox listenOnStart = new JCheckBox("Listen on start", config.isListenOnStart());
         JCheckBox debugLog = new JCheckBox("Debug log", config.isDebugLogEnabled());
+        JCheckBox displayStartup = new JCheckBox("Display Startup", config.isDisplayStartup());
+        displayStartup.setToolTipText("Show PK-232 startup text and TNC firmware/hardware ($0009) windows on connect.");
         JTextField handover = new JTextField(config.getCannedHandoverText(), 20);
         JTextField disconnect = new JTextField(config.getCannedDisconnectText(), 20);
+        JTextField cannedCq = new JTextField(config.getCannedCqText(), 20);
+        cannedCq.setToolTipText("Listen CQ button sends this line CQ-repeat times (e.g. CQ de KJ7RBS)");
         JTextField wrap = new JTextField(Integer.toString(config.getWrapColumns()), 4);
 
         JCheckBox fec200 = new JCheckBox("FEC 200", config.isFec200());
@@ -49,6 +53,10 @@ public final class ProgramSettingsDialog extends JDialog {
         fecRow.add(new JLabel("Retries"));
         fecRow.add(fecRetries);
 
+        JSpinner cqRepeat = new JSpinner(new SpinnerNumberModel(config.getCqRepeat(), 0, 10, 1));
+        cqRepeat.setToolTipText("Listen CQ button: how many copies of canned CQ text to send. 0 = nothing.");
+        JPanel cqRepeatRow = labeled("CQ repeat", cqRepeat);
+
         JSpinner opPoll = new JSpinner(new SpinnerNumberModel(config.getOpPoll(), 0, 10, 1));
         opPoll.setToolTipText("OPMODE polls per second while an ARQ window is linked (not dead). 0 = off.");
         JPanel opPollRow = labeled("OPPOLL", opPoll);
@@ -60,8 +68,11 @@ public final class ProgramSettingsDialog extends JDialog {
         form.add(message);
         form.add(listenOnStart);
         form.add(debugLog);
+        form.add(displayStartup);
         form.add(labeled("Canned handover text", handover));
         form.add(labeled("Canned disconnect text", disconnect));
+        form.add(labeled("Canned CQ text", cannedCq));
+        form.add(cqRepeatRow);
         form.add(labeled("Wrap columns", wrap));
         form.add(fecRow);
         form.add(opPollRow);
@@ -72,8 +83,11 @@ public final class ProgramSettingsDialog extends JDialog {
             config.setCommitMode(line.isSelected() ? CommitMode.LINE : CommitMode.MESSAGE);
             config.setListenOnStart(listenOnStart.isSelected());
             config.setDebugLogEnabled(debugLog.isSelected());
+            config.setDisplayStartup(displayStartup.isSelected());
             config.setCannedHandoverText(handover.getText());
             config.setCannedDisconnectText(disconnect.getText());
+            config.setCannedCqText(cannedCq.getText());
+            config.setCqRepeat((Integer) cqRepeat.getValue());
             try {
                 config.setWrapColumns(Integer.parseInt(wrap.getText().trim()));
             } catch (NumberFormatException ignored) {

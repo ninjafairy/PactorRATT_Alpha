@@ -1,0 +1,70 @@
+10.4
+10.4. 1
+10. 4.2
+10.4. 3
+7/92
+DSP-2232 OPERATING MANUAL
+11. 246.5 USB
+18.983.6 USB
+SIAM AND TDM OPERATION
+TDM Receive Operation
+The SIAM mode described above will recognize and decode TDM signals
+for receive only. The TDM receive mode can be entered directly g imply
+by typing TDM at the DSP—2232 cornrnand prompt.
+TDM is an immediate command that places the DSP—2232 in the TDM
+receive mode. TDM stands for Time Division Multiplexing, also known
+as Moore code and is the implementation of CCIR Recommendation 342 .
+The following describes the TDM mode and conunands in detail.
+TDM Parameters
+If you are using an AEA PAKRATT program, follow the instructions in
+the program manual to enter the TDM mode.
+If you are using a terminal, simply type "TDM" from the Command Mode
+followed by the <Enter> key to enter the TDM mode. The DSP—2232
+responds by displaying the previous mode:
+Opmode
+was PAcket
+Opmode
+now TDm
+Monitoring TDM Signals
+The TDM command forces bit phasing; do this when changing frequency to
+another TDM signal .
+This is also useful when the DSP—2232
+synchronizes on the wrong bit in the character stream, which is likely
+on a signal which is idling. TDM stations idle MOST of the time, so
+you may have to leave the DSP—2232 monitoring for an hour or two
+before any data is received.
+TDM signals allow multiple data streams to share the same RF channel.
+The DSP—2232 can receive either 1, 2 or 4 channel TDM signals. When
+monitoring 2 or 4 channel TDM, the TDCHAN command allows you to select
+which channels will be displayed. The TDCHAN command takes an
+argument from O to 3 to allow any one of the four channels of a
+4—channeI TDM station to be monitored.
+TDM signals operate at different data rates. The TDBAUD cornmand
+allows any data rate from O to 200 baud to be selected, but only the
+values in the following list are valid.
+I—channel :
+2 —channel :
+4—channe1:
+48,
+86,
+171,
+72 r
+96,
+192,
+100
+200
+Where to Find TDM Signals
+We have heard TDM signals on the following frequencies which should be
+used as a starting point when looking for TDM signals.
+9. 125.9 LSB
+14. 956.7 USB
+The above signals were using
+12.061.7 USB
+19. 101.9 LSB
+different shifts.
+14.623. 3
+19.647. 4
+USB
+LSB
+several
+10-4

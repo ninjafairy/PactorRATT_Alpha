@@ -57,6 +57,7 @@ Case-sensitive Host mnemonics.
 
 - **No space** between the 2-letter mnemonic and its argument (`HPN`, not `HP N`).
 - ON/OFF boolean switches: `Y`/`N` (`HPN` = HPOLL off). Verbose `ON`/`OFF` also work without space (`HPOFF`) but `Y`/`N` is preferred.
+- **Two-argument commands** keep a space *between* arguments (Ch. 4 §4.2). UBIT 10: query `UB10`; set `UB10 ON` / `UB10 OFF`. Do not glue `UB10Y`.
 - Some parameters take **integers**, not `Y`/`N` — e.g. PTHUFF Host `PH` uses a decimal level (`PH0` = off), not `PHN`.
 - `ADDRESS` (`AE`) takes decimal digits after the mnemonic (`AE6` for `$0006`).
 - `MEMORY` read response is `MM$hh` (ASCII hex after `$`); see step 5.

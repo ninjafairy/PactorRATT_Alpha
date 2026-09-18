@@ -19,6 +19,7 @@ public final class TncInitializer {
 
     private static final long PROBE_TIMEOUT_MS = 250;
     private static final long COMMAND_TIMEOUT_MS = 250;
+    private static final long LEAVE_HOST_TIMEOUT_MS = 2000;
     private static final long ASCII_SETTLE_MS = 300;
     private static final long RESTART_SETTLE_MS = 500;
     private static final long STARTUP_QUIET_MS = 500;
@@ -142,10 +143,17 @@ public final class TncInitializer {
         }
     }
 
-    /** Close the session if still open (user cancel or error cleanup). */
+    /** Close the session if still open (user cancel, error cleanup, or app exit). Leaves Host first. */
     public void abort(HostSession session) {
-        if (session != null && session.isOpen()) {
-            session.close();
+        if (session == null) {
+            return;
+        }
+        try {
+            session.leaveHostMode(LEAVE_HOST_TIMEOUT_MS);
+        } finally {
+            if (session.isOpen()) {
+                session.close();
+            }
         }
     }
 

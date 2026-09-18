@@ -1,0 +1,58 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.4. 7
+4.4. 7.1
+4.4. 7.2
+4.4. 7.3
+4.4. 7.4
+12/91
+Packet Formatting and Edit inq
+Some of your DSP—2232 's command parameters affect how your packets are
+formatted
+— how your typing appears to the rest of the world. Other
+commands let you correct typing errors before your packet is sent,
+cancel lines or cancel packets if necessary.
+Carriage Returns and Linefeeds in Packets
+Most people use packet radio for sending and receiving messages or
+conversing with other Amateurs. The character used to gend a packet
+is defined with the command SENDPAC which defaults to a Carriage
+Return ($OD).
+The SENDPAC character may be changed, but most will
+find the Carriage Return or Enter key to be a natural choice.
+Similarly, your DSP—2232 will include a Carriage Return in the packet
+you send to other stations since this makes for a more natural
+conversation . The ACRPACK conunand ( default ON) controls this feature,
+but most people never want to change this.
+The DSP—2232 also has the capability of adding a linefeed character
+( $0A) automatically to packets that you send to others.
+If you
+encounter a station that says your packets are overprinting, you may
+want to turn the ALFPACK or the ILFPACK command ON temporarily.
+Cancel inq Lines and Packets
+Most of the time, the Backspace key (or the Delete key on some
+computers) is all that is needed to edit a line before it is sent.
+Occasionally it may be helpful to cancel the line, or the entire
+packet you are entering with one key stroke. The CANLINE character
+(default <CTRL—X>) will cancel the entire line you are typing. The
+CANPAC character (default <CTRL—Y>) will delete the entire packet you
+are entering. These commands can be helpful, but use them with care.
+Redisplay
+If you have erased and retyped many characters, you may want to see
+the sentence you are currently entering "redisplayed" by the DSP—2232,
+especially if BKONDEL is OFF. Your •DSP—2232 will show the line you ' re
+entering when you type the REDISPLAY character (default <CTRL—R>) .
+This will also allow you to display any packets you might have
+received while you were typing.
+The PASS Character
+If you are using a terminal or terminal program, the following may be
+useful.
+Sometimes you may want to include a special input character
+such as a Carriage Return (the SENDPAC character) in a packet.
+For
+example, to send several lines in the same packet, you must include
+<CR> at the end of each line. You can include any character in a
+packet (including all special characters) by prefixing that character
+with the PASS character (default <CTRL—V>) :
+I wasn't at the meeting.
+What happened?
+4—19

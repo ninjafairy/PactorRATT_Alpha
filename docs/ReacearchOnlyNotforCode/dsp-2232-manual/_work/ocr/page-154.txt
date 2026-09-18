@@ -1,0 +1,61 @@
+DSP—2232 OPERATING MANUAL
+SATELLITE OPERATION
+11.6. 3
+7/92
+Satellite Proqrams
+To send and receive files on the PACSATs, you may wind up using the
+PB and PG programs available from AMSAT. These require gome
+special parameter settings in the DSP—2232 which are listed below.
+The following configuration files have been used successfully with
+the PB and PG programs. Thanks to Bob McGwier ( N4HY) for the f i leg.
+; PB configuration file example (PB. CFG)
+Corments start with ; and are ignored.
+; Remove and add
+as appropriate to your setup.
+; Set. your .callsign
+mycall N4HY
+; Set the satellite's callsign
+bdcstcall uosat5—11
+; Set a directory for the pb operations if you want to
+; this is where all files will be stored
+; pbpath C:
+; And any other callsign or string that you are known by
+; myaddr ALL
+; COM Port and TNC settings
+; port 1
+port 2
+speed 19200
+restart delay 60
+txd 120
+Please use graball so the satellite is more useful for everyone
+graball 1
+; Up to 10 block f type entries keep PB from saving the file types
+that you specify. e.g. blockftype 2 gets rid of BBS forwarding
+traffic.
+blockftype 2
+These entries control frame logging
+directory broadcast frames
+; Iogdbframes 1
+message broadcast frames
+; logpbframes 1
+all other frames
+; logothers 1
+How long to keep . act and . hol files
+actdays 3
+How many bytes of pfhdir. pfh is max
+maxpfhdirsize 250000
+• How many bytes of pfhdir . pfh to leave after archiving
+minpfhdirsize 25000
+How many minutes of no packets to exit after
+; exitafter O
+Turn off all automatic downloading THIS WAS O
+automode 1
+• Turn on batch file builder
+; makebat 1
+Bats 1 and Bats 2 allow you to customize what ends . up in
+the batch file postpass. bat
+bats 1 •call my proct
+bats2 ' . dl'
+ndupesearch 200
+select pb. eqn
+11-6

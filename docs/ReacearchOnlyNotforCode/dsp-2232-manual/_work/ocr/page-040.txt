@@ -1,0 +1,54 @@
+3.4
+3. 4.1
+3.4. 2
+3.5
+3.5. 1
+12/91
+DSP-2232 OPERATING MANUAL
+1.
+RADIO
+INSTALLATION
+DSP—2232 Conf iguration Jumpers and Connections
+Before operating the DSP—2232, you must first make sure it is
+correctly configured for your radio's PTT. After this has been
+checked you should then connect the cables you constructed above.
+Push—To—Ta1k (PTT) Conf iqurat ion
+Before you connect the Radio cable(s) you just made to the
+DSP—2232, consult your transceiver's manual for keying
+polarity. Most transmitters and transceivers made in the last 15
+years use Positive PTT keying. However some gear, especially if it
+contains vacuum tubes, may use a negative PTT keying voltage.
+The DSP—2232 is configured for positive PTT at the factory so it will
+operate with most equipment without changes. However, if necessary ,
+you can change the polarity of the PTT configuration on either Port 1
+or Port 2.
+Follow these steps :
+o
+o
+o
+o
+Remove four screws from the top and eight screws from the sides
+of the DSP—2232 chassis cover and lift off the cover.
+Locate Jumper posts JMP4 and JMP5 which are about 4 inches in
+from the right—rear corner of the PCB.
+JMP4 conf igures Port 1 and JMP5 conf igures Port 2
+When the shorting jumpers are towards the fuse, the port is
+configured for Positive (+) PTT. When the shorting jumpers are
+towards the center, the port is configured for Negative (
+- ) PTT.
+Replace the cover and twelve screws when you are finished conf iguring
+the polarity of the DSP—2232 PTT circuit.
+DSP—2232 Connections
+Remove power from the DSP—2232, your transceiver and all accessories
+before making any connections .
+Connect the Radio Cable(s) you constructed in section 3.3. 5 between a
+Radio port on the DSP—2232 and your transceiver(s) .
+If you wired cableg for CW keying or Direct FSK then connect these to
+the appropriate point on your equipment .
+Transceiver Adjustments
+This section is split into separate procedures for FM and SSB radios.
+You may adjust either port at any time without affecting the other.
+FM Transceiver Final Adiustments
+Turn on your computer and DSP—2232 and start your terminal
+program .
+3-8

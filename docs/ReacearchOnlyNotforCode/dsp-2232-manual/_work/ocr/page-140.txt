@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+FACSIMILE OPERATION
+9.4
+9 . 4.2
+7 92
+Black & White FAX Operat ion
+Thig mode of black & white FAX operation will eventually be deleted
+from the DSP—2232 since the Analog mode has been created. Still, if
+you own an older AEA PAKRATT WITH FAX program, you should have the
+ability to display weather FAX on the screen of your PC.
+If you are
+using an AEA PAKRATT WITH PAX program, follow the program manual
+instructions to run the program with the DSP—2232.
+To hook—up the DSP—2232 for facsimile operation the radio must be
+connected to Radio Port I.
+If all you want is to receive FAX, you
+only need to connect the audio from your receiver.
+If you wish to
+transmit as well, follow the instructions in Chapter 3 of this manual
+for complete Radio Connections.
+If you will be printing directly to a graphics printer with a parallel
+printer cable, an IBM printer cable must be attached to the parallel
+printer port on the rear on the DSP—2232. This port feeds a
+Centronics Parallel printer and supports many graphics standards.
+the PRTYPE ' command in the command summary for a list of supported
+printer graphics formats.
+NOTE :
+Facsimile transmissions contain such a large amount of data
+that the DSP—2232 can not support Packet operation on Radio
+Port 2 whilé in the Facsimile mode.
+HF Receiver Settings
+Set your HF receiver (or transceiver) to upper Sideband (USB) and
+disable any IF—Shift or Passband—tuning controls. Adjust the volume
+to a comfortable listening level.
+Tuning In HF Facsimile Stations
+Facsimile is most often found on Upper Sideband and sounds similar to
+monitoring an AMTOR QSO with both stations being of equal strength.
+The most common facsimile signals are WEFAX, so we have set the
+DSP—2232 FAX default parameters to copy weather charts and many
+satellite photographs. We recommend starting start with one of the
+listed weather frequencies, or frequencies from popular Communications
+in Table 1 when first receiving facsimile.
+Upon tuning into a WEFAX signal, you will notice that the facsimile
+sound seems to repeat at the rate of twice a second. This ig the
+horizontal scan frequency, and allows you to distinguish different
+facsimile services by speed. Common horizontal scan rates are 2 lines
+per second, which is typically used in weather facsimile broadcasts,
+1 line per second for photographs, and 4 lines per second for some
+foreign facsimile stations.
+Listen for these repetition rates as you
+tune across the bands in search of new pictures.
+The DSP—2232 uses a center frequency of 1.9 kHz for copying facsimile
+transmissions. As a result, you must tune I .9 kHz lower than the
+frequencies listed in Table 1 when using Upper Sideband.
+in Lower Sideband, one must tune 1.9 kHz higher than the frequencies
+listed in the table.

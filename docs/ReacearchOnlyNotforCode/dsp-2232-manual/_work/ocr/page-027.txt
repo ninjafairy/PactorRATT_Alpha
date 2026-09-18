@@ -1,0 +1,51 @@
+DSP-2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+Type an asterisk ( * ) •
+computer's data rate,
+then display the sign—on message:
+DSP-2232 is
+When the DSP—2232 hag
+the CMD LED will light.
+using default values.
+AEA DSP-2232 Data controller
+Copyright (C) 1986—1991 by
+Advanced Electronic Applications,
+Release DD.MMM. YY
+cmd :
+" recognized" your
+Your screen will
+Inc.
+8.
+10.
+7/92
+Make note of the Release date on the first page of this manual.
+This is important should you ever call AEA for technical support.
+It should match the firmware release sticker on the bottom of
+your DSP-2232
+If you are using an AEA program, follow the instructions in the
+program manual to enter the packet callsign (MYCALL) of AAA into
+the DSP-2232.
+Even though this is not your call sign, please do
+this for this procedure. You must change it to YOUR OWN CALLSIGN
+after completing this procedure.
+If you are using a Computer Terminal or a non—AEA terminal
+program the following will set your packet callsign to AAA:
+Enter MYCALL by typing MY AAA (or .
+(<RETURN> or <Enter> means type the single key on your keyboard. )
+Your monitor should display:
+MYca11 was DSP/DSP
+MYca11 now AAA/DSP
+If you are using an AEA program follow the instructions to
+CONNECT in packet mode to AAA. Since you have j ust entered your
+callsign as AAA, you will connect to yourself.
+If you are using a Computer Terminal or a non—AEA program,
+entering the following after the "cmd:" command mode prompt will
+cause the DSP—2232 to Connect to AAA:
+C AAA
+After a few moments, your monitor should display:
+* * * CONNECTED to AAA
+Type HELLO SELF
+After a few moments, your monitor should echo the same message.
+If you have gotten this far then the digital section of the
+DSP—2232 and the VHF packet modem are both working .
+2-8

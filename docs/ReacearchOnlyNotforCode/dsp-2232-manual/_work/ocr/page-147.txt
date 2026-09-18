@@ -1,0 +1,60 @@
+DSP-2232 OPERATING MANUAL
+0.47:
+50
+After another 15
+of the following
+SIAM AND TDM OPERATION
+Baud,
+seconds or so, the DSP—2232 should respond with one
+signal classes and tell whether or not the signal iB
+reversed by giving the status of the command RXREV:
+ASCII AMTOR ALIST Baudot Unknown noise 6-bit TDM
+The complete information from the DSP—2232 signal analysis will 100k
+something like the following:
+0.47
+50 Baud, Baudot ,
+RXREV OFF
+10.3. 1
+10.3. 2
+7/92
+Thig means that the DSP—2232 has found the signal to be a 50—Baud
+Baudot signal that is not inverted (since RXREV is OFF) .
+The 0.47
+means that the DSP—2232 is sure that the baud rate is correct.
+SIAM can identify and copy ASCII, ARQ and FEC AMTOR, Baudot and TDM
+signals. To begin printing one of these signals, all that must be
+done is to type the coaunand 0K after the analysis has been completed.
+You should immediately begin to see text appear on your screen.
+If the DSP—2232 determined the signal to be Unknown, 6—bit or noise
+which it cannot decode, typing 0K will cause the response:
+? bad
+The SIGNAL routine will run repeatedly until the operating mode is
+changed either by typing 0K, or forcing a change to another mode.
+If
+you tune to a different signal during an analysis, simply type SIGNAL
+again to restart the analysis routine.
+Copying Encoded RTTY Transmiss ions
+In the Short Wave bands many RTTY stations do not transmit in plain
+text. Most of these stations are using sophisticated encryption
+techniques that make receiving them almost impossible. There are a
+few stations that use a relatively simple bit—inversion technique.
+For these stations, the DSP—2232 has included the BIT INV command.
+If the text is not plain, but appears to be encoded, you can try
+different settings of BITINV. BIT INV will Exclusive—OR a number from
+$00 to $1 F with the received character of a Baudot signal thus
+inverting specific bits.
+By varying BIT INV from O through 31, you
+will test all the different inversion possibilities that may encode a
+Baudot signal .
+If only simple bit—inversion is being used, one of
+the BIT INV settings should cause the transmission to become •readable.
+If none of the 32 possibilities reveal plain text, then the
+transmitting station is likely using a more sophisticated technique.
+Computer programmers may be interested in the 5BIT and 6B IT commands.
+The CODE command for International RTTY Compatibility
+The CODE command allows the DSP—2232 to receive (and sometimes send)
+other RTTY character sets.
+Look up the CODE cornmand in the Command
+Summary Appendix for information on some of the other character sets
+you may encounter on the HF bands.
+10-3

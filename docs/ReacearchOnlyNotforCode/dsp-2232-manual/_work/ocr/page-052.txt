@@ -1,0 +1,44 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+The following Beacon packet is intended as identification for a
+NET/ ROM level—3 packet networking switch.
+pl
+NET/ROM 1.3 (SEA)
+In this case, the Packet Switch is using the callsign N7HWD—8, but
+also uses the alias SEA as a call sign. There are many types of Packet
+Switches now in use, but NET/ ROM is one of the most popular. We will
+briefly discuss using a NET/ ROM switch later in this chapter since
+most switches operate in much the game way.
+The packet below was sent by the network switch SEA to N7ML.
+pl
+Connected to
+The packet above from SEA contains the data "SEA:N7HWD—8> Connected to
+#SEA: N7HWD-7" .
+This message tells N7ML that he is now connected to
+another port on the SEA Node named #SEA. Again, we will talk more
+about how and why N7ML might want to do this later in the chapter.
+The following packet {s again from K6RFK to N7GMF and is being
+digipeated through N7ALW. This packet indicates that K6RFK is
+finished talking to N7GMF and wants to Disconnect. Again we see that
+we are not hearing K6RFK, rather we are hearing N7ALW as indicated by
+the asterisk ( * ) after the call sign.
+pl [D)
+The following packet is an acknowledgment (or simply called an ACK)
+that lets K6RFK know that N7GMF has acknowledged the Disconnect
+request sent above. K6RFK and N7GMF are no longer Connected.
+pl (UA)
+As can be seen, all of the above examples were heard on radio port 1
+If a second radio was connected to radio port 2 and
+of the DSP-2232.
+a dual port modem was loaded, we would have seen some monitored
+packets prefaced with a "p2" as well .
+See section 4.8 for more
+information on controlling both radio ports when you are ready.
+NOTE :
+7/92
+Some applicat ions software such as PB and PG for Amateur
+Satellite use have problems with the port designators "pl" and
+"p2" in front of monitored packets. To disable the port
+designators "pl" and "p2" from appearing turn OFF User Bit 19
+(UBIT 19) by typing "UBIT 19 OFF at the .command
+prompt .

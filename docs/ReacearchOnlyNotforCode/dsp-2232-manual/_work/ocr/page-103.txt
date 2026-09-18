@@ -1,0 +1,68 @@
+DSP—2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+6.5. 8
+6.5.9
+6.5. 10
+6.5. 11
+7/92
+Unshift—On—Space (USOS )
+The (USOS Command) automatically changes the received
+Baudot/Murray code characters to the LETTERS or lower case condit ion
+after any "space" character is received.
+When operating Baudot RTTY under poor conditions, a received LETTERS—
+SHIFT character can be garbled, or another character can be wrongly
+interpreted as a FIGURES—SHIFT character. Turning U SOS ON helps
+reduce reception errors under these conditions.
+Some commercial, weather and utility RTTY services send groups of
+numbers separated by spaces. When receiving such non—amateur s ignals,
+USOS should be OFF to prevent displaying LETTERS—shifted characters
+when the originator may have intended the data to be FIGURES—shifted.
+Operatinq at Commercial or VHF Wide RTTY Shifts
+Most commercial stations found in the non amateur Short Wave bands
+operate with a wide Frequency Shift keying of either 425 or 850 Hz
+shift. To allow these stations to be received other modems are
+available in the DSP—2232 and can be selected
+The following modems are available for Baudot
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+1
+2
+3
+4
+30:
+31:
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 425 Hz shift, Mark=
+AFSK Modem, 850 Hz shift, Mark=
+(Dual Port Modems )
+with the MODEM command.
+and ASCII operation:
+2125 Hz, space=2295 Hz
+1445 Hz, space=1275 Hz
+2125 Hz, Space=2550 Hz
+2125 Hz, Space=2975 Hz
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 300 bps HF
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 1200 bps VHF
+If your license permits, you can also transmit to these stations when
+the appropriate MODEM number and data rate is selected.
+The CODE Comrnand for International RTTY Compatibility
+The CODE command allows the DSP—2232 to receive (and sometimes send)
+Part 97.69 of the FCC rules specifies that
+other RTTY character sets.
+the Internatiorial Telegraph Alphabet Number 2 (ITA #2) must be used by
+U.S. stations when operating RTTY. This corresponds to the CODE O
+command (default), but you may want to see the CODE command for more
+information on the capabilities of your DSP—2232.
+Copvinq Encoded RTTY Transmissions
+In the Short Wave bands many RTTY stations can be found that are not
+transmitting in plain text. Most of these stations are using
+sophisticated encryption techniques that make receiving them almost
+impossible. There are a few stations however that use a relatively
+simple bit—inversion technique to make them hard to copy. For these
+stations, the DSP—2232 has included the BIT INV comxnand to. allow the
+SWL to decode these simple forms of encoded RTTY stations.

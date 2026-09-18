@@ -1,0 +1,49 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.3. I
+4.302
+7/92
+What You Should See
+If all is operating properly, you should see some packets on your
+Some typical packets you might "Monitor" are shown below:
+screen .
+NOTE :
+pl (C)
+pl (UA)
+pl
+Goodnight John, its been nice talking to you.
+pl
+Hi Bob, how are you this evening?
+pl
+Mail for: K6RFK N7ML
+pl
+NET/ROM 1.3 (SEA)
+pl
+connected . to
+pl [D)
+You will probably see data (Packets) on the tuning bar—graph
+which do not print on the screen. This is normal and ig a
+function of the MONITOR and the MPROTO cornmands .
+What It Means
+There are different types of packets that mean different things to the
+DSP-2232.
+Your DSP—2232 keeps track of and knows what to do with the
+packets so users need not be concerned with them most Of the time.
+Since the DSP—2232 can "Monitor" all Packet activity on a channel,
+we' II briefly discuss the types of packets you will most often gee.
+Skip to the next section if you do not plan on doing much monitoring.
+Let 's look at the first packet in the examples above and get
+acquainted with what it all means.
+pl [C)
+The first two characters in monitored packets represents which radio
+Every g ingle
+port "heard" the packet and will be either "pl" or "p2" .
+packet you send will have your callsign (the one you just entered in
+MYCALL) as the first callsign of the packet. The callsign after the
+">" is the next station the packet will go to. So the packet listed
+above originates from N7ALW and is being sent to WA7GCI. All packets
+will have at least these two callsign fields.
+The " (C)" immediately following the two callsigns identifies thig
+So we see that N 7 ALW is requesting a
+packet as a CONNECT Request .
+packet CONNECTION with WA7GC1.

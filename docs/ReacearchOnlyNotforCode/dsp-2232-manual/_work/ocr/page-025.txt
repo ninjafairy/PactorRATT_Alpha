@@ -1,0 +1,48 @@
+DSP-2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+A partial list of Mac programs tested with the DSP—2232 includes:
+MAC TERMINAL, RED RYDER, MICROPHONE, SMARTCOMM 11 and MOCK TERMINAL
+Follow the installation directions that come with the Terminal program
+you wish to use. Once installed on the computer, you should start the
+program and set the communication parameters for the following:
+COMPATIBILITY :
+1200 bauds, 7 bits/ character, even parity,
+FULL—DUPLEX, Modem connect ion ,
+" t e 1 ephone "
+Once these settings have been achieved, proceed
+Terminal Proarams for the Commodore 64 64C and
+Handshake XON/XOFF,
+port .
+to section 2.5.
+128
+2.4.3
+12/91
+Although AEA presently sells the COM—PAKRATT with FAX program package
+for the PK—232, this program cannot access all the features Of the
+DSP—2232. AEA therefore cannot recommend using the COM—PAKRATT
+If you already have this package, it will
+package with the DSP—2232.
+certainly get you started with the DSP—2232 by using the "Dumb
+Terminal" mode. You may wish to . find another program which provides
+more features than are available in the COM—PAKRATT program in the
+Dumb Terminal Mode. Other ideas for terminal programs for the
+Commodore—64 series Of computers are listed below.
+Many terminal programs can be found throughout the amateur community
+or can be downloaded from Compuserve and from many telephone bulletin
+boards .
+In addition a BASIC communications program is listed in the
+Programmer's Reference Guide published by Commodore. Use the program
+We suggest you operate your DSP—2232 at 300
+listing for "True ASCII" .
+bauds with these computers to avoid possible speed difficulties.
+Follow the installation directions that come with the Terminal . program
+you wish to use. Once installed on the computer, you should start the
+program and set the communication parameters for the following:
+Data Rate
+= 300 bits per second (Bauds)
+Data bits
+Parity
+= EVEN
+Stop bits = I
+Once these settings have been achieved,
+proceed to section 2.5.

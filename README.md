@@ -37,10 +37,18 @@ Uberjar: `target/PactorRATT_Alpha.jar`
 
 ## Run (portable)
 
-From this folder (so `config/`, `buddies.json`, and `logs/` stay beside the app):
+Portable root is the folder **containing the running jar**. All program files live under `{jarDir}/config/` (`settings.json`, `buddies.json`, `heard.json`, `mentioned.json`, `config.ini`, optional `debug-YYYYMMDD-HHMMSS.log`). There is no `logs/` folder and no top-level `buddies.json`. Copying the jar (Downloads, `Builds/Most Recent Build/`, etc.) creates `config/` beside that copy, not beside the GitHub tree.
+
+Typical launch (`Run.txt`):
 
 ```bash
-java -jar target/PactorRATT_Alpha.jar
+java --enable-native-access=ALL-UNNAMED -jar "Builds/Most Recent Build/PactorRATT_Alpha.jar"
 ```
 
-Phase 1 is an **offline UI shell**. COM settings default to **1200 7N1**. Host Mode / TNC session comes in later phases. Use **File → Preview ARQ window** or **Listen** to exercise connection UI without a TNC.
+From the Maven output (config then appears next to `target/`):
+
+```bash
+java --enable-native-access=ALL-UNNAMED -jar target/PactorRATT_Alpha.jar
+```
+
+COM settings default to **1200 7N1**. Use **Listen** or **Connect** to exercise windows; TNC actions need **TNC → Connect**.

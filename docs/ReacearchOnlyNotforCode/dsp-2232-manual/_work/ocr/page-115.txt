@@ -1,0 +1,57 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.3. 3
+7.3. 4
+7.3. 5
+12/91
+Answering an FEC AMTOR CQ
+Normally when you see a station calling CQ in FEC AMTOR, you will want
+to answer him using ARQ AMTOR. Remember that ARQ AMTOR is the
+protocol that reduces
+Let s assume you hear
+o
+o
+If you are using
+for instructions
+If you are using
+start a CCIR 476
+the chance of transmission errors.
+NNML calling CQ. To answer, do the following:
+an AEA PAKRATT program, check the program manual
+on starting an ARQ AMTOR contact.
+a terminal simply type "ARQ NNML<Enter>" to
+ARQ contact, or "ARQ VTMFFFF<Enter>" to start a
+CCIR 625 ARQ contact.
+After your DSP—2232 has locked or synchronized with the distant
+station, you may begin your conversation.
+N7ML N7ML DE YOURCAL YOURCAL... etc
+ARQ AMTOR Operatinq Fundamentals
+When you finish typing your comments or traffic to the other station
+and wish the distant station to transmit to you Do Not type "KKK" or
+anything like that !
+o
+Do type a plus sign immediately followed by a question mark (+?) .
+is a software changeover command that switches your system from
+being the "Information Sending Station" (ISS) to the " Information
+Receiving Station" (IRS), and switches the distant system from being
+the IRS to being the I SS. When your distant partner sees the he
+knows he can begin typing comments or traffic.
+NOTE :
+o
+When discussing ARQ operation, we use the terms "Information
+Sending Station" ( I SS) and " Information Receiving Station "
+( IRS) instead of "transmit" and " receive" since in ARQ, both
+stations are rapidly switching from transmit to receive.
+Don 't bother with multiple call signs and "over—to—you" routines
+or "KKK" used in Baudot and ASCII RTTY operation. The system
+does it all for you when you type the " + ? "
+The FCC requires station identification once every ten minutes.
+It's
+sufficient to begin with "QRA (mycall) " or end your transmission with
+"QRA (mycall) " before the "+?" changeover code, or use the <CTRL—B>
+"HERE—IS" to send your own Auto—AnswerBack message
+Ending an ARQ AMTOR Contact
+When you 've finished your "final finals" to the distant station and
+both stations are ready to end the Mode A (ARQ) contact, you can end
+the contact and terminate the link in several different• ways:
+7-5

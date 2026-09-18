@@ -1,0 +1,48 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+12.3
+12.3. 1
+12.3.2
+3/93
+DSP-2232 PACTOR Parameter Settings
+PACTOR is a bit more complex than Baudot or ASCII operation. PACTOR
+operation requires you to have MYPTCALL or MYCALL entered before you
+If you do not enter MYPTCALL, the call in MYCALL will be
+can operate.
+used ag the default callBign. PACTOR stations can •t use the
+Substation IDentification number (SSID) in MYCALL.
+Enterinq Your callsign (MYPTCALL)
+If you have not already done go, enter your callsign for PACTOR after
+the command prompt ( cmd:) using the MYPTCALL command. For example,
+if your call is WX5FAP, you would type:
+cmd:MYPTCALL WX5FAP
+The DSP—2232 will respond with:
+MYPTCALL was DSP
+MYPTCALL now WX5FAP
+If you have not entered your call with the MYPTCALL conunand, the
+DSP—2232 will default to the call in MYCALL. MYCALL does not allow
+punctuation other than the dash and SSID. MYPTCALL does allow up to
+8 characters and punctuation in the call. This allows you to
+properly identify when operating portable, e.g. ZL/K6RFK.
+If you do not enter a call using MYPTCALL or MYCALL, the DSP-2232
+will not allow transmission as the default call DSP iB not a valid
+call . The error message "Need MYCALL" will be displayed if
+transmission is attempted.
+Enter the PACTOR Mode
+If you are using the AEA PAKRATT for WINDOWS program, follow the
+instructions in the program manual to enter the PACTOR mode. The
+current AEA PAKRATT for DOS does not support PACTOR except in the
+dumb terminal mode. AEA will have PC PAKRATT for DOS with PACTOR
+available in later in 1993.
+If you are using a terminal or a computer with a terminal emulation
+program, simply type "PACTOR" or "PT" from the Command Mode followed
+by the <Enter> key to enter the PACTOR mode. The DSP—2232 responds by
+displaying the previous mode, for example packet :
+Opmode
+was PAcket
+Opmode
+now PACTOr
+Your DSP—2232'g front panel LCD status display will show that you are
+in the PACTOR Standby mode on RADIO port 1, and the COMMAND LED will
+be lit.
+12-2

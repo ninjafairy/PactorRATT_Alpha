@@ -1,0 +1,37 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+5. 7.2
+12/91
+Entering a Message for Reverse Forward ina
+To prepare a message for Reverse Forwarding to another station:
+Type MDCHECK to access your Mail Drop from your terminal.
+Using the Send command, type the message you want forwarded.
+Use
+the "@" field to set the destination BBS where the addressee will
+pick up his mail.
+For example if you want to send a message to
+N6UND who you know uses the BBS N611U enter the following:
+S N6UND @ N611U.CA.NA
+Note that the "@" call sign does not need to be the same as the
+HOMEBBS call sign. The "@" call sign can be typed as part of the Send
+command or as part of the Edit command described earlier.
+The " . CA. NA" is optional "Hierarchical forwarding" information that in
+thig case designates that N611U is located in the state of California.
+Enter the Subject and text of the message as described above in
+the Send command section. Don't forget to end your message with
+<CTRL—Z> or " / EX" on its own separate line also described above.
+Use the Edit command to set the Forwarding flag for each message
+that will be Recerse Forwarded to HOMEBBS. This is described in
+the Edit command section above.
+For example the following will
+mark message number 53 for Reverse Forwarding.
+E 53 F
+(Sets Reverse Forwarding for message 53. )
+Log off your MailDrop with the B (Bye) command.
+If you wish each message to disappear as it is Reverse Forwarded,
+"-f you wish to keep each message after it has
+leave KILONFWD ON.
+been Forwarded, turn KILONFWD OFF. After forwarding, the message
+flag will change from "F" to "Y" to show that it has been read.
+Last page of Chapter 5
+— Maildrop Operation

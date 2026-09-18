@@ -1,0 +1,52 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+CHAPTER 7
+7.1
+7.2
+7.2. 1
+7.2.2
+12/91
+AMTOR AND NAVTEX OPERATION
+Overv iew
+The DSP—2232 provides AMTOR operation on Radio Port 1 in accordance
+with FCC Part 97.69 and CCIR Recommendations 476 and 625 for Mode A
+(ARQ) and Mode B (FEC). AMTOR is an adaptation of the SITOR system
+used in high—seas telex, which provides error detection and correction.
+AMTOR has two basic modes of operation, Mode A (ARQ — Automatic
+ReQuest for Reception ) and Mode B (FEC — Forward Error Correction) .
+o
+o
+ARQ AMTOR is a handshaking protocol that allows only two stations
+to comrnunicate in a near error free fashion.
+You will hear a
+"chirp chirp" sound when you find two stations conversing in ARQ.
+AMTOR Mode A (ARQ) is the perhaps the most error—free method of
+getting messages through on HF when conditions are poor.
+FEC AMTOR is similar to Baudot RTTY and is used to call CQ or to
+carry on " round table" contacts.
+NAVTEX is a form of FEC AMTOR that is used to send Navigational
+bulletins and weather information primarily to ships at sea. Recently
+it has been adopted by the ARRL to send bulletins to amateurs.
+Where to Operate AMTOR
+Before you can operate AMTOR, you must first know where the activity
+is. Most AMTOR operation occurs on the 20—meter amateur between
+14.065 and 14.085 MHz. AMTOR activity can be found on the other HF
+amateur bands as well and is most often located between 65 and 90 kHz
+up from the bottom of the band as it is on 20 meters.
+DSP—2232 AMTOR Parameter Settinqs
+AMTOR is a bit more complex than Baudot or ASCII operation. AMTOR
+operating modes require SELCALL (Selective Call) codes be entered
+before you can operate. There are two SELCALLs you should enter.
+Enterinq Your SELective CALI ing Code (MYSELCAL)
+This unique character sequence contains four alphabetic characters
+that are derived from your call sign. The DSP—2232 automatically does
+this for you just by entering your amateur callsign into the MYSELCAL
+command.
+If you are using an AEA PAKRATT program, follow the
+instructions in the program manual for entering the command MYSELCAL.
+If you are using a terminal, then Type "MYSELCAL" to load your SELCALL
+into the DSP—2232 as shown below:
+cmd:MYSELCAL N7ML
+The DSP-2232 will tell you,
+MYSe1ca1 now NNML
+7-1

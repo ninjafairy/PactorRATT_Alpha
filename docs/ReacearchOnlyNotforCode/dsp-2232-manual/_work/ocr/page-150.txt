@@ -1,0 +1,72 @@
+11.3
+11.5
+7/92
+DSP—2232 OPERATING MANUAL
+11.4
+SATELLITE OPERATION
+Operation
+Before you can conmunicate through the satellites with 1200 bits/ sec
+BPSK, you must connect the DSP—2232 to your satellite transmitter
+and receiver as described in chapter 3.
+Special Note for 9600 bits/ sec Operation:
+For 9600 bits/ sec operation, the AFSK output of the DSP—2232
+must be connected directly to the Varactor modulator stage of
+the transmitter. Also note that the DSP—2232 receive audio mugt
+be taken directly from the discriminator section of the receiver.
+These special 9600 bits/ sec connections must be located on the
+radio's schematic diagram by the user. Most often these
+connections are not available on any external connector and
+must be wired carefully inside the transceiver.
+Most two—way digital satellite operation occurs in the Packet mode.
+Be sure that the DSP—2232 is set to Packet operation before selecting
+most satellite modems. Some satellite telemetry data is sent using
+ASCII RTTY. This telemetry mode . is discussed later in the chapter.
+Two way satellite operation generally requires that the transmitted
+signal be on a different amateur band than the received signal. This
+allows satellite QSOs to be in Full —Duplex. The digital satellites
+are no exception to this so remember to turn the command FULLDUP ON
+when operating through the satellites .
+DSP—2232 Satellite Modems
+The DSP—2232 contains many modems used in satellite communications.
+Presently the
+available and
+following satellite modems listed by number are
+can be listed with the D I Rectory command.
+12:
+14:
+16:
+18:
+22:
+28:
+44:
+45:
+52:
+pl Packet
+pl Packet
+pl Packet
+pl Packet
+p2 Packet
+p2 Packet
+1200 bps VHF
+1200 bps PSK
+4800 bps PACSAT
+9600 bps FSK K9NG/G3RUH
+1200 bps VHF
+9600 bps FSK K9NG/G3RUH
+13:
+17:
+23:
+pl Packet 1200 bps PACSAT
+pl Packet 4800 bps PSK
+p2 Packet 1200 bps PACSAT
+DSP data 400 bps OSCAR-13
+RTTY/TOR 1200 bps ASCII OSCAR-II
+pl Packet 9600 bps G3RUH.U022.eq
+1200 bits [sec BPSK Operation
+The most widely used satellite modem is the 1200 bits/ sec BPSK
+(Binary Phase Shift Keying) often referred to as simply the PSK modem.
+To select this modem enter the command MODEM 13 (or MODEM 23 for
+radio port 2 ) at the DSP—2232 command prompt. The DSP—2232 is now
+ready to receive a 1200 bits/ sec BPSK PACSAT signal from a SSB
+receiver .
+11-2

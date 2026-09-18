@@ -1,0 +1,31 @@
+DSP-2232 OPERATING MANUAL
+Adjust inq the DSP—2232 4.0 MHz Oscillator
+FACSIMILE OPERATION
+Note: The following only applies to the black & white FAX mode of
+the DSP—2232 and does not apply to the Analog mode.
+If you ever observe the received FAX from a Commercial station does
+not print or display straight up and down the page, your 4.00 MHz
+oscillator inside the DSP—2232 has probably drifted off frequency.
+If you have a frequency counter with a high—impedance input, you may
+do the following:
+Step 1: Open the DSP—2232 by removing the 12 screws that hold the
+gray top chassis in place and separate it from the bottom chassis.
+Step 2: Reconnect the DSP—2232 to +13 VDC, then turn it on, and allow
+it to warm—up for 30 minutes.
+Step 3: With the help of Figure 2 below, locate the variable capacitor
+CII in the left—rear quadrant of the DSP—2232 circuit board. It is
+located near the parallel printer connector and the 64 pin processor.
+Step 4: Place the probe of the frequency counter on pin—16 of IC U8,
+the Z8536 which will provide a strong square—wave clock signal.
+Step 5: Adjust CII until the counter reads 4.00000 MHz + / — 10 Hz.
+CZI
+Cit
+circuit
+016
+UZZ
+Uts
+RI 43
+Figure 2:
+7/92
+2232
+board layout showing the location of Cll

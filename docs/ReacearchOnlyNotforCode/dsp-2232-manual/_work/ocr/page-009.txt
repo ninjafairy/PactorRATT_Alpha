@@ -1,0 +1,209 @@
+DSP-2232
+4.
+4-18
+4.
+4-18
+4.
+4-19
+7.1
+4-19
+7.2
+4-19
+7.3
+4-19
+4-19
+4. 7.4
+4.8
+4-20
+4-20
+4-21
+4-21
+4-21
+5.2
+4-21
+5.4
+4-22
+4-22
+5.6
+4-23
+4.6
+6.1
+4-23
+6.2
+4-23
+6.4
+6.5
+7.1
+7.2
+7.3
+7.4
+7.5
+7.6
+4.8
+8.3
+3.2
+4.8. 3.3
+4.9
+9.1
+9.2
+9.3
+9.4
+9.5
+. 4-35
+9.6
+. 4-35
+9.8
+9.9
+9.10
+9.11
+. 4-35
+4.10
+OPERATING
+MANUAL
+CHAPTER
+TABLE
+OF
+CONTENTS
+4 - PACKET RADIO
+( Continued )
+Paragraph
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.
+4.5. 1
+4.5. 3
+4. 5.5
+4. 6.3
+4.6. 6
+4.8. 1
+4.8. 2
+8.
+7/92
+4.6. 1
+4.6. 2
+4.8. 1
+4.8. 2
+8.3. 1
+Time—stamping Connects
+Connect Alarm
+Packet Formatting and Editing
+Carriage Returns and Linefeeds
+in
+Packets
+Canceling Lines and
+Redisplay
+The PASS Character
+Packet Transmit Timing
+TXDELAY and AUDELAY
+AXDELAY and AXHANG
+Packet Protocol Basics
+Unconnected Packets
+Connected Packets
+FRACK and RETRY
+PACLEN and 2.mXFP.-AME
+Reducing Errors Through
+CHECK and RELINK
+Multiple Connection Operation
+Packets
+Collision
+Avoidance
+Multiple Connection Description
+The Channel Switching Character
+Will You Accept Multiple Connects
+Display Multiplé Connected Callsigns
+Doubling Received CHSWITCH Characters
+Pa e
+. 4-21
+. 4-23
+4-24
+4-24
+. 4-24
+Checking Your Connect
+Status
+with
+Text
+the
+CSTATUS
+Command.
+HF
+The MULT LED
+Packet Operation
+Where to Operate
+. 4-24
+4-25
+4-25
+4-25
+4-26
+4-27
+4-27
+4-24
+4-24
+HF
+Packet
+DSP-2232 HF Packet settings
+HF Receiver Settings
+Tuning in HF Packet Stations
+Transmitter Adjustments.....
+Going On The Air
+Controlling the Radio Ports
+Selecting and Loading Modems
+Displaying Received Data
+Controlling Your Transmitted
+Define the Channel Switching
+Switching Between Radio Ports
+Character
+CHSWITCH..
+More Thoughts on
+Advanced Packet Operat ion
+Port
+Switching
+Transparent Mode
+Gateway Operation
+Sending 8—bit Data
+in
+Converse
+Mode
+The Packet QR.A Feature.
+The CFROM Command
+Operating in Full—Duplex
+Identifying as a Digipeater
+Digipeater Alias Callsign
+Morse ID in Packet
+Sharing Packet Channels With
+Voice
+Operation
+Disabling Transmit
+Seldom Used Commands
+4-27
+4-28
+4-29
+4-30
+4-30
+4-30
+4-33
+4—34
+4-34
+4-34
+4-34
+4-34
+4-35
+4-35
+4-35
+4-35
+4-35
+Operation
+rroc-3

@@ -1,0 +1,59 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.3
+7.3. 1
+7.3. 2
+12/91
+Transmitter Adjustments
+Make sure your DSP—2232 is adjusted for your SSB transmitter as
+described in section 3.5 and 3. 5.2 of this manual before transmitting.
+These are very critical adjustments.
+If your DSP-2232's AFSK
+level and transmitter microphone gain are not adjusted properly, other
+stations will not be able to copy your s ignals. Check your plate or
+collector current or the power output of your rig before transmitting.
+Going On The Air
+Make sure your transmitter and antenna are tuned and adjusted for the
+band and operating frequency you are using. Before you transmit, you
+must decide if you are going to "call CQ" or answer someone's CQ call.
+Call inq CQ in FEC AMTOR
+If you plan to make a CQ call, you must do so in the FEC AMTOR mode.
+This is required since an ARQ AMTOR transmission requires another
+station to "Link—up" with.
+If you are using an AEA PAKRATT program,
+see the program manual to place the DSP—2232 into FEC transmit.
+If you are using a terminal or terminal program, the following will
+place your DSP—2232 and transceiver into the transmit mode.
+o
+o
+Make sure that you have selected your transmitted text to go to
+Port 1 by pressing the CHSWITCH character def ined in Chapter 4
+followed by a number from O through 9.
+Type "FEC" then press the <Enter> key to key your transmitter and
+automatically enter AMTOR FEC transmit mode.
+As soon as you type the < Enter > key you will be transmitting! At this
+point you are also in the CONVERSE mode and anything you type will be
+sent in FEC by your transmitter .
+o
+o
+o
+Type in your CQ message. Make sure you include YOUR Call sign,
+your four—character Selcall (MYSELCAL) as well as your seven—
+character Selcall (MY IDENT) so others can respond to your CQ call.
+An example is shown below:
+CQ CQ CQ CQ CQ CQ CQ DE N7ML (NNML)
+CQ CQ CQ CQ CQ CQ CQ DE N7ML (NNML)
+CQ CQ CQ CQ CQ CQ CQ DE N7ML (NNML)
+CQ CQ CQ CQ CQ CQ CQ DE N7ML (NNML)
+SELCALL NNML (VTMFFFF) K
+Type <CTRL—D> at the end of your CQ
+( VTMFFFF)
+( VTMFFFF)
+( VTMFFFF)
+( VTMFFFF)
+The put:g both
+call.
+your radio and the DSP—2232 into the receive mode.
+Wait a bit to see if you get a response.
+If not, you can repeat
+the above procedure .

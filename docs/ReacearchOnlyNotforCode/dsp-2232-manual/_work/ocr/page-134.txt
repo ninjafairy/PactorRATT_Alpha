@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+MORSE OPERATION
+When you are finished transmitting, use one of the following methods
+to return to receive.
+o
+Type <CTRL—D> to shut off your transmitter and return to the
+Command Mode .
+Type <CTRL—C> to return to the Cornmand Mode and then type "R"
+shut down your transmitter and end the contact.
+to
+8.3. 1
+8.4
+12/91
+See the following sections for some Morse operating hints.
+Typical Morse Contact
+Ag with most amateur operating modes, you can start a contact either
+by "calling CQ" or by answering a "CQ" call by another station.
+To call CQ first you must tell your DSP—2232 to start sending.
+o
+o
+o
+o
+Make sure that you have selected your transmitted text to go to
+Port I by pressing the CHSWITCH character defined in Chapter 4
+followed by the number O.
+Type "X" to key your transmitter and start the unit sending.
+Type in your CQ message (use YOUR callsign) such as the one below:
+CQ CQ CQ CQ CQ GQ DE YOURCAL YOURCAL YOURCAL
+CQ CQ CQ CQ CQ CQ DE YOURCAL YOURCAL YOURCAL
+CQ CQ CQ CQ CQ CQ DE YOURCAL YOURCAL YOURCAL K
+Type <CTRL—D> at the end of your CQ call. The <CTRL—D> puts both
+your radio and the DSP—2232 into the receive mode after all the
+text you have entered into the Transmit Buffer has been sent.
+Wait a bit to see if you get a response.
+If not, you can repeat
+the above procedure.
+Morse Operating Tips
+The following "Special Function Characters"
+included for Morse operat ing convenience.
+Immediate Commands from the Command Mode:
+and imrnediate commands are
+" MO "
+Locks system to the speed of the incoming signal.
+Switches system to receive mode, unlocks receive speed,
+forces receive speed to equal transmit speed
+Switches system to transmit mode and forces immediate
+entry into Converse mode.
+Loads the Transmit type ahead buffer
+Unlocks the Morse receive speed.
+Special Function Characters embedded in transmitted text:
+CTRL —D >
+Shuts off the transmitter and returns the DSP—2232
+to the Command Mode after sending the contents of the
+transmit buffer.
+Sends the TIME if the DAYTIME clock has been set.
+8-3

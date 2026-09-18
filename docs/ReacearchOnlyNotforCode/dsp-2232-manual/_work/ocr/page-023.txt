@@ -1,0 +1,54 @@
+DSP—2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+2.3. 2
+2.3. 3
+2.4
+12/91
+Apple Macintosh Series of Computers
+AEA presently sells the program MacRATT with FAX which containg the
+serial •cable for the newer models of the Macintosh (models Mac + and
+later).
+If you intend to use another communications program with the
+DSP—2232 a Modem adapter cable must be purchased from your Apple
+dealer to connect the Mac to your DSP—2232.
+For the newer machines
+such as the Mac + , Mac SE and Mac II, a mini—8 to DB—25 adapter cable
+is required ( included with the AEA MACRATT with FAX program) .
+For the
+older Mac 128 and 512 machines, a DB—9 to DB—25 adapter cable from
+your Apple dealer is needed.
+Commodore 64 and 128 Computers
+The Commodore 64/ 128 computers do not have an RS—232 port as standard
+equ ipment .
+For these machines RS—232 adapters are available from
+manufacturers such as Commodore or OMNITRONIX. These may work with
+modem or terminal programs for your Commodore. Section 2.4 of this
+chapter deals more with programs for personal computers. The AEA
+Program COM-PAKRATT With FAX is NOT recommended for the DSP-2232.
+Computer Terminal
+If you have an RS—232 Computer Terminal, sometimes called a Dumb—
+Terminal, Smart—Termi•nal or ASCII—Terminal, you may need to change the
+gender of the cable provided with your DSP—2232.
+This can be
+accomplished with an inexpensive double—male RS—232 gender changing
+adapter available from Radio Shack and other computer dealers. The
+Radio Shack part number is 26—243.
+Setting up Your Communications or Terminal Software Program
+If you will be using your DSP—2232 with a Computer, you will need to
+read parts of this section to set up your Communications or Terminal
+If you will be using your DSP—2232 with a Terminal you will
+Software .
+not need any software and may skip to section 2.5.
+Setting up a Communications program for your DSP—2232 is very
+important. How your screen looks when you use your DSP—2232 depends
+completely on your Communications program. AEA currently makes
+available programs for the IBM—PC and compatibles and the Apple
+Macintosh computers. These products are customized for radio
+communications and are available at extra cost from your AEA dealer.
+The DSP—2232 operates in much the same manner as a telephone modem and
+most modem Terminal Programs will control a DSP—2232 quite nicely.
+Some of these programs are "Public Domain" which means they are FREE.
+Other Terminal Programs are "Share—ware" which means you may get them
+from a friend and try them before you buy them. Whether you are using
+an AEA program or one of your own choosing, see the section below for
+the particular type of computer you plan to use.

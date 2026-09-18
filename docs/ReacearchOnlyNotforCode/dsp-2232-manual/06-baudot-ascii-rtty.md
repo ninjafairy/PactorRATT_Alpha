@@ -1,0 +1,909 @@
+# Chapter 6 — Baudot and ASCII RTTY Operation
+
+Source: AEA DSP-2232 Operating Manual scan `docs/dsp2232-manual.pdf` (PDF pp. 97–110).
+
+**Agent extract:** Baudot + ASCII on HF; `CODE` for international / inverted RTTY; `USOS`, `EAS`, `WORDOUT`; commercial/wide shifts; dual-port with packet via `MODEM` / `RADIO`. Tone list is in Ch. 1 specs.
+
+OCR from an image-only scan (Windows.Media.Ocr). Obvious word errors were corrected where the intended English was clear. Command names, hex, Hz, timing, and pinouts were not invented. Garbled tokens are marked `[?]`.
+
+### (PDF p.97)
+
+### 6.1
+
+### 6.2
+
+#### 6.2.1
+
+Overview
+Baudot ( pronounced Bod-dough) has been around for many year B . The
+five bit Baudot/Murray code was the basis of the Western Union Telex
+service and Baudot RTTY (Radio TeleTYpe) is still widely used on the
+HF amateur bands. The Baudot character set contains the upper-case
+letters, the numbers 0-9 and some common punctuation characters.
+Because Baudot has only five bits, it is less prone to errors than
+seven bit ASCII.
+Your DSP-2232 provides Baudot RTTY at all standard
+speeds in use today, including commercial speeds up to 300 bauds.
+ASCII (pronounced Ask-kee), the American Standard Code for Information
+Interchange has been around for nearly 30 years. ASCII is a 7 -bit
+code and was designed to overcome the limitations of the Baudot
+character set by including both upper and lower case letters, numbers,
+all punctuation as well as many computer control codes. ASCII is not
+so popular on the amateur bands, -but its operation is almost identical
+to Baudot RTTY so we will describe them both in this chapter .
+Baudot and ASCII may be operated on Radio Port I on the DSP-2232.
+Packet may be used on Radio Port 2 at the same time, so you won't miss
+any connects while operating Baudot or ASCII on HF.
+Where to Operate Baudot and ASCII RTTY
+Before you can operate Baudot or ASCII RTTY, you must first know where
+the activity is. Most RTTY operation occurs on the 20-meter amateur
+between 14.08 and 14.10 MHz. RTTY activity can be found on the other
+HF amateur bands as well and is most often located between 80 and 100
+kHz up from the bottom of the band as it is on 20 meters .
+DSP-2232 Baudot RTTY Parameter Settings
+First you must enter the Baudot mode of the DSP-2232 .
+If you are using an AEA PAKRATT program, follow the instructions in
+the program manual to enter the Baudot mode.
+If you are using a terminal, simply type "BAUDOT" or "BA" from the
+Command Mode followed by the <Enter> key to enter the Baudot mode.
+The DSP-2232 responds by displaying the previous mode:
+```text
+Opmode
+was PAcket
+Opmode
+now BAudot
+```
+Your DSP-2232's front panel STATUS display will show the Baudot
+operating mode on Radio Port 1 and the CMD LED will be lit.
+The Radio Baud rate (RBAUD) will also be shown on the STATUS display.
+
+### (PDF p.98)
+
+The following parameters are the most common settings for HF Baudot
+operation. Check the parameters and make sure they are set as follows:
+RBAUD
+RXREV
+TXREV
+MODEM
+45 (this is the most common amateur speed on HF)
+OFF
+OFF
+1
+
+#### 6.2.2
+
+#### 6.2.3
+
+HF Receiver Settings
+Set your HF receiver (or transceiver) to Lower Sideband (LSB) unless
+you connected your DSP-2232 through the direct FSK keying lines.
+In this case, you should select the FSK operating mode. Adjust the
+volume to a comfortable listening level.
+Tuning in Baudot and ASCII Stat ions
+Tuning in Baudot and ASCII stations properly is critical to guccesgful
+Since HF Baudot and RTTY stations use either 170 Hz or 200
+operat ion .
+Hz Frequency Shift Keying to send data, tuning accuracy is very
+Follow the tuning procedure below carefully for the best
+important .
+results in tuning HF Baudot and ASCII stations.
+Make certain your HF receiver is either in LSB or FSK depending
+on your DSP-2232 set-up.
+Turn any IF-Shift and Passband-Tuning controls to the Center or
+OFF position.
+Tune your receiver carefully between 14.08 and 14.10 MHz (or
+another band where you know there is Baudot or ASCII activity)
+and listen for RTTY stations.
+When you find a station, slowly vary the VFO tuning knob on your
+receiver and 100k for a display on the DSP-2232 tuning indicator
+like the one shown below.
+Tuned In
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too low for the DSP-2232 to copy the signal.
+Slowly tune the V FO and make the frequency higher.
+Frequency
+Too Low
+
+### (PDF p.99)
+
+HINT :
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too high for the DSP-2232 to copy the
+signal .
+Slowly tune the V FO and make the frequency lower .
+Frequency
+Too High
+Adjust the receiver's volume control so the DSP-2232 's DCD LED
+lights when a properly tuned RTTY station is being received.
+If you adjust the volume control so the DCD LED goes out
+when no station is being received, you will prevent garbage
+characters generated by noise from printing on your screen.
+After you have an ASCII or RTTY station tuned in, you should start
+seeing the copy printing on your screen.
+NOTE :
+If the text you are receiving is garbled, you may be tuned
+Either try
+to a transmission at a different baud rate.
+tuning in a different station, or see Chapter 10 on SIGNAL
+IDENTIFICATION to let the DSP-2232 determine the kind of
+station you are listening to.
+
+### 6.3
+
+#### 6.3.1
+
+Transmitter Adi ustments
+Make sure your DSP-2232 is adjusted for your SSB transmitter as
+described in section 3.5 and 3.5.2 of this manual before transmitting.
+These are very critical adjustments.
+If your DSP-2232's AFSK level
+and transmitter microphone gain are not adjusted properly, other
+stations will not be able to copy your signals. Check your plate or
+collector current or the power output of your rig before transmitting.
+Goinq On The Air
+Make sure your transmitter and antenna are tuned and adjusted for the
+band and operating frequency you are using. If you are using an AEA
+PAKRATT program, see the program manual for the proper way to place
+the DSP-2232 into RTTY transmit mode.
+If you are using a terminal or terminal program, the following will
+place your DSP-2232 and transceiver into the transmit mode.
+Make sure that you have selected your transmitted text to go to
+Port I by pressing the CHSWITCH character def ined in Chapter 4
+followed by the number O.
+Type "X" for XMIT and then press the <Enter> key to key your
+transmitter and automatically enter the Converse mode.
+As soon as you type the <Enter> key you will be transmitting. At this
+point you are also in the CONVERSE mode and anything you type will be
+sent in Baudot by your transmitter.
+
+### (PDF p.100)
+
+When you are finished transmitting, use one Of the following methods
+to return to receive.
+Type <CTRL-D> (the RECEIVE character) to shut off your
+transmitter and return to the Command Mode.
+Type <CTRL-F> (the CWID character) to send a Morse ID and shut
+off your transmitter and return to Command Mode.
+Type <CTRL-C> (the COMMAND character) to return to the Command
+Mode and then type "R" to shut down your transmitter and end the
+contact .
+
+### 6.4
+
+#### 6.4.1
+
+#### 6.4.2
+
+12 1
+See the following sections for a sample QSO as well as some Baudot
+operating hints.
+Typical Baudot RTTY Contact
+As with most amateur operating modes, you can start a contact either
+by "calling CQ" or by answering a "CQ" call by another station.
+Calling CQ
+To call CQ first you tell your DSP-2232 to start transmitting.
+Type "X" to key your transmitter and start the DSP-2232 sending.
+Type in your CQ message
+CQ CQ
+CQ CQ
+CQ CQ
+CQ CQ
+CQ CQ CQ CQ CQ
+CQ CQ CQ CQ CQ
+CQ CQ CQ CQ CQ
+CQ CQ CQ CQ CQ
+DE
+DE
+DE
+DE
+(use YOUR callsign) such as the one below:
+YOURCAL YOURCAL YOURCAL
+YOURCAL YOURCAL YOURCÄL
+YOURCAL YOURCAL YOURCAL
+YOURCAL YOURCAL YOURCAL K
+Type <CTRL-D> at the
+end of your CQ call. The puts both
+your radio and the DSP-2232 into the receive mode.
+Wait a bit to see if you get a response.
+If not, you can repeat
+the above procedure.
+Answering A CQ
+Let's assume you hear KZ7G calling CQ. To answer, do the following:
+Type "X" to key your transmitter and start the DSP-2232 sending.
+Call the other station by giving his call followed by your call,
+(KZ7G DE YOURCAL) .
+Start the transmission with a line of RYS ag
+a tuning signal for the distant station. Here's an example:
+RYRYRYRYRYRYRYRYRYRYRYRYRYRYRYRYRYR
+KZ7G KZ7G KZ7G DE YOURCAL YOURCAL YOURCAL
+KZ7G KZ7G KZ7G DE YOURCAL YOURCAL YOURCAL
+KZ7G KZ7G KZ7G DE YOURCAL YOURCAL YOURCAL
+
+### (PDF p.101)
+
+(If the other station can't copy these four lines of text, the
+chances are he won •t copy any more than that.
+No need to waste
+time and bandwidth by typing 15 or 20 lines of the game thing. )
+Type <CTRL-D> at the end of your call. The <CTRL-D> puts both
+your radio and the DSP-2232 into the receive mode.
+Always end every transmission with a carriage return to force the
+distant station's screen cursor or teleprinter back to the left margin
+on a new line.
+It's a good operating habit that keeps things neat.
+Wait a bit to see if you get a response.
+If not, you can repeat
+the above procedure .
+
+### 6.5
+
+#### 6.5.1
+
+Baudot RTTY Operating Tips
+The DSP-2232 can automatically determine the speed of the received
+signals with the SIGNAL IDENTIFICATION (SIAM) mode.
+However, you can
+manually step through all the available RTTY receiving speeds with the
+RBAUD command.
+The following "Function Keys" and immediate commands are included for
+Baudot RTTY operating convenience .
+Immediate Commands from the Command Mode:
+"N"
+" Funct ion Key"
+Forces LETTERS case in receive .
+Forces FIGURES case in receive .
+Switches system to receive mode, forces LETTERS case .
+Switches system to transmit mode and forces immediate
+entry into Converse mode.
+Go to CONVERSE Mode in order to load Transmit type
+ahead buffer.
+characters embedded in transmitted text :
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+<CTRL-
+0>
+Sends
+Sends
+Sends
+Sends
+Shuts
+Sends
+Sends
+AAB string as a HERE IS message.
+"Who Are You" request to distant station.
+LETTERS shift character .
+FIGURES shift character .
+off transmitter after sending character buffer.
+callsign in Morse and shüts off transmitter.
+the Time if the DAYTIME clock has been set.
+Changing Speed
+Assume you 've been receiving at 45 bauds and wish to increase the baud
+rate in steps.
+From the Command mode, type RB U followed by an
+The DSP-2232 responds with:
+RBaud
+RBaud
+was 45
+now 50
+The RBAUD command sets the Baudot RTTY speed. The most comrnon speed
+is 45 bauds on HF, but other speeds including commercial speeds are
+See the Command Summary for all the supported speeds.
+supported .
+
+### (PDF p.102)
+
+#### 6.5.2
+
+#### 6.5.3
+
+#### 6.5.4
+
+#### 6.5.5
+
+#### 6.5.6
+
+#### 6.5.7
+
+Formattinq Your Transmitted and Received Text
+The default configuration of the DSP-2232 RTTY parameters are set for
+natural conversation and traffic.
+Somet imes it is desired to alter
+how your text looks on the screen of the station you are talking to.
+The cornmands ACRRTTY and ALFRTTY allow for customizing the Carriage
+Return and Linefeed characters in your transmitted text.
+To allow for changina how received text is displayed on your screen or
+printer, see the ACRDISP and ALFDISP comrnands in the Command Summary.
+MARS operators have some special requirements for RTTY operation and
+displaying text. To accomxnodate these, the CRADD and MARSDISP
+commands are included and should be reviewed in the Command Summary.
+Sending Synchronous Idle or DIDDLE
+Some RTTY users like to send an idle signal when no data is being
+transmitted. To allow for this the DSP-2232 has the DIDDLE command.
+See the Command Summary for more information.
+Echoinq Transmitted Characters As Sent
+Since Baudot RTTY at 45 baud is rather slow, some users like to know
+when the characters are actually being sent. The EAS command when ON
+echoes characters to the display only when they are sent over the air.
+Send ina Only Complete Words
+Some RTTY users like to have their words sent out only when they are
+complete. This allows the word you are currently typing to be edited
+as long as you have not typed a <Space> character. Turning WORDOUT ON
+activates this feature.
+See the Command Summary for more information.
+Operat inq on the Wrona Sideband
+In RTTY operation it is important to operate on the correct sideband,
+otherwise other stations will not be able to copy your transmissions .
+If you find another station operating on the wrong sideband, you can
+reverse your receive sense with the RXREV command so you will not have
+to change sidebands yourself.
+Similarly, if someone tells you that you are on the wrong sideband,
+you can correct your transmit signal sense with the TXREV command.
+See the Command summary for more information on these commands.
+Framing errors
+Baudot and ASCII RTTY operation traditionally do not check for errors
+and tend to be prone to receiving "garbage" .
+The DSP-1232 has the
+ability to check for framing errors on received characters which
+can reduce the amount of "garbage" characters on the screen. TO
+reduce the amount of erroneous characters printed on the screen, turn
+the command RFRAME ON (default OFF) .
+See the Command Surnmary for a
+complete description of the RFRAME command.
+
+### (PDF p.103)
+
+#### 6.5.8
+
+#### 6.5.9
+
+#### 6.5.10
+
+#### 6.5.11
+
+Unshift-On-Space (USOS )
+The (USOS Command) automatically changes the received
+Baudot/Murray code characters to the LETTERS or lower case condit ion
+after any "space" character is received.
+When operating Baudot RTTY under poor conditions, a received LETTERS-
+SHIFT character can be garbled, or another character can be wrongly
+interpreted as a FIGURES-SHIFT character. Turning U SOS ON helps
+reduce reception errors under these conditions.
+Some commercial, weather and utility RTTY services send groups of
+numbers separated by spaces. When receiving such non-amateur s ignals,
+USOS should be OFF to prevent displaying LETTERS-shifted characters
+when the originator may have intended the data to be FIGURES-shifted.
+Operating at Commercial or VHF Wide RTTY Shifts
+Most commercial stations found in the non amateur Short Wave bands
+operate with a wide Frequency Shift keying of either 425 or 850 Hz
+shift. To allow these stations to be received other modems are
+available in the DSP-2232 and can be selected
+The following modems are available for Baudot
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+1
+2
+3
+4
+30:
+31:
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 425 Hz shift, Mark=
+AFSK Modem, 850 Hz shift, Mark=
+(Dual Port Modems )
+with the MODEM command.
+and ASCII operation:
+2125 Hz, space=2295 Hz
+1445 Hz, space=1275 Hz
+2125 Hz, Space=2550 Hz
+2125 Hz, Space=2975 Hz
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 300 bps HF
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 1200 bps VHF
+If your license permits, you can also transmit to these stations when
+the appropriate MODEM number and data rate is selected.
+The CODE Command for International RTTY Compatibility
+The CODE command allows the DSP-2232 to receive (and sometimes send)
+Part 97.69 of the FCC rules specifies that
+other RTTY character sets.
+the Internatiorial Telegraph Alphabet Number 2 (ITA #2) must be used by
+U.S. stations when operating RTTY. This corresponds to the CODE O
+command (default), but you may want to see the CODE command for more
+information on the capabilities of your DSP-2232.
+Copvinq Encoded RTTY Transmissions
+In the Short Wave bands many RTTY stations can be found that are not
+transmitting in plain text. Most of these stations are using
+sophisticated encryption techniques that make receiving them almost
+impossible. There are a few stations however that use a relatively
+simple bit-inversion technique to make them hard to copy. For these
+stations, the DSP-2232 has included the BIT INV comxnand to. allow the
+SWL to decode these simple forms of encoded RTTY stations.
+
+### (PDF p.104)
+
+### 6.6
+
+6.6. I
+
+#### 6.6.2
+
+7 / 92
+ASCII RTTY Operation
+ASCII RTTY operation is almost identical to Baudot operation but there
+are a few differences you must know. Because the ASCII code u geg
+seven bits to define a character (instead of the five bits used in the
+Baudot/Murray code), the probability of receiving errors is somewhat
+higher. For these reasons, ASCII is not used widely on the HP amateur
+bands. However, some commercial and military HF stations as well as
+WIAW do use ASCII.
+Start inq ASCII Operation
+First you must enter the ASCII mode of the DSP-2232.
+If you are using an AEA PAKRATT program, follow the instructions in
+the program manual to enter the ASCII mode.
+If you are using a terminal, simply type "ASCII" or "AS" from the
+Command Mode followed by the <Enter> key to enter the ASCII mode.
+The DSP-2232 responds by displaying the previous mode:
+```text
+Opmode
+was BAudot
+Opmode
+now AScii
+```
+Your DSP-2232's front panel STATUS display will show that you are in
+the ASCII mode on Radio Port 1 and the CMD LED will be lit.
+The following parameters are the most common settings for HF ASCII
+operation. Check the parameters and make sure they are set as follows:
+ABAUD
+RXREV
+TXREV
+MODEM
+110 (or whatever speed you wish)
+OFF
+OFF
+1
+Some VHF Bulletin Boards and MSOs use ASCII at 110 and 300 bauds,
+most commonly on two meters.
+ASCII RTTY Operating Tips
+Follow the general operating procedures shown in the sections above
+for Baudot RTTY. As in Baudot operation, you can step the system
+through all the available receiving speeds.
+The following "Special Funct ion Characters" and immediate commands are
+included for ASCII RTTY operating convenience.
+Immediate Commands From the Command Mode :
+Switches system to receive mode.
+Switches system to transmit mode and forces immediate
+entry into Converse mode.
+Go to CONVERSE Mode in order to load the Transmit type
+ahead buffer.
+
+### (PDF p.105)
+
+Special Function Characters embedded in transmitted text :
+<CTRL-B>
+<CTRL-D>
+< CTRL -E >
+<CTRL-T>
+Changing ASCII
+Sends
+Shuts
+Sends
+Sends
+Sends
+AAB string as a HERE IS message.
+off transmitter after sending character buffer.
+"Who Are You" request to distant station.
+callsign in Morse and shuts off the transmitter.
+the Time if the DAYTIME clock has been set.
+
+#### 6.6.3
+
+#### 6.6.4
+
+#### 6.6.5
+
+Baud Rates
+Assume you 've been receiving at 110 bauds and wish to increase the
+baud rate in steps.
+From the Command mode, type AB U followed by an
+The DSP-2232 responds with:
+ABaud was 110
+ABaud now 150
+The ABAUD command sets the ASCII RTTY speed. The most cormon speed
+is 110 bauds on HF, but other speeds including commercial speeds are
+See the Command Summary for all the supported speeds.
+supported .
+Operating at Commercial or VHF Wide ASCII RTTY Shifts
+Most cornmercial stations found in the non amateur Short Wave bands
+operate with a wide Frequency Shift keying of either 425 or 850 Hz
+shift. To allow these stations to be received other modems are
+available in the DSP-2232 and can be selected
+The following modems are available for Baudot
+with the MODEM command.
+and ASCII operation:
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+1
+2
+3
+4
+30:
+31:
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 425 Hz shift, Mark=
+AFSK Modem, 850 Hz shift, Mark=
+(Dual Port Modems)
+2125 Hz,
+1445 Hz,
+2125 Hz,
+2125 Hz,
+space-2295 Hz
+space=1275 Hz
+Space=25SO Hz
+space=2975 Hz
+If your license
+the appropr late
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 300 bps HF
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 1200 bps VHF
+permits, you can also transmit to these stations when
+MODEM number and data rate is selected.
+Other RTTY Commands for ASCII Operation
+Many of the commands mentioned above in the Baudot Section also
+operate in the ASCII RTTY mode as well. They are listed below:
+AAB
+RXREV
+ACRDISP
+TXREV
+ALFDISP
+WORDOUT
+DIDDLE
+WRU
+EAS
+RFRAME
+
+### (PDF p.106)
+
+### 6.7
+
+#### 6.7.1
+
+Simultaneous RTTY and Packet Operation
+Your DSP-2232 can operate on Baudot or ASCII RTTY on Radio Port 1 and
+HF or VHF Packet on Radio Port 2 at the same time. With this feature
+you won't miss any local Packet activity while operating RTTY .
+Before the second radio port can be used for packet operation, a
+modem must be loaded that can access the second port. There are two
+types of RTTY modems available. The f irst type is a single port
+modem which disables packet operation on
+listed below.
+MODEM
+MODEM
+MODEM
+MODEM
+The second
+1
+2
+3
+4
+AFSK Modem,
+AFSK Modem,
+AFSK Modem,
+AFSK Modem,
+170 Hz shift,
+170 Hz shift,
+425 Hz shift,
+850 Hz shift,
+radio port 2.
+Mark=2125 Hz,
+Mark=1445 Hz,
+Mark=2125 Hz,
+Mark=2125 Hz,
+These are
+Space-2295 Hz
+Space-1275 Hz
+Space=2550 Hz
+Space=297S Hz
+type of modem is "Dual Ported", that is allows for RTTY
+operation on radio port I and packet operation on radio port 2 at the
+same time .
+The dual port RTTY modems available in the DSP-2232 are
+listed below.
+MODEM 30: RTTY/TOR 170 Hz:
+MODEM 31: RTTY/TOR 170 Hz:
+Select inq and Load ina Modems
+2125/2295; p2 Packet 300 bps HF
+2125/2295; p2 Packet 1200 bps VHF
+The various modems available in the DSP-2232 can be seen with the
+DIRECT (or y) cornrnand. To display all the available modems simply
+enter the Command Mode of the DSP-2232 and then type DIR as shown.
+DIR
+The DSP-2232 will respond with the following:
+(920716)
+1:
+3:
+10:
+12:
+14:
+16:
+18:
+22:
+25:
+30:
+31:
+33:
+35:
+40:
+42:
+44:
+46:
+51:
+60 :
+cmd :
+RTTY /TOR 170: 2125/2295
+RTTY/TOR 425: 2125/2550
+pl Packet 300 bps HF 2110/2310
+pl Packet 1200 bps VHF
+pl Packet 1200 bps PSK
+pl Packet 4800 bps PACSAT
+pl Packet 9600 FSK K9NG/G3RUH
+p2 Packet 1200 bps VHF
+p2 Packet 2400 bps V. 26B
+2:
+4:
+11:
+13:
+15:
+17:
+20:
+23:
+28:
+RTTY /TOR 170: 2125/2295; p2 Packet
+RTTY/TOR 170: 2125/2295; p2 Packet
+pl Packet 300 bps HF 2110/2310; p2
+RTTY/TOR 170: 1445/1275
+RTTY/TOR 850: 2125/2975
+pl Packet 300 bps HF 1460/1260
+pl Packet 1200 bps PACSAT
+pl Packet 2400 bps V. 26B
+pl Packet 4800 bps PSK
+p2 Packet 300 bps HF 2110/2310
+p2 Packet 1200 bps PACSAT
+p2 Packet 9600 FSK K9NG/G3RUH
+300 bps HF 2110/2310
+1200 bps VHF
+Packet 1200 bps VHF
+pl Packet 1200 bps VHF; p2 Packet 1200 bps VHF
+Morse 750 Hz
+Analog FAX APT
+D SP data 400 bps OSCAR-13
+DSP data Spectrum
+pl Packet 2400 bps MSK
+p2 Packet 1200 bps MSK
+41:
+43:
+45:
+50:
+.52:
+61:
+Analog FAX HF
+Analog SSTV
+RTTY/TOR 1200 ASCII OSCAR-II
+pl Packet 1200 bps MSK
+pl Packet 9600 G3RUH U022 eq
+p2 Packet 2400 bps MSK
+
+### (PDF p.107)
+
+Any modem from the list may be loaded with the MODEM command, but
+only the RTTY / TOR modems listed will operate in Baudot or ASCII RTTY .
+For example, to operate 45 baud Baudot on radio port 1 and 1200 bps
+VHF packet on radio port 2 you must load modem 31. To load modem 31,
+first enter the Command Mode of the DSP-2232 and then type MODEM 31
+as shown below:
+MODEM 31
+The DSP-2232 will respond with the following:
+MODem was
+MODem now
+When starting Baudot
+1
+31
+RTTY operation, the DSP-2232 defaults to the
+
+#### 6.7.2
+
+#### 6.7.3
+
+modem number set in the QRTTY command. You may wish to change the
+number in QRTTY to the modem number you prefer to use in Baudot RTTY.
+Displaying Received Data
+When a port 1 only modem is loaded, port 2 packet operation is
+effectively disabled. This can be desirable when operating RTTY
+and you do not want to be disturbed with any packet signals that may
+be received on radio port 2.
+When a Dual Port modem such as MODEM 31 is loaded in the DSP-2232,
+received data is displayed from both Radio Ports at the same time.
+This allows you to operate on HF and not miss any local Packet
+connects or information from DX spotting nets.
+The DSP-2232 sorts and displays received data from each Radio Port
+using the same technique as multi-connect packet operation described
+in Chapter 4. That is, when operating on one port and the other
+port becomes active, the displayed data from the inactive port is
+shown prefaced by the "channel designator" fol lowed by a colon ( .
+Recall that Radio Port I is designated by " logical" channels from 0-9
+and that Port 2 is designated by " logical" channels A-Z. This is
+true whether a single port or a dual port modem is loaded.
+Switching Between Ports
+If you are using an AEA PAKRATT program, switching between Radio Ports
+is described in the program manual .
+If you are using a terminal
+program, this section describes how to direct your transmitted text .
+Switching between RTTY on Port 1 and Packet on Port 2 is similar. to
+If you have not yet read through
+switching between Packet and Packet.
+the Switching Between Radio Ports section of Chapter 4, please do so
+now and define a CHSWITCH character before reading the example below.
+Recall from chapter 4 that the channels on Port 1 are labeled 0-9 and
+the channels on Port 2 are labeled A-Z. To select Radio Port 1 (RTTY)
+press the CHSWITCH character you defined, followed by the number O.
+To select Radio Port 2 (Packet), press the CHSWITCH character,
+followed by a letter from A-Z.
+
+### (PDF p.108)
+
+For example, you are conversing with an HF RTTY station and are in the
+middle of a QSO when a station on VHF connects to you. The following
+shows how your screen would look and suggests how you might handle
+such an occurrence. The underlined text is the text that you type.
+x < Enter >
+Hello you are print inq solid
+here and have an S 7 signal
+cmd :
+THANKS BOB, YOUR ALSO A SOLID S7
+HERE AS WELL.
+A: CONNECTED to WX7EEE
+x <Enter>
+Thanks for the signal report Jim
+only runninq
+cmd :
+Hey Bob, I 'm
+this weekend
+k <<Enter>
+IAHe110 Mike
+talking to a
+100 watts here. <CTRL-D>
+going to the hamfest
+if you want a ride.
+1 am on HF RTTY
+station in Boston.
+O: WELL BOB, 1 HAD BETTER BE GOING
+BED. WORK STARTS PRETTY EARLY 7 3.
+I : cmd
+73 it was nice meting you.
+WXIAÄA de WX7BBB SK
+TO
+You send the RTTY stat ion
+a signal report
+The other station responds
+with a signal report }
+WX7EEE connects to you on
+VHF (Radio Port 2) }
+You make another transmission
+to Jim on HF RTTY
+Your friend on VHF packet
+wants to go to the hamfest }
+You switch to Port 2 by
+typing and respond on VHF
+{ Jim on HF RTTY signs off
+with you. }
+{ You switch back to HF with
+the and sign off with Jim }
+As you may have noticed, communicating with different modes on the two
+Radio Ports at the same time is almost identical to the method used in
+chapter 4 for Packet and Packet operation. Let 's discuss the sample
+QSOs above to see how the Port switching occurs .
+The first text we see in the sample above is the signal report you are
+sending to Jim, the HF RTTY station you are communicating with.
+Notice that you must type an "x" followed by the Enter key on the
+keyboard to place Radio Port 1 of the DSP-2232 into RTTY Transmit mode.
+When you are through sending your signal report to Jim on HF RTTY, you
+tell the DSP-2232 to return to receive by sending a The
+DSP-2232 then responds with the Command Prompt "cmd: " .
+The next text you see is your signal report received from Jim on RTTY .
+You are in the middle of a QSO with Jim on HF RTTY and all of a sudden
+your friend WX7EEE connects to you. WX7EEE has connected on Radio
+Port 2 (VHF) which is shown by the "A: " before the connect message.
+Remember that the 26 channel designators for Radio Port 2 are A-Z.
+
+### (PDF p.109)
+
+#### 6.7.4
+
+• / 92
+Before you respond to WX7EEE on VHF, you send a transmission to Jim on
+HF RTTY telling him how much power your transmitter is running.
+In
+order to do this however you must first enter the command mode of the
+DSP-2232 by typing a <CTRL-C> and then giving the RTTY Transmit
+command "x" followed by the <Enter> key. When you are f in i shed with
+your text, you com.mand the DSP-2232 back to receive with a <CTRL-D>.
+After making this transmission on HF RTTY, you see WX7EEE on VHF has
+offered you a ride to the hamfest. We know this text is from Radio
+Port 2 since the previous packet displayed by the DSP-2232 was the
+"A: CONNECTED" message from Port 2.
+Now you want to let WX7EEE on VHF know that you are there, but that
+you are involved in another QSO on HF. This way he will understand
+that it may take you a little longer to respond to his packets.
+Before you can send data to Radio Port 2, you must enter Converse Mode
+with the "k" cornmand and then switch to this Port with 't Jb" or the
+text you type will be sent to Radio Port 1 on RTTY the next time you
+enter the transmit command "x"
+You receive a transmission from Jim on HF RTTY telling you he needs to
+sign off to go to bed. The
+in front of the text shows this was
+received on Radio Port I.
+Now you want to sign off with Jim on HF. Again, first you must switch
+to Radio Port 1 with the " 10" since your last transmission was
+directed to Port 2. After this you must enter the command mode of the
+DSP-2232 by sending a <CTRL-C> and then place Port 1 into RTTY
+transmit with the • "x" command. Now you can make your f inal
+transmission to Jim ending with his callsign followed by your
+callsign. As before, when you are through typing your text, you send
+a <CTRL-D> to the DSP-2232 which returns Radio Port 1 to receive after
+the text has been sent .
+More Thoughts on Port Switch inq
+One problem of having more than one Radio Port is remembering which
+port you are currently using.
+In the dual port sample QSOs above,
+this was not a problem, but after it has been hours or days since you
+have used your DSP-2232, you may forget which port you last used.
+With AEA Pakratt Software programs, the on-screen status will always
+show which port you are using so this is not a problem. With other
+programs, you will have to query the DSP-2232 with the CSTATUS SHORT
+command. The CSTATUS command displays the status of the logical
+channels of Port 1 and Port 2 of the DSP-2232. The CSTATUS SHORT
+command displays the status of the active channel and any packet
+channels that are connected. After completing the sample QSOs above,
+the DSP-2232 would display the following.
+```text
+cmd:CSTATUS S
+```
+Ch. A
+- 10 DISCONNECTED
+6-1 J
+
+### (PDF p.110)
+
+This reminds you that Channel A is your current 1/0 channel. Any text
+that you type in the Converse mode will be sent to channel A on Radio
+Port 2.
+If you had been connected to any other packet stations, the
+callsign and channel would have also shown in the display.
+Sometimes you might not want to be bothered with anything from the
+Radio Port you are not using.
+For these times either Radio Port may
+be turned OFF with the RADIO command.
+For example, let's say that in
+the above example QSO you wanted to work HF packet and did not want to
+be interrupted with any VHF connects . Typing the following cornmand
+would cause Radio Port 2 to be disabled.
+```text
+cmd:RADIO /0
+RAdio was 1/2
+RAdio now 1/0
+```
+When a DSP-2232 Radio Port is disabled, the front panel LEDs and
+STATUS indicator for that port will be extinguished as a reminder the
+port is disabled.
+Last page of Chapter 6
+- Baudot and ASCii Operation

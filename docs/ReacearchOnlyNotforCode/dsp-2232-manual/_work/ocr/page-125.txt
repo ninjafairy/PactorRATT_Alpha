@@ -1,0 +1,54 @@
+7.7. 2
+7.7.3
+7/92
+DSP-2232 OPERATING MANUAL
+7-15
+AMTOR AND NAVTEX OPERATION
+Any modem from the list may be loaded with the MODEM command, but
+only the RTTY / TOR modems 1 isted will operate in AMTOR. For example,
+to operate AMTOR on radio port 1 and 1200 bps VHF packet on radio
+port 2 you must load modem 31. To load modem 31, first enter the
+Command Mode of the DSP—2232 and then type MODEM 31 as shown below:
+MODEM 31
+The DSP—2232 will respond with the following:
+MODem was 1
+MODem now 31
+Display inq Received Data
+When a port 1 only modem is loaded, port 2 packet operation ig
+effectively disabled. This can be desirable when operating AMTOR
+and you do not want to be disturbed with any packet signals that may
+be received on radio port 2.
+When a Dual Port modem such as MODEM 31 is loaded in the DSP—2232,
+received data is displayed from both Radio Ports at the same time.
+This allows you to operate on HF and not miss any local Packet
+connects or informat ion from DX spotting nets.
+The DSP—2232 sorts and displays received data from each Radio Port
+using the same technique as multi—connect packet operation described
+in Chapter 4.
+That is, when operating on one port and the other
+port becomes active, the displayed data from the inactive port is
+shown. prefaced by the "channel designator" followed by a colon ( .
+Recall that Radio Port 1 is designated by "logical" channels from 0—9
+and that Port 2 is designated by " logical" channels A—Z. This is
+true whether a sir-gle port or a dual port modem is loaded.
+Switching Between Ports
+If you are using an AEA PAKRATT program, switching between Radio Ports
+is described in the program manual.
+If you are using a terminal
+program, this section describes how to direct your transmitted text.
+Switching between AMTOR on Port I and Packet on Port 2 is similar to
+If you have not yet read through
+switching between Packet and Packet .
+the Switching Between Radio Ports section of Chapter 4, please do go
+now and define a CHSWITCH character before reading the example below.
+Recall from chapter 4 that the channels on Port I are labeled 0—9 and
+the channels on Port 2 are labeled A—Z. To select Radio Port 1
+(AMTOR) press the CHSWITCH character you def ined, followed by the
+number O. To select Radio Port 2 (Packet), press the CHSWITCH
+character, followed by a letter from A—Z.
+For example, you are conversing with an AMTOR station and are in the
+middle of a QSO when a station on VHF connects to you .
+The following
+shows how your screen would look and suggests how you might handle
+such an occurrence.
+The underlined text is the text that you type.
