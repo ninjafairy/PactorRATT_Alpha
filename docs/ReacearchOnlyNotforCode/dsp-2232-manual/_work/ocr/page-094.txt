@@ -1,0 +1,96 @@
+5.6
+12/91
+DSP-2232 OPERATING MANUAL
+5-10
+Sample Mail Drop Session
+MAILDROP OPERATION
+— Mail Drop SYSOP's Point of View
+Here is a transcription of the entire session described in the
+previous section, exactly as it would appear to the Mail Drop' g
+operator (SYSOP) .
+We' re assuming that the MDMON command ig get to ON.
+When MDMON is ON, you have the ability to supervise the activities of
+any station logged on to your Mail Drop and
+corrective action.
+WXIAAA>WX2BBB
+You have mail
+[AEA DSP-2232) 16508 free
+CONNECTED to WXIAAA (Maildrop)
+— if needed
+Msg#
+5 BY
+4 BY
+1 BY
+[ AEA
+Msg#
+Size
+184
+287
+178
+56
+To
+WXIAAA
+ALL
+QST
+ALL
+From @ BBS
+WX2BBB
+WX2BBB
+WX2BBB
+WX2BBB
+Date
+01-Jun-90
+01 —Jun
+-90
+01-Jun-90
+90
+01 —Jun—
+T ime
+20:15
+18:42
+17:30
+10:22
+DSP-2232 )
+Size To
+16508 free >
+From @ BBS
+— take any
+Title
+Hello Joe
+Quest ion
+Mailbox
+APLINK
+Title
+Hello Joe
+Date
+O I—Jun—
+end
+T ime
+90 20:15
+184 WXIAAA WX2BBB
+Hello Joe. Did you get the notice
+about next month's meeting of the
+Radio Society at the Firehouse?
+Will you
+be going?
+— I need a ride.
+73.
+[AEA DSP-2232)
+16508 free
+Done.
+[AEA DSP-2232)
+16704 free
+S WX2BBB
+Subject:
+1 WILL BE GOING
+Enter message,
+-Z (CTRL-Z) or /EX to
+YEAH, 1 GOT THE MAILING AND WILL
+BE GLAD TO PICK YOU UP. WHAT TIME
+DO YOU WANT ME THERE?
+GOING? CUL. WXIAAÄ
+(AEA DSP-2232)
+16508
+* * DISCONNECTED
+IS MARY
+free

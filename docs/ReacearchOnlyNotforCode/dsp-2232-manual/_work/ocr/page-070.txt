@@ -1,0 +1,50 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.7. 4
+12/91
+Tuning in HF Packet Stations
+Perhaps the most difficult thing about HF Packet operation is making
+sure the station is tuned properly and stays tuned. Since HF packet
+uses 200 Hz Frequency Shift Keying to send data (2110/2310 Hz), tuning
+Being off frequency by only 20 Hz can
+accuracy is very important.
+make a noticeable difference in the DSP—2232's ability to copy packet
+stations.
+Follow the tuning procedure below carefully for the best
+results in tuning in HP packet stations.
+o
+o
+o
+o
+o
+Make certain your HP receiver is either in LSB or F SK depending
+on your DSP—2232 set—up.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Tune your receiver to 14. 103 MHz (or another frequency where you
+know there is HF packet activity) and listen to the packets.
+Slowly vary the tuning knob on your receiver and look for a
+display on the DSP—2232 tuning indicator like the one below.
+If the tuning indicator looks like the one
+frequency from your speaker is too low for
+packets .
+Slowly tune the VFO and make the
+If the tuning indicator looks like the one
+Tuned In
+below, the audio
+the DSP-2232 to copy
+frequency higher.
+Frequency
+Too Low
+below, the audio
+frequency from your speaker is too high for the DSP—2232 to copy
+Slowly tune the VFO and make the frequency lower.
+packets .
+Frequency
+Too High
+Adjust the volume on the receiver so that the DCD LED lights when
+a properly tuned packet is being received.
+You must also make certain that the DCD LED goes out when no
+packet signals are present on the frequency.
+After you have a packet station tuned in, you should start seeing
+HF packet stations on your display.

@@ -1,0 +1,80 @@
+5.3
+5.4
+5.4. 1
+5.4. 2
+12/91
+DSP-2232 OPERATING MANUAL
+5-3
+MAILDROP OPERATION
+SYSOP Mail Drop Commands
+While you have logged on to your MailDrop from your local keyboard
+with the MDCHECK command, the commands available to you are:
+These are the " standard" BBS commands available to the Mail Drop SYSOP.
+Any other command sent by you is answered with the error message
+A brief description of each command follows. All the
+What?"
+available commands are described in detail following the next section.
+B
+E
+K
+L
+R
+s
+BYE
+EDIT
+KILL
+LIST
+READ
+SEND
+Log off the Mail Drop
+Edit a MailDrop message
+Kill or delete messages
+List the message directory
+Read a specific message
+Send a message
+Remote User Mail Drop Commands
+When a remote user has logged on to your Mail Drop the following
+commands will be available to the distant station:
+A brief description of each command follows.
+These Mail Drop commands are described in detail in the next sections.
+A
+B
+H
+K
+L
+R
+s
+ABORT
+BYE
+HELP
+JLOG
+KILL
+LIST
+READ
+SEND
+VERS ION
+HELP
+Aborts the reading of a long message
+Log off the MailDrop
+Help for the Mail Drop commands
+Sends the DSP—2232 MHeard list
+Kill or delete messages
+List the message directory
+Read a specific message
+Send a message
+Sends the DSP—2232 sign—on message
+Help for the MailDrop commands
+(ABORT) (Remote only)
+The "A" command aborts the Listing or Reading of messages by a calling
+station. This is handy if the remote user decides not to continue
+reading a long message. The message " *** Done" followed by the
+Mail Drop prompt will be sent after an Abort has been received. On the
+local terminal the SYSOP may type the CANLINE character (default
+<CTRL—X>) to abort a long screen dump.
+(BYE)
+The "B" command (Host abbreviation B 1) logs the calling station (and
+you) off the Mail Drop. A calling station will be disconnected; you
+will see the standard DSP—2232
+may also simply disconnect.
+prompt. The calling station
+" cmd : "

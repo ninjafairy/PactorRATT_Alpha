@@ -1,0 +1,55 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.4. 7
+7.5
+7.6
+7.6. 1
+12/91
+Operating on the Wrona Sideband
+In AMTOR operation it is important to be operating on the correct
+sideband, otherwise other stations will not be able to copy you.
+If
+you find a station operating on the wrong sideband, you can reverse
+your receive sense with the RXREV command.
+Similarly, if someone tells you that you are on the wrong sideband,
+you can correct your transmit signal sense with the TXREV command.
+See the Command summary for more information on these commands .
+Monitor inq ARO AMTOR Contacts with ALIST
+Use the "ALIST" command to monitor ARQ traffic flowing between two
+stations linked in an ARQ contact.
+Your DSP—2232 will try to
+synchronize with whichever of the two linked ARQ stations is the
+Information Sending Station at the moment.
+Mode L Listen operation does not give you error detection or error
+correction; your DSP—2232 is not one of the two stations locked to
+each other.
+If the other two st9tions are enjoying a good link,
+you 11 probably get good copy from that link.
+Your DSP•-2232 will not print a block of data if that block contains
+the same information as the previous block. If the " I SS" ( Information
+Sending Station) is repeating the same block, you won't print it
+twice, unless receive an error.
+If the stations you ' re monitoring
+are sending error and RQ codes and repeating blocks of characters
+across their link, you may see some repeated character blocks.
+If
+they ' re having link problems, the data on your screen can look very
+strange indeed, although the two synchronized stations are getting
+error—free copy .
+AMTOR Mail Drop Operat ion
+The DSP—2232 allows AMTOR as well as Packet access to the Mail Drop.
+Messages that originate in Packet can be accessed remotely in AMTOR
+and messages that originate from a remote AMTOR station can be
+accessed by Packet users of your MailDrop. This section of the manual
+talks about basic AMTOR mailbox operation. Section 7.7 will discuss
+how to pass message traffic from AMTOR to Packet and vice versa.
+Make sure that you understand MailDrop Operation in Chapter 5 and the
+basic AMTOR operation described earlier in this chapter before putting
+your AMTOR Mail Drop on the air.
+Special Operating Considerations
+The AMTOR Mail Drop has been designed with a "Watchdog" safety feature
+If a remote
+so that it may perform safely without constant attention.
+station is linked with your AMTOR Mail Drop and no traffic is passed
+for 5 minutes, the link will drop and your transmitter will shut off.
+7-9

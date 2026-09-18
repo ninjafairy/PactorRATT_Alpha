@@ -1,0 +1,58 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.4. 5.4
+4.4.5.5
+4.4. 5.6
+4.4. 6
+4.4. 6.1
+4.4. 6.2
+12/91
+The MPILTER Conunand
+Some terminals and computer programs are sensitive to certain
+characters that may appear in monitored packets .
+You will know thig
+is happening if occasionally the cursor on your screen moves to
+strange places causing the copy to be garbled.
+The DSP—2232 default for MFILTER is $80 which prevents most control
+If you find a terminal
+characters from interfering with your display.
+or printer is bothered by certain characters, see the Command Summary
+for more information on the .MFILTER command.
+Monitor Without Callsign Headers
+Sometimes you may wish to monitor certain stations without wanting to
+look at the packet callsign headers. This can be useful when
+monitoring message traffic from a large Packet Bulletin Board System
+The MBX command allows you to choose the callsign of a
+(PBBS).
+station, or a pair of stations you wish to monitor without seeing the
+packet headers.
+See the Command Summary for details.
+MSTAMP The Monitor Time—Stamp Command
+Monitored packets can be time—stamped if the real—time clock has been
+set with the DAYTIME tommand. To timestamp monitored packets, turn
+the MSTAMP command ON. Turning the DAYSTAMP command ON adds the date
+to the timestamp provided by the MSTAMP command.
+Packet Connects
+When you turn your DSP—2232 on and enter your call sign, anyone can
+If you are at your terminal or computer when this
+Connect to . you.
+occurs you will see a message like the one shown below:
+CONNECTED to N7GMF
+When a packet connection occurs, the DSP—2232 automatically switches
+to the Converse mode so what you type on the keyboard will be sent to
+the connected station. The NEWMODE and NOMODE commands control when
+and how the DSP—2232 changes to and from Command mode in response to
+You will probably never need to
+packet connects and disconnects.
+change these settings.
+Time—Stampinq Connects
+Sometimes it is useful to know what time someone connected to you
+perhaps for logging. To t ime—stamp your connects and disconnects turn
+the command CONSTAMP ON. As discussed in the Monitoring section
+above, turning the command DAYSTAMP ON adds the date to this as well.
+The DAYTIME command must first be get for this to operate.
+Connect Alarm
+If you busy doing other things, you may want to be alerted when
+someone connects to you. Turning the command CBELL ON r ings the bell
+on your terminal when a station connects to, or disconnects from you.
+4—18

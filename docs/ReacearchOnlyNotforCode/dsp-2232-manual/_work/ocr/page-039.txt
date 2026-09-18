@@ -1,0 +1,61 @@
+DSP-2232 OPERATING MANUAL
+2.
+1.
+RADIO INSTALLATION
+Connect the FSK lines from the DSP—2232 to your radio' g PSK or
+RTTY input
+See Figure
+in accordance with your radio' B requirement g.
+F SKN
+FSKR
+FSKR
+PSKN
+RAO 10
+OR
+RAOIO
+OR
+RAO 10
+3—4 below.
+2
+RADIO
+I NPUT
+RADIO 2 FSK
+INPUT
+3
+F SK OUT
+CONNECTOR
+NOTE :
+Figure 3—4 Connector J 3 FSK Connections
+When using FSK, the same power and duty cycle limits apply
+ag cited earlier for AFSK operation. Consult your radio's
+operating manual for any power or transmit time limits .
+3.3. 8
+12/91
+Connections for a Pa•cket Satellite Receiver
+If you will be operating Packet Radio through a satellite, you should
+connect the DSP—2232 to your receiver's UP/ DOWN frequency control .
+To
+connect the DSP—2232 to your satellite receiver, do the following:
+Connect a shielded cable from the DSP—2232'g J 7 (DIN) receptacle,
+to the UP and DOWN frequency control pins on the microphone jack
+or rear panel accessory connector of your satellite receiver .
+Pins I and 4 are UP and DOWN, to the radio's frequency control
+Pins 3 and 5 control UP/ DOWN for radio
+input for radio port I.
+See Figure 3—5 below.
+port 2 .
+07
+3
+SATELL TE
+UP/OOÅN
+CONNECTOR
+Figure 3—
+5
+Connector J 7 Satellite
+RADIO 1 UP PREOUENCY
+RAOIO i DOWN FREOUENCY
+GNO
+GNO
+RAOIO 2 OONN FREOUENCY
+RADIO Z UP FREOUENCY
+UP/ DOWN Frequency Connections

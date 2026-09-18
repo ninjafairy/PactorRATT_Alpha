@@ -1,8 +1,6 @@
 ﻿# PactorRATT_Alpha — Software Architecture
 
-In-repo copy of the Cursor architecture plan. Normative product rules also live in [PtRa_specification.md](../PtRa_specification.md).
-
-# PactorRATT_Alpha â€” Software Architecture (Draft Final)
+In-repo copy of the Cursor architecture plan. Normative product rules also live in [PtRa_specification.md](../PtRa_specification.md) §4.1. Portable I/O is **`{jarDir}/config/`** only (this file §3).
 
 ## 1. Product summary
 
@@ -54,26 +52,36 @@ One JVM process. Layered packages (no Spring):
 | `ui` | Main / Listen / ARQ windows, dialogs, status bar (EDT only) |
 | `hostmode` | Frame codec, command send, event demux, init/compat, outbound drain |
 | `serial` | jSerialComm port open/read/write (used only by `hostmode`) |
-| `config` | Portable settings, buddies, UI persistence |
-| `util` | Debug logging helpers |
+| `config` | `{jarDir}/config/` — settings, buddies, heard/mentioned, `config.ini` |
+| `util` | Per-launch debug log under `{jarDir}/config/` (when enabled) |
 
 **Threading**
 
-- Serial reader thread: bytes â†’ Host frame parser â†’ events.
+- Serial reader thread: bytes → Host frame parser → events.
 - `hostmode` may use a small worker for command round-trips / timeouts.
 - UI updates only via `SwingUtilities.invokeLater`.
 - Never call Swing from the serial thread.
 
-**Build / portable layout**
+**Portable I/O (locked)**
+
+`PactorRattAlphaApp.resolvePortableRoot()` is the folder that **contains the running jar**. IDE / class-folder fallback is `user.dir`. **All program files** are read and written under `{portableRoot}/config/`. There is no `logs/` directory, no top-level `buddies.json`, no temp-dir state, and no writes into the GitHub source tree unless that is where the jar actually sits.
+
+Copying the jar (typical testbed: Downloads, or `Builds/Most Recent Build/`) creates `config/` **beside that copy**, not beside `user.dir` if cwd differs.
 
 ```text
-PactorRATT_Alpha/          (portable folder)
-  PactorRATT_Alpha.jar     (Maven shade uberjar)
-  config/                  (settings)
-  buddies.json
-  logs/debug-YYYYMMDD-HHMMSS.log
-  docs/                    (optional in release)
+{jarDir}/                              portable root (folder containing the running jar)
+  PactorRATT_Alpha.jar                 Maven shade uberjar
+  config/                              created on demand; all program I/O
+    settings.json                      COM, callsign, listen-on-start, FEC, OPPOLL, canned text, debug toggle
+    buddies.json                       CRLF JSON array; defaults N0CALL, KJ7RBS if missing
+    heard.json                         Listen inbound; cap 12; most recent first
+    mentioned.json                     Listen inbound; cap 12; most recent first
+    config.ini                         Host-command groups; [INIT] after coded init (hand-edit)
+    debug-YYYYMMDD-HHMMSS.log          optional; one file per launch when Program debug log is on
+  docs/                                optional in a release zip; not written by the app
 ```
+
+**Not here:** Save-chat uses a user-chosen path. `<C>onnect` is session-only (no file). `build.number.properties` lives in the source/build tree, not in `config/`.
 
 ---
 
@@ -112,15 +120,15 @@ stateDiagram-v2
 
 - Menu: File (Exit), Settings (COM / Program / TNC stub), Help (About).
 - Collapsible sections (persist expand state): **Buddies**, **Heard** (whole-word `de CALL`), **Mentioned** (bare CALL), **`<C>onnect`** (session-only connect frames).
-- Callsign field + **Connect**; **Listen** toggle; mode label; TNC-connected indicator.
+- Callsign field + **Connect**; **Listen** toggle; **LP:** + checkbox; mode label; TNC-connected indicator + **mycall:** from Host `ML` query.
 
 ### Connection window (Listen or ARQ)
 
 - Combined **transcript** (colors below).
 - **App TX buffer** (IRS hold; not freely editable; right-click Edit).
 - **Compose** + **Send**.
-- Control buttons (ARQ set below).
-- **Status bar:** ISS/IRS, TX on/off, FEC/ARQ/IDLE, link speed, link quality, retries, connected callsign, ticker of last N packet-type reports from TNC (fields stubbed until OPMODE/link docs).
+- Control buttons (ARQ set below, including **Flush ISS**).
+- **Status bar:** ISS/IRS, TX on/off, FEC/ARQ/IDLE, link speed, link quality, retries, connected callsign, ticker of last N packet-type reports from TNC. Packet-type events: UBIT 10 ON → unsolicited `SOH $50 n ETB` (*w* change; hardware-proven on Pactor). ISS/IRS/speed still from polled `OP`. Ticker UI still stubbed.
 
 **Transcript colors:** grey = local outbound (stays grey); black = remote / other.
 
@@ -139,14 +147,10 @@ flowchart LR
   FlushToTnc --> TranscriptGrey
 ```
 
-- **Commit mode (Program setting):**
-  - **Line:** Enter commits one line â†’ App TX buffer.
-  - **Message:** Enter = newline; **Send** commits compose â†’ App TX buffer.
-- **IRS:** lines stay in App TX buffer only (not transcript).
-- **ISS:** flush entire App TX buffer to TNC (`0x20` data blocks); append to transcript **grey**; further ISS commits append to same open grey block. Local outbound stays grey (no confirm recolor).
+- **ARQ:** Line/Message commit. IRS → App TX. ISS → Host ch0 + grey transcript. **Flush ISS** / OPMODE IRS→ISS drain App TX.
+- **Listen:** same commit setting. **Send** → App TX; **FEC / End TX** unchanged; **CQ** = canned CQ × repeat via the same FEC path (not App TX).
 - **EAS:** off for Alpha (no per-char coloring, no grey→green).
-- **App TX buffer Edit (IRS queued only):** flush composeâ†’buffer, then bufferâ†’compose.
-- Listen **FEC** send: same pipeline via `PTSend`; return to Listen when clear.
+- **App TX Edit:** flush compose→buffer, then buffer→compose.
 
 Naming: always **App TX buffer** vs **TNC TX buffer**.
 
@@ -181,7 +185,7 @@ Reference: [`docs/PK232_HostMode_Reference.md`](docs/PK232_HostMode_Reference.md
 |---|---|
 | Set callsign | `ML` (`MYCALL`) **and** `Mf` (`MYPTCALL`) from one config value |
 | Listen on/off | `PN` / return to `Pt` |
-| Connect | `PG` + callsign (`!CALL` allowed manually for long path) |
+| Connect | `PG` + callsign (`LP:` prefixes `!` unless already present; `!CALL` still allowed manually) |
 | FEC send (UI) | `PD` (`PTSend`); end with `<CTRL-D>` (RECEIVE char) |
 | Handover | Append `PTOver` char (`PV`, default `<CTRL-Z>`) |
 | Handover with text | Canned text â†’ `PTOver` |
@@ -220,13 +224,25 @@ GUI remains usable when TNC is disconnected or compat hard-fails (`tncConnected 
 
 ## 9. Configuration and settings
 
+All of the files below are under `{jarDir}/config/` (see §3). Do not reintroduce a `logs/` folder or a sibling `buddies.json`.
+
 | Settings submenu | Alpha |
 |---|---|
 | **COM Port** | Port selector; default **1200 7N1**; speed/bits/parity/stop/flow popup |
-| **Program** | Commit mode, listen-on-start, debug log on/off, canned with-text strings |
-| **TNC** | Stub / later growth for large param editor; Alpha uses coded init only |
+| **Program** | Line/Message commit, listen-on-start, debug log on/off, canned with-text strings, canned CQ + CQ repeat, FEC 200/Retries, OPPOLL |
+| **TNC** | Stub / later growth for large param editor; Alpha uses coded init + hand-edited `[INIT]` |
 
-**Debug log:** toggleable; new file each launch; no size limit/rotate; `logs/`.
+**Files**
+
+| File | Role |
+|---|---|
+| `settings.json` | Program + COM + FEC + OPPOLL + canned strings |
+| `buddies.json` | Buddy list (CRLF). Created with defaults if missing; never overwritten if present |
+| `heard.json` / `mentioned.json` | Listen inbound lists, cap 12 |
+| `config.ini` | Created on app start if missing. **Re-read every TNC Connect.** `[INIT]` runs after coded init. Unknown sections ignored. Settings UI later |
+| `debug-YYYYMMDD-HHMMSS.log` | Toggleable; new file each launch; no size limit/rotate; written only when enabled |
+
+**Debug log:** Program settings toggle; `DebugLog` opens `{jarDir}/config/debug-YYYYMMDD-HHMMSS.log` when enabled. Not a `logs/` directory.
 
 ---
 
@@ -237,7 +253,7 @@ Defer implementation details until docs/hardware trials exist:
 - OPMODE / status field parsing for status bar
 - Link block text for incoming ARQ detect
 - `Rcve` (`RC`) = disconnect-now?
-- Heard / Mentioned: Listen inbound only; persist `config/heard.json` + `mentioned.json` (cap 12)
+- Heard / Mentioned: Listen inbound only; persist `{jarDir}/config/heard.json` + `mentioned.json` (cap 12)
 - `<C>onnect` frames: Listen inbound `?>… <C>`; session-only; never Mentioned
 - Full Settings→TNC parameter push UI
 
@@ -258,11 +274,11 @@ Skeleton may show placeholder status values. Local outbound stays grey (no confi
 
 ## 12. Success criteria (Alpha)
 
-- Portable uberjar runs on Win10+ / macOS / Linux with Java 21 without a TNC (UI exercisable).
+- Portable uberjar runs on Win10+ / macOS / Linux with Java 21 without a TNC (UI exercisable). Program I/O is `{jarDir}/config/` only (no `logs/`).
 - With supported PK-232: open COM, pass compat, init, set callsign, Listen and/or ARQ connect.
 - Line/Message commit; IRS hold in App TX buffer; ISS flush → grey transcript (stays grey).
 - Control actions per map (except deferred disconnect-now / Morse ID / AAB).
-- Save chat; toggleable raw Host debug log.
+- Save chat (user-chosen path); toggleable raw Host debug log under `{jarDir}/config/`.
 - No non-goal features implemented.
 
 ---

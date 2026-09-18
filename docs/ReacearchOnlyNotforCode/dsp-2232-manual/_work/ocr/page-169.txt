@@ -1,0 +1,61 @@
+12.9. 8.7
+12.9. 8.8
+12.9.8.9
+DSP-2232 OPERATING MANUAL
+12-15
+PACTOR OPERATION
+(READ n (Minen
+The "R n" conunand lets the remote user read any of the message numbers
+displayed in the LIST command. The cornmand operates ag described in
+Chapter 5 except that the column headers are not displayed. The "RM"
+command displays messages addressed to the remote user that have not
+been read previously.
+S callsiqn (SEND callgiqn)
+Either a <CTRL—Z> or the "/EX" command must be used to end all PACTOR
+MailDrop messages. After the <CTRL—Z> or " /EX" has been detected, the
+Mail Drop will confirm that the message has been gent by returning the
+message "Filed msg n" to the remote user. An example of sending a
+message ig shown below:
+WX7BBB DE WX7AAA >
+s wx2zzz @ WX2YYY
+Subject:
+Going to the Hamfegt?
+Enter Message, - Z (CTRL—Z) or / EX to End
+I haven't heard from you and wondered if
+you are going to the Hamfest next month?
+Hope to see you there. 73
+/ ex
+WX7BBB DE WX7AAA Filed msg 1
+y (VERSION) (Remote only command)
+The "V" command causes the DSP—2232 to send
+firmware date to the remote user only.
+12.9.8.10 ? (HELP) (Remote only command)
+The "?" command sends the distant station a
+Mail Drop commands shown above under the "H"
+{MailDrop prompt
+{User's SEND command}
+{MailDrop Subject prompt}
+{User enters Subject}
+{MailDrop Send prompt}
+{Message text}
+{Message text}
+{Message text}
+{User ends message}
+S, V, ? ) >{Mai1Drop prompt}
+sign—on message and
+the
+HELP list of all available
+command. Both the " ? " and
+12.10
+3/93
+the "H" cause this same file to be sent to the remote user.
+Simultaneous PACTOR and Packet Operat ion
+Your DSP—2232 can operate PACTOR on Radio Port 1 and HF or VHF Packet
+on Radio Port 2 at the same time. With this feature you won't miss
+any local Packet activity while operating PACTOR.
+Before the second radio port can be used for packet operation, you
+must be sure the correct modem ig selected to enable the second port.
+Use the MODem command to select either MODEM 32 or MODEM 34, to enable
+dual port operation.
+For example, typing MODEM 34 enables dual port PACTOR operation on
+radio 1, and VHF Packet operation on radio port 2 .

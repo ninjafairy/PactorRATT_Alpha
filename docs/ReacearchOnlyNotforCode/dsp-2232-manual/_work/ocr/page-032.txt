@@ -1,0 +1,11 @@
+2.7. 5
+12/91
+DSP-2232 OPERATING MANUAL
+2-13
+COMPUTER INSTALLATION
+Terminal Proqram for the Tandy. 100/102 and NEC 8201
+The Model 100, 102 and NEC 8201 have built—in terminal programs in
+Consult the
+ROM which control the modem and the RS—232C port.
+computer documentation for instructions in their use. Make sure that
+you do not use the program to control the built—in telephone modem.

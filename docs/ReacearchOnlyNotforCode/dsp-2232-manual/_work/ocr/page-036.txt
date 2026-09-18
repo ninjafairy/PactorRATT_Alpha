@@ -1,0 +1,65 @@
+3.3.5
+3.3. 5.1
+3.3. 5.2
+3.3. 5.3
+3.3. 5.4
+12/92
+DSP-2232 OPERATING MANUAL
+1.
+RADIO
+INSTALLATION
+Begin Assembling your Radio Cable
+Assemble the tools, DSP—2232 Radio cable and connectors you will need
+for each radio you wish to connect. You will probably also need a
+small soldering iron (20—40 watts) and solder at your work area.
+Prepare the Radio Cable
+2.
+3.
+4.
+NOTE :
+Locate one of the 5 ft DSP—2232 radio cables included with your
+DSP-2232.
+Note that the Radio cables may have been shipped as a
+single 10 ft cable which should be cut in half before use.
+Prepare the bare end of one of the radio cables by removing an
+appropriate amount of the jacket for the connector you will be
+attaching.
+Usually this is 1/2 to 3/4 inch.
+Carefully remove the foil shield exposing the colored wires
+underneath. Be careful not to nick or cut the shield wire.
+Strip back 1/8 inch of colored insulation from the GREEN, RED,
+WHITE and BROWN wires.
+The BLACK wire is the squelch input and normally not used.
+The black wire is only needed for Packet operation if the
+channel you plan to operate on is used for both voice and
+If you need this connection, strip away 1/8 inch of
+data.
+BLACK insulation as done with the other four wires.
+If
+this wire is not needed, then leave the insulation intact.
+Verify the Connection Points with Your Manual
+Look at the connector closely (with a magnifying glass if necessary)
+and locate pin 1. Compare this to the location of pin 1 on the
+connector drawing in your transceiver's manual and also in APPENDIX E.
+This is important as some diagrams show the connector from the inside
+of the transceiver, not the outside of the plug you are wiring. This
+will help insure that the plug is not wired backwards.
+Prepare the Connector
+Now that the cable is prepared, you are ready to prepare the connector
+for wiring.
+If the connector you are wiring has a shell, be sure that
+it is placed over the cable before any connect ions are made.
+If this
+is not done, an otherwise perfect wiring may have to be redone.
+Wire the Connector
+The following connections must be made for transmit and receive
+operation of the DSP—2232. Refer to table 3—1 and f igure 3—2 as well
+as APPENDIX E and your transceiver's manual when making these
+connect ions .
+HINT:
+When wiring a Connector, it is often easier to wire the
+inside or middle connections first and work your way to the
+outside pins.
+For this reason the following steps are not
+numbered and may be done in any convenient order.
+3—4

@@ -1,0 +1,45 @@
+DSP—2232 OPERATING MANUAL
+PACKET RADIO
+The second packet in the above examples is a response to the first.
+pl (UA)
+In this case we see that WA7GCI is sending to N 7 ALW by the order of
+the call signs. This packet acknowledges the Conneet request as shown
+by the " (UA) " which stands for Un—numbered Acknowledge.
+One benefit of packet radio is that packets can be relayed or
+"digipeated" by stations on the same frequency.
+In fact, packets can
+be relayed by up to eight stations to reach a distant station that
+cannot be heard directly.
+In practice, digipeating through many
+stations does not work very well, but you will often see packets
+digipeating through one or two stations to reach their destination.
+The packet shown below is an example of a digipeated packet.
+pl
+Goodnight John, its been nice talking to you .
+This packet originated from K6RFK and is being sent to N7GMF but is
+"Digipeated" through the station N7ALW. We also see that this packet
+contains data by the text "Goodnight John... " .
+Another thing that
+should be noticed in . this packet is the asterisk ( * ) in the first
+line. The asterisk tells which station was actually heard sending the
+packet .
+In this case, we can see that we actually heard the
+digipeating radio station N7ALW. Without the asterisk, we could not
+tell whether the transmission came from radio station K6RFK or N 7 ALW .
+More will be discussed about digipeating later, but the above example
+is typical.
+The following packet is a data packet from N 7 ALW to WA7GCI .
+pl
+Hi Bob, how are you this evening?
+Remember that in the first example we saw the two stations Connect .
+Now that they are connected, they may exchange data packets.
+The following packet is a Beacon packet from KD7NM. Since we see the
+packet is addressed to "MAIL" we know KD7NM is probably a Packet
+Bulletin Board System (PBBS) .
+pl
+Mail for; K6RFK N7ML
+The data section of this packet says "Mail for: K6RFK N7ML"
+This
+Beacon lets people know that K6RFK and N7ML have mail waiting on the
+KD 7 NM P BBS without having to connect.
+7/92

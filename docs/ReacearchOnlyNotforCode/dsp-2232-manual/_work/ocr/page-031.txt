@@ -1,0 +1,52 @@
+Make or buy a cable that provides the following connections:
+2.7
+2.7. 1
+2.7. 2
+2. 7.3
+2.7. 4
+12/91
+DSP-2232 OPERATING MANUAL
+2-12
+COMPUTER INSTALLATION
+o
+o
+The computer's serial port signal ground or common pin must be
+connected to pin 5 of the DSP—2232'g 9—pin connector.
+The pin on which the computer SENDS data must be connected to
+pin 3 of the DSP—2232's 9—pin serial connector.
+The pin on which the computer RECEIVES data must be connected to
+pin 2 of the DSP—2232's 9—pin serial connector.
+If your computer requires any other signals, you must arrange to
+provide them. The DSP—2232 has the standard hardware handshake lines
+available. As a default the DSP—2232 provides XON/XOFF software flow
+control to the computer or terminal. The command XFLOW can be turned
+OFF disabling software flow control and enabling hardware handshake if
+your computer requires it. The documentation provided with your
+computer or serial card should clarify any special requirements.
+Terminal (Modem) Software for Other Computers
+Any communications program that enables your computer to emulate or
+act as an ASCII terminal with a telephone modem should work with
+your DSP-2232.
+If you have a familiar program you have used
+successfully, use it to communicate with your DSP—2232.
+Terminal Programs for the Apple Ile and I IC
+The DSP—2232 operates well with the Apple II family of computers using
+both Apple—supplied or third—party serial interface cards. Terminal
+programs include Modem Manager, ASCII EXPRESS PRO, Hayes SMARTCOMM 11,
+and DataCapture 4.0.
+Terminal Proqrams for the Commodore Vic 20
+A BASIC communications program is printed in the VIC 20 Programmer' s
+Reference Guide published by Commodore.
+Use the program listing for
+"True ASCII" • Commodore computers internally use a modified ASCII
+format. We suggest you operate your DSP—2232 at 300 bauds with these
+computers to avoid possible data speed difficulties.
+Terminal Program for the IBM PCir
+The PCjr's BASIC cartridge contains a terminal program. Start the
+program by typing TERM. Refer to the PCjr's BASIC manual for
+details on the program. For best results with the PCjr do not run the
+DSP—2232's serial port baud rate faster than 1200 bauds.
+Terminal Proqrams for the Tandv Color Computer
+Several terminal programs are available for the coco. We suggest
+that you use a commercial program rather than writing your own. The
+COCO's " software UART" may be difficult to program in BASIC.

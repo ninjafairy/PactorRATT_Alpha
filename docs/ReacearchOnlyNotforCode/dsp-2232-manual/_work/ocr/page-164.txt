@@ -1,0 +1,49 @@
+12. 7.5
+12. 7.6
+12. 7.7
+3/93
+DSP-2232 OPERATING MANUAL
+12-10
+PACTOR OPERATION
+Echo inq Transmitted Characters As Sent (EAS
+EAS (Echo Ag Sent) operates the game as in ARQ AMTOR. If EAS iB on,
+you will gee characters echoed to your screen only the first time your
+DSP—2232 sends them. If the data is not acknowledged by the receiving
+station and ig re—trangmitted, the characters are not echoed again.
+An exception to this occurs when the speed BhiftB from 200 to 100
+bauds.
+In thig cage, the block will be echoed again. With EAS OFF,
+characters are echoed to your screen ag you type them. With EAS ON:
+o
+o
+o
+If the data scrolls across your monitor at a fairly even rate,
+you can assume that you have a good ARQ PACTOR link.
+If the data hesitates for a few seconds at a time, that 'g
+generally a sign that the radio link ig not very good.
+If the characters stop appearing on your monitor, the link is
+failing or has failed. The Status display will tell you this
+by showing ERROR or REQUEST nearly continuously.
+Sending On Iv Complete Words (WORDOUT)
+Some PACTOR users like to have their words sent out only when they are
+complete. This allows the word you are currently typing to be edited
+as long as you have not typed a <Space> character or punctuation.
+Turning WORDOUT ON activates this feature. See the Command Summary
+for more information.
+Operating on the "Wrong Sideband"
+PACTOR, like packet is mark—space polarity insensitive. Once linked
+the PACTOR protocol alternates the data polarity every transmission.
+A specific header synchronizes the system during non—linked operation.
+For this reason, there is no "wrong" sideband.
+You may operate on
+either LSB or USB.
+If you are going to change to other modes, for example AMTOR, then
+LSB must be used. It is suggested that LSB be used to make mode
+changes simple as well as keeping the radio dial frequency reading
+consistent with other users.
+If you are using a radio that has direct FSK inputs, keep in mind that
+PACTOR uses 200 Hz shift and most direct FSK capable radios are set
+for 170 Hz shift.
+If the 170 Hz shift can not be adjusted to 200 Hz,
+use the TX audio from the DSP—2232 to drive the microphone input in
+LSB.

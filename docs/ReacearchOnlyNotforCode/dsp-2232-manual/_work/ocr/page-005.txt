@@ -1,0 +1,41 @@
+Gateway Upgrade
+With the new Gateway firmware in your DSP-2232/1232, packet digipeating is a thing of
+the past. The Gateway firmware functions like <The-Net> or NET/ROM. Instead of users
+having to digipeat to connect to a distant station, they can now simply connect to your MY GATE
+call sign.
+Once connected, your Gateway firmware supports local acknowledgment (acks) of
+packets just like a full service node. The node supports the following commands:
++++N7ML AEA Gateway. Type ? for help.
+de N7ML-3 (B, C, D, J, L, N, S,)>
+C (connect) n
+C n STAY
+D (isconnect)
+J (heard)
+L (isten)
+N (odes)
+S (end)
+Log off Gateway
+Connect to station "n"
+Stay connected to gateway when
+"n" disconnects
+Cancel a connect attempt
+Display stations heard
+Toggle monitoring
+Display nodes heard
+Broadcast unproto (call CQ)
+The Gateway firmware helps out fellow hams in your local area, by acting as a packet
+node.
+Your DSP now has the capability never before offered in a multi-mode controller: the
+ability to "gateway" from packet-to-AMTOR, packet-to-PACTOR, and of course, packet-to-
+packet. Under your command, you can allow packet users connecting to port 2 the ability to
+monitor and link to other AMTOR, PACTOR, and even packet stations using your HF radio port.
+The unique AEA Signal Identification Mode (SIAM) design now identifies all your
+favorite digital modes, including PAC TOR.
+Up/down Doppler shift for PSK modems, outputs for up.down frequency stepping to
+control the radio's frequency.
+New Features & Enhancements
+ALIST and PLIST have been enhanced to show AM TOR and PAC TOR connect attempts.
+ARXTOR enables automatic detection and switching between AM TOR and PACTOR
+CODE 7 allows for upper and lowercase letters in AMTOR using the protocol that APLINK
+stations, European mailboxes, the AMT-3, and B4BMK software use.
+iv

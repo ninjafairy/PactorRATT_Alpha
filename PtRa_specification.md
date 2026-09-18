@@ -41,7 +41,7 @@ Station A and Station B each run PactorRATT_Alpha on a supported PK-232. A confi
 | Air mode | Pactor only (ARQ, Listen/`PTList`, Unproto/`PTSend`) |
 | Host protocol | PK-232 Host Mode framing and commands |
 | UI | Swing, AIM 3.x spirit, main + connection windows |
-| Chat | Line-oriented commit; IRS App TX buffer; ISS flush; combined transcript |
+| Chat | ARQ App TX + Send + Flush ISS (Line/Message commit); Listen App TX + FEC; combined transcript |
 | Identity | One configured callsign written to both `MYCALL` and `MYPTCALL` |
 | Compat | Fingerprint check at `$0006..$0009` per `docs/Compat_Memory_Map.md` |
 | Packaging | Maven uberjar in a portable folder |
@@ -73,7 +73,6 @@ Station A and Station B each run PactorRATT_Alpha on a supported PK-232. A confi
 | `Rcve` (`RC`) as “disconnect immediately” | Must be confirmed manually on Pactor |
 | Mentioned-list regex beyond planned patterns | Need monitor samples |
 | Settings → TNC large parameter editor | Phase 2 growth |
-| Long-path Connect UI toggle | User may type `!CALL` manually |
 
 ---
 
@@ -97,7 +96,7 @@ Licensed amateur radio operators using PK-232 Pactor over HF (or compatible RF s
   - `MYCALL` — Host mnemonic `ML`
   - `MYPTCALL` — Host mnemonic `Mf`
 - **Remote callsign:** typed in main window field, or chosen from Buddy / Heard / Mentioned lists; used with `PTConn` (`PG`).
-- Long path: user may prefix remote call with `!` (e.g. `!N7ML`); no dedicated long-path checkbox in Alpha.
+- Long path: main-window **LP:** (right of Listen; session-only). When checked, Connect reads **Connect Longpath** and outbound `PG` is prefixed with `!` unless the call already starts with `!`. The callsign field is not rewritten. Typing `!CALL` still works with LP off.
 
 ---
 
@@ -115,17 +114,22 @@ Licensed amateur radio operators using PK-232 Pactor over HF (or compatible RF s
 
 ### 4.1 Portable release layout
 
+Portable root is the folder that **contains the running jar** (`PactorRattAlphaApp.resolvePortableRoot()`; IDE / class-folder fallback: `user.dir`). **All program files** are under `{portable-root}/config/`. There is no `logs/` directory, no top-level `buddies.json`, no temp-dir state, and no writes into the GitHub tree unless that is where the jar sits. Copying the jar (Downloads, `Builds/Most Recent Build/`, etc.) creates `config/` **beside that copy**.
+
 ```text
-<portable-root>/
+{jarDir}/                              portable root (folder containing the running jar)
   PactorRATT_Alpha.jar
-  config/                 # settings files
-  buddies.json            # or under config/
-  logs/
-    debug-<timestamp>.log
-  docs/                   # optional
+  config/                              created on demand; all program I/O
+    settings.json                      COM, callsign, listen-on-start, FEC, OPPOLL, canned text, debug toggle
+    buddies.json                       CRLF JSON array; defaults N0CALL, KJ7RBS if missing
+    heard.json                         Listen inbound; cap 12; most recent first
+    mentioned.json                     Listen inbound; cap 12; most recent first
+    config.ini                         Host-command groups; [INIT] after coded init (hand-edit)
+    debug-YYYYMMDD-HHMMSS.log          optional; one file per launch when Program debug log is on
+  docs/                                optional in a release zip; not written by the app
 ```
 
-All user-writable state lives beside the jar (portable). No mandatory install to Program Files / Applications.
+Save-chat uses a user-chosen path. `<C>onnect` is session-only (no file). No mandatory install to Program Files / Applications.
 
 ### 4.2 License
 
@@ -146,8 +150,8 @@ app        — lifecycle, mode coordinator, window wiring
 ui         — Swing windows/dialogs/status (EDT only)
 hostmode   — Host framing, commands, events, init, compat, outbound drain
 serial     — jSerialComm wrapper (used only by hostmode)
-config     — load/save portable settings, buddies, UI persistence
-util       — debug logging helpers
+config     — `{jarDir}/config/` settings, buddies, heard/mentioned, config.ini
+util       — per-launch debug log under `{jarDir}/config/` (when enabled)
 ```
 
 Rules:
@@ -251,9 +255,9 @@ Exactly one **active air mode** at a time:
 
 1. Title showing remote callsign or “Listen”
 2. **Transcript** — combined sent + received scrollback
-3. **App TX buffer** panel — queued outbound while IRS (or waiting to flush)
-4. **Compose** area + **Send** button
-5. Control button row (ARQ; Listen may show subset)
+3. **App TX buffer** panel — IRS hold (ARQ) or queued until FEC / End TX (Listen)
+4. **Compose** + **Send**
+5. Control button row (ARQ includes **Flush ISS**; Listen may show subset)
 6. **Status / information bar**
 
 **Transcript**
@@ -275,14 +279,17 @@ Exactly one **active air mode** at a time:
 
 **App TX buffer**
 
-- Holds committed lines waiting because local station is **IRS**.
+- Holds lines waiting for ISS (ARQ) or **FEC / End TX** (Listen).
 - Not freely editable.
 - **Right-click → Edit** (IRS queued lines only):
   1. Flush current compose into App TX buffer (append).
   2. Clear compose.
   3. Move entire App TX buffer contents back into compose.
   4. Clear App TX buffer.
-- Once ISS flush begins, buffer contents are sent to TNC and appear in transcript (grey); Edit does not apply to in-flight/grey text.
+
+**ARQ Compose**
+
+- Same Compose + App TX + Send as Listen. See §8.2. **Flush ISS** drains App TX to Host.
 
 ### 7.4 Status bar fields (connection window)
 
@@ -325,37 +332,31 @@ Close all connection windows (dead ones included) and exit. Unsaved transcripts 
 
 ### 8.1 Definitions
 
-- **Compose:** text currently being edited by the user.
-- **Commit:** move text from compose into the outbound pipeline (per commit mode).
-- **App TX buffer:** UI/queue of committed lines waiting because local side is IRS.
+- **Compose:** the outbound editor on connection windows (Enter / Send per commit mode).
+- **App TX buffer:** queued outbound while IRS (ARQ) or until **FEC / End TX** (Listen).
 - **TNC TX buffer:** bytes/characters held inside the PK-232 awaiting RF transmission.
-- **Transcript:** durable (for window lifetime) display of confirmed/received and in-flight-grey local text.
+- **Transcript:** durable (for window lifetime) display of remote text (black) and completed local lines (grey).
 
-### 8.2 Commit modes (Settings → Program)
+### 8.2 ARQ outbound (commit → App TX / ISS flush)
 
-**Line mode**
+- Program **Line / Message** commit setting. **Send** button. **Flush ISS** button.
+- **LINE:** Enter commits the current line (Shift+Enter inserts a newline). **MESSAGE:** Enter inserts a newline; Send commits all non-empty compose lines.
+- **IRS:** commits go into the App TX buffer. Nothing is sent to the TNC until ISS.
+- **ISS:** commits go to Host ch0 immediately and paint grey on the transcript (`toHostDataBytes` appends a trailing CR).
+- **IRS→ISS** (OPMODE or Flush ISS): drain App TX to grey transcript and Host. Empty buffer still flips to ISS so later commits go outbound.
+- Disc./HO after TX clear: drain App TX then the control byte in the same block. Empty App TX → control byte only.
+- Dead ARQ: compose read-only; Send disabled.
 
-- Enter commits the current compose line into the App TX buffer (or straight to flush path if ISS).
-- Clears that line from compose.
+### 8.3 Listen / IRS vs ISS
 
-**Message mode**
+**Listen**
 
-- Enter inserts a newline in compose.
-- **Send** commits the entire compose contents into the App TX buffer as lines, then clears compose.
+- Same Line/Message commit as ARQ. **Send** copies compose lines into App TX (while the Listen window is IRS, which is the usual case). **FEC / End TX** is unchanged (`PD` + data + CTRL-D).
+- **CQ** loads Program canned CQ text, repeated CQ-repeat times (each copy on its own line), and sends it on that same FEC path. Does not use or clear App TX.
 
-### 8.3 IRS vs ISS behavior
+**ARQ IRS / ISS**
 
-**While local station is IRS**
-
-- Committed text goes to **App TX buffer only**.
-- Must **not** appear in the transcript yet.
-
-**When becoming ISS / while ISS**
-
-- Auto-drain: flush **entire** App TX buffer to the TNC as Host data blocks on channel 0.
-- Immediately move that text into the transcript as **grey**.
-- Additional commits while still sending append into the **same open grey outbound block** (not separate pending blocks).
-- Local outbound stays grey. Do not recolor to green on TX-empty / idle.
+- See §8.2. Local outbound stays grey. Do not recolor to green on TX-empty / idle.
 
 **EAS**
 
@@ -364,11 +365,12 @@ Close all connection windows (dead ones included) and exit. Unsaved transcripts 
 
 ### 8.4 Listen / FEC send path
 
-1. User commits text in Listen window (same commit modes).
+1. User types in Listen Compose (Line/Message commit → App TX).
 2. App enters unproto via `PTSend` (`PD`) — UI shows FEC.
 3. Same grey outbound pipeline against TNC TX (no green recolor).
 4. End unproto TX with RECEIVE character `<CTRL-D>` (default `RE` mapping) so TNC returns to receive / Listen posture.
 5. Because PK-232 is simplex in this state, inbound ARQ cannot occur during FEC/unproto TX.
+6. **CQ** (Listen): Program canned CQ text copied CQ-repeat times (0–10; each on its own line) uses steps 2–5 without App TX. Repeat 0 or blank canned text sends nothing.
 
 ### 8.5 Data pacing to TNC
 
@@ -440,7 +442,7 @@ Parse command response code `c` for errors (`0x00` ack, `0x0A` need MYCALL, etc.
 - New log file each program launch.
 - No rotation / no size cap in Alpha (may change later).
 - Log raw hex + decoded interpretation: timestamp, direction, CTL, payload, status codes.
-- Path: `logs/` under portable root.
+- Path: `{jarDir}/config/debug-YYYYMMDD-HHMMSS.log` (not a `logs/` directory). Written only when the Program debug-log toggle is on.
 
 ---
 
@@ -455,6 +457,7 @@ Operator flows: `docs/Pactor_Chapter.md`
 | Listen on | `PN` / `PTList`; create Listen window |
 | Listen off | Destroy Listen window; `Pt` standby |
 | FEC send (Listen) | `PD` / `PTSend`; data; end with `<CTRL-D>` |
+| CQ (Listen) | Canned CQ text × CQ repeat; same `PD` + data + `<CTRL-D>` path; does not use App TX |
 | Handover now | Append `PTOver` char (default `<CTRL-Z>`, `PV`) |
 | Handover after TX clear | Wait for App/TNC drain policy then `PTOver` |
 | Handover with text | Send Program canned handover text as data, then `PTOver` |
@@ -464,12 +467,11 @@ Operator flows: `docs/Pactor_Chapter.md`
 | Disconnect with text | Send Program canned disconnect text, then clean `<CTRL-D>` path |
 | Abort | Listen enabled → `PN`; else → `Pt` |
 | Clear TNC TX | `TC` / `TCLEAR` |
-| Send | Commit compose per commit mode |
 | Save chat | Write transcript to file |
 
 ### 10.1 Canned text settings
 
-Program settings store reusable strings for “with text” actions (handover with text, disconnect with text). Alpha may use one shared default string or separate fields; prefer separate labeled fields if cheap.
+Program settings store reusable strings for “with text” actions (handover with text, disconnect with text) and Listen **CQ** (canned CQ text × CQ repeat).
 
 ### 10.2 Alpha init defaults (after compat pass)
 
@@ -572,24 +574,27 @@ Note: Host Mode entry (later phase) may require switching the TNC/`AWLEN` path t
 | Setting | Values / notes |
 |---|---|
 | Local callsign | String |
-| Commit mode | Line \| Message |
+| Commit mode | Line (Enter commits line) or Message (Send commits compose) |
 | Listen on start | Boolean |
 | Debug log | Boolean |
 | Canned handover text | String |
 | Canned disconnect text | String |
+| Canned CQ text | String (Listen CQ button) |
+| CQ repeat | Integer 0–10 (copies of canned CQ; 0 = send nothing) |
 | UI list expand states | Persisted booleans |
 | Wrap columns (if mirrored) | Integer / follow TNC |
 
 ### 12.3 Settings → TNC
 
 Alpha: placeholder for future large parameter list that would be sent on connect.  
-Alpha still performs **coded** compat + init on open.
+Alpha still performs **coded** compat + init on open, then hand-edited `{jarDir}/config/config.ini` `[INIT]` (re-read every TNC Connect). Unknown INI sections ignored. Settings UI for host-command groups is later.
 
 ### 12.4 Buddies file
 
-- Local portable file (JSON recommended).
+- `{jarDir}/config/buddies.json` (CRLF JSON array).
+- Created with defaults `N0CALL`, `KJ7RBS` if missing; existing file is never overwritten.
 - Store callsign (+ optional display note later).
-- Editable via UI eventually; Alpha minimum: load/save list used by Buddies section.
+- Editable via Stations-tree right-click (Move to top / Remove; Heard/Mentioned Add buddy).
 
 ---
 
@@ -603,14 +608,14 @@ User-saved; not derived from air.
 
 - Listen inbound lines only (scan on newline after `$08`; not local grey).
 - Whole-word `de ` (d, e, space) immediately followed by a matching callsign.
-- Callsign: 1–2 letters, 1 digit, 1–3 letters, then space or end of line. No SSID. Own `ML` excluded.
-- Most recent at top; no duplicates; persist `config/heard.json`; cap 12.
+- Callsign: 1–2 letters, 1 digit, 1–3 letters, not glued to a letter or digit on either side (space, `>`, other punctuation, or end of line). No SSID. Own `ML` excluded.
+- Most recent at top; no duplicates; persist `{jarDir}/config/heard.json`; cap 12.
 
 ### 13.3 Mentioned
 
 - Same callsign pattern on the same completed inbound line, without a leading whole-word `de `.
 - A line may add to both lists. Lists are independent (a call may sit on both).
-- Persist `config/mentioned.json`; cap 12; most recent at top.
+- Persist `{jarDir}/config/mentioned.json`; cap 12; most recent at top.
 
 ### 13.4 `<C>onnect` frames
 
@@ -661,21 +666,20 @@ Do not implement stubbed protocol behaviors by guessing.
 
 ## 17. Acceptance checklist (Alpha)
 
-- [ ] Uberjar runs on Win10+ / macOS / Linux with Java 21 from a portable folder
+- [ ] Uberjar runs on Win10+ / macOS / Linux with Java 21 from a portable folder; program I/O is `{jarDir}/config/` only (no `logs/`)
 - [ ] GUI usable with no TNC
 - [ ] COM settings persist; Host session opens on supported unit
 - [ ] Compat hard-fail / warn-continue behaviors match §11
 - [ ] Callsign written to `ML` and `Mf`
 - [ ] Listen window create/destroy; inactive during ARQ; restore after
 - [ ] ARQ connect from field or list; one active ARQ max; dead windows retained
-- [ ] Line and Message commit modes work
-- [ ] IRS holds text in App TX buffer only
-- [ ] ISS flushes to TNC and shows grey in transcript (stays grey)
+- [ ] Line/Message commit; IRS hold in App TX; ISS flush → grey transcript (stays grey)
+- [ ] ISS live-send; completed lines grey in transcript (stays grey)
 - [ ] FEC UI uses `PTSend` internally
 - [ ] Handover / seize / abort / disconnect-after-clear / with-text actions match §10
 - [ ] Disconnect-immediately and Rcve not falsely implemented
 - [ ] Save chat; copy/select-all; scrollback for window lifetime
-- [ ] Debug log toggle creates per-launch file
+- [ ] Debug log toggle creates per-launch `{jarDir}/config/debug-YYYYMMDD-HHMMSS.log`
 - [ ] No out-of-scope features from §2.2
 
 ---

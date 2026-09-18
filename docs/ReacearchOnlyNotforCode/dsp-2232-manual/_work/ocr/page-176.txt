@@ -1,0 +1,42 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+12.11. 1
+12. 11.2
+3/93
+Suqqegted PACTOR Operat ing Settings
+If you have trouble synchronizing with another PACTOR ARQ Btation, try
+gome of the following operating tips before calling AEA or deciding
+that your radio equipment needs modif i cations:
+o
+o
+o
+o
+o
+o
+Try to work the distant station on the unproto mode to establish
+that the other station's system iB fully functional.
+— use the PTT line from your interface.
+Don't use VOX control
+Turn off the AGC circuit — use the RF gain control to prevent
+receiver blocking on stronger signals.
+Turn off all compression or other audio processing.
+Keep the AFSK audio input level to the microphone circuit as low
+as possible
+— avoid over—driving the audio input stages.
+Disable the ALC circuit or reduce excessive ALC action; use more
+effective RF antenna loading to adjust output power levels.
+Possible Areas for PACTOR Performance Improvement
+If switching—time problems persist, you may have to make changes in
+the radio to eliminate excessive time delays:
+o
+o
+o
+Remove large decoupling capacitors from the line to
+allow faster PTT (transmitter) activation;
+Improve power supply decoupling, especially in audio gtageg.
+Do not use the squelch control.
+In case you can't solve your radio's switching—time problems, please
+call AEA's Customer Service Department (see the front of this manual) .
+This is the last page of Chapter 12
+12-22
+— PACTOR Operat ion

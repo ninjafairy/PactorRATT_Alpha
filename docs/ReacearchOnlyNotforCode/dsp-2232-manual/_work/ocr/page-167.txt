@@ -1,0 +1,39 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+12.9.4
+12.9.4.1
+12.9.5
+12.9.6
+12.9. 7
+3/93
+Local Loqon to the MailDrop
+To locally accegg your MailDrop use the MDCHECK comrnand as described
+in chapter 5 of this manual on MailDrop operation.
+Remote Loqon to Your PACTOR Mail Drop.
+The PACTOR maildrop user interface ig Blight ly different from the
+packet interface due to the differences between the two modes.
+When a station links with your PACTOR MailDrop, your DSP—2232 first
+identifies your maildrop by sending the amount of free Mail Drop
+memory as shown below:
+Type H for help.
+(AEA DSP-2232) 17528 FREE.
+The DSP—2232 then sends the user the MTEXT string if the MailDrop
+Message command (MMSG) is ON. The Default text is shown below:
+Welcome to my AEA DSP—2232 maildrop.
+Type H for help.
+Cal ler Prompts
+The command prompt that the Mail Drop sends the remote user in PACTOR
+is similar to that used in the Packet mode and is shown below:
+WX7BBB DE WX7AAA >
+As in packet, MDPROMPT ig the PACTOR MailDrop message prompt gent to
+a remote station by your MailDrop. The default prompt is:
+Subject: / Enter Message, - Z (CTRL—Z) or / EX to End
+Text before the first slash is sent to the user as the subject prompt;
+text after the first slash is sent as the message text prompt.
+Monitor Mail Drop Operation
+The local user (SYSOP) can monitor the dialog by setting MDMON ON.
+The DSP—2232 stays in cornmand mode during remote Mail Drop access.
+SYSOP Mail Drop Commands
+The Mail Drop commands that you the SYSOP have access to are the same
+as those described in Chapter 5 of the manual on MailDrop Operation.
+12-13

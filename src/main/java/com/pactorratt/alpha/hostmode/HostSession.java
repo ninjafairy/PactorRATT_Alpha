@@ -214,6 +214,47 @@ public final class HostSession implements AutoCloseable {
         }
     }
 
+    /**
+     * Leave Host Mode so the TNC returns to command mode ({@code cmd:}).
+     * Ch. 4 / {@code PK232_HostMode_Reference}: {@code HON} → {@code 01 4F 48 4F 4E 17}
+     * (Debug Cmd {@code HO} Payload {@code N}). HostCommands also documents three
+     * CTRL-C as a fallback if there is no Host ACK. No-op unless
+     * {@link TncState#HOST_MODE}. Does not close the serial port.
+     */
+    public void leaveHostMode(long timeoutMs) {
+        if (!serial.isOpen() || state != TncState.HOST_MODE) {
+            return;
+        }
+        long wait = timeoutMs < 1 ? 2000 : timeoutMs;
+        boolean acked = false;
+        try {
+            CommandResponse response = sendCommand("HON", wait);
+            acked = response.ok();
+            debugLog.info(acked
+                    ? "Left Host Mode (HON)"
+                    : "HON status=0x" + Integer.toHexString(response.statusCode));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            debugLog.info("HON interrupted");
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "no ACK" : e.getMessage();
+            debugLog.info("HON: " + msg);
+        }
+        if (!acked && !Thread.currentThread().isInterrupted()) {
+            try {
+                byte[] tripleC = {0x03, 0x03, 0x03};
+                debugLog.host("TX", "HOST-OFF 3xCTRL-C | 03 03 03");
+                sendRaw(tripleC);
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (IOException e) {
+                debugLog.info("HOST-OFF CTRL-C failed: " + e.getMessage());
+            }
+        }
+        state = TncState.COMMAND_MODE;
+    }
+
     public void sendRaw(byte[] data) throws IOException {
         Objects.requireNonNull(data, "data");
         synchronized (ioLock) {
@@ -450,23 +491,66 @@ public final class HostSession implements AutoCloseable {
         return out;
     }
 
+    /** 8536 CIO parallel port B (mode/status decoders + SEND). Tech ref §4.9.3. */
+    public static final int ADDR_8536_PORT_B = 0xBF0E;
+    /** 8536 CIO parallel port C (STA, CON, MULT). Tech ref §4.9.3. */
+    public static final int ADDR_8536_PORT_C = 0xBF0F;
+
+    /**
+     * Read 8536 port B then port C (Host {@code AE} + {@code IO}, read-only).
+     * Holds {@link #hostIoLock} for the whole pair so ADDRESS cannot be stolen mid-peek.
+     *
+     * @return {@code {portB, portC}} as unsigned bytes
+     */
+    public int[] readLedDrivePorts(long timeoutMs) throws IOException, InterruptedException {
+        synchronized (hostIoLock) {
+            setAddress(ADDR_8536_PORT_B, timeoutMs);
+            int portB = readHexQueryByte("IO", timeoutMs);
+            setAddress(ADDR_8536_PORT_C, timeoutMs);
+            int portC = readHexQueryByte("IO", timeoutMs);
+            return new int[] {portB, portC};
+        }
+    }
+
+    private void setAddress(int address, long timeoutMs) throws IOException, InterruptedException {
+        String addrCmd = "AE" + (address & 0xFFFF);
+        CommandResponse ae = sendCommand(addrCmd, timeoutMs);
+        if (!ae.ok()) {
+            throw new IOException("ADDRESS failed, status=0x" + Integer.toHexString(ae.statusCode));
+        }
+    }
+
     /**
      * MEMORY read (Host MM, no args). Response payload is: 'M''M' '$' &lt;hex digits...&gt;
      * Example: MM$93 → value byte 0x93. Ingest the hex digits after '$'.
      */
     public int readMemoryByte(long timeoutMs) throws IOException, InterruptedException {
+        return readHexQueryByte("MM", timeoutMs);
+    }
+
+    /**
+     * Host {@code IO} / {@code MM} query with no args. Payload is {@code mn '$' hex}
+     * or legacy {@code mn $00 data}.
+     */
+    private int readHexQueryByte(String mnemonic, long timeoutMs)
+            throws IOException, InterruptedException {
+        if (mnemonic == null || mnemonic.length() != 2) {
+            throw new IllegalArgumentException("Host mnemonic must be 2 characters");
+        }
+        byte expect0 = (byte) mnemonic.charAt(0);
+        byte expect1 = (byte) mnemonic.charAt(1);
         synchronized (hostIoLock) {
             drainWaiterQueues();
-            byte[] tx = HostFrameCodec.encodeGlobalCommand("MM");
+            byte[] tx = HostFrameCodec.encodeGlobalCommand(mnemonic);
             synchronized (ioLock) {
-                debugLog.host("TX", "CMD MM | " + HostFrameCodec.toHex(tx));
+                debugLog.host("TX", "CMD " + mnemonic + " | " + HostFrameCodec.toHex(tx));
                 serial.write(tx);
             }
 
             long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
             while (System.nanoTime() < deadline) {
                 if (Thread.interrupted()) {
-                    throw new InterruptedException("Host MM read interrupted");
+                    throw new InterruptedException("Host " + mnemonic + " read interrupted");
                 }
                 long remaining = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
                 if (remaining <= 0) {
@@ -480,7 +564,7 @@ public final class HostSession implements AutoCloseable {
                 if (frame.ctl != HostFrameCodec.CTL_GLOBAL || frame.payload.length < 3) {
                     continue;
                 }
-                if (frame.payload[0] != 'M' || frame.payload[1] != 'M') {
+                if (frame.payload[0] != expect0 || frame.payload[1] != expect1) {
                     continue;
                 }
                 if (frame.payload[2] == '$') {
@@ -490,7 +574,7 @@ public final class HostSession implements AutoCloseable {
                     }
                     String hexStr = hex.toString().trim();
                     if (hexStr.isEmpty()) {
-                        throw new IOException("MEMORY read returned no hex digits after '$': "
+                        throw new IOException(mnemonic + " read returned no hex digits after '$': "
                                 + HostFrameCodec.toHex(frame.payload));
                     }
                     int len = Math.min(hexStr.length(), 2);
@@ -501,22 +585,22 @@ public final class HostSession implements AutoCloseable {
                     try {
                         return Integer.parseInt(byteHex, 16) & 0xFF;
                     } catch (NumberFormatException e) {
-                        throw new IOException("MEMORY read invalid hex after '$': " + hexStr
+                        throw new IOException(mnemonic + " read invalid hex after '$': " + hexStr
                                 + " (payload=" + HostFrameCodec.toHex(frame.payload) + ")");
                     }
                 }
                 if (frame.payload[2] == 0x00) {
                     if (frame.payload.length < 4) {
-                        throw new IOException("MEMORY read legacy form missing data byte (payload="
+                        throw new IOException(mnemonic + " read legacy form missing data byte (payload="
                                 + HostFrameCodec.toHex(frame.payload) + ")");
                     }
                     return frame.payload[3] & 0xFF;
                 }
-                throw new IOException("MEMORY read unexpected response (payload="
+                throw new IOException(mnemonic + " read unexpected response (payload="
                         + HostFrameCodec.toHex(frame.payload) + ")");
             }
             commandQueue.clear();
-            throw new IOException("Timeout waiting for Host MM response");
+            throw new IOException("Timeout waiting for Host " + mnemonic + " response");
         }
     }
 

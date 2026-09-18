@@ -1,0 +1,73 @@
+DSP-2232 OPERATING MANUAL
+CHAPTER 1
+- INTRODUCTION
+1.4
+1.4. 1
+1.4. 2
+3/93
+DSP—2232 Specifications
+Ag part of its program of product improvement, AEA reserves the right
+to make changes in this product's specifications. Changes may algo be
+made to the information in this document and incorporated in revisions
+to this manual.
+Prices and specifications are subject to change
+without notice or obligation.
+Modem Characteristics
+Modu ator / Demodu ator :
+DSP RAM:
+DSP ROM:
+Analog to Digital Converter:
+Digital to Analog Converter:
+Available ROM Modems :
+Receive Band—pass:
+VHF packet :
+HF packet:
+cw:
+Modul ator :
+Output Level:
+Processor System
+Protocol conversion:
+RAM :
+ROM :
+Hardware HDLC:
+Motorola 56001 Digital Signal Processor
+(DSP) running at 24 MHz
+24 Kilobytes
+(May hold two user—uploaded modems)
+Up to 128 Kilobytes of DSP modems may be
+stored and are loaded by the Z—180.
+AD7870 12-bit ADC
+AD767 12-bit DAC
+300 bauds HF Packet FSK 2110/2310 Hz
+also 1260/1460 Hz
+1200 bauds VHF Packet FSK 1200/2200 Hz
+2400 bps Packet DPSK
+1200 bps Satellite BPSK
+HF RTTY FSK 2125/2295 and 1445/1275 Hz
+also 2125/2550, 1275/2125, 2125/2975 Hz
+PACTOR 2110/2310, 1460/1260 Hz
+Morse 750 Hz center frequency
+Facsimile, FM and APT 256 gray levels
+FM SSTV compatible 256 level
+9600 bps F SK K9NG Compatible
+1200/4800 bps ASCII Satellite
+Dual Port 300/1200 and 1200/1200 Packet
+Dual Port RTTY-TOR/1200 baud Packet
+Automatically switched by operating mode
+Center frequency 1700 Hz,
+bandwidth 2600 Hz
+Center frequency 2210 Hz,
+bandwidth 450 Hz
+Center frequency 750 Hz,
+bandwidth 200 Hz
+Phase—cont inuous AFSK
+5 to 100 millivolts RMS into 600 Ohms,
+adjustable for each channel by side—
+panel controls
+Zilog Z—180 microprocessor
+64 Kilobytes
+Up to 384 Kilobytes of ROM may be used
+(128 Kilobytes are dedicated to DSP ROM
+Modems leaving 256 K for Z—180 programs)
+Z i log 8530 SCC
+1-3

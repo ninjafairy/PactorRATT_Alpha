@@ -1,0 +1,60 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.4
+4. 4.1
+1 •p / 91
+More Packet Features
+Now that you have worked a few packet gtationg, it iB time to learn a
+little more about the other packet capabilitieg of the DSP—2232.
+Rather than explain all the features in detail, we will leave the
+specif icg to the command degcript ions in the Cornmand Summary Appendix .
+LCD Status and Mode Indicators
+Your DSP—2232'g front panel iB broken into three parts ag Bhown below:
+DSP-2232
+o
+DSP
+OtGITA-
+TUNE
+MULTI-MOOE DATA CONTROLLER
+DSP—2232' s Front Panel Indicators.
+On the left ig the LCD STATUS indi.cator which displays the Status of
+Radio Port 1 on the top line, and Radio Port 2 on the second line.
+In the middle of the front panel are the two LED bar—graph TUNING
+Indicators. The top indicator aids in tuning gignalg on Radio Port 1 ,
+and the bottom bar—graph ig a Tuning aid for Radio Port 2.
+On the right are the LED Status Indicators for both Radio Ports
+The
+top row of eight LEDg indicates the Status for Radio Port I and the
+lower row indicates Status for Radio Port 2.
+Your DSP—2232's front—panel LEDs show the Status of each Radio Port at
+a glance. Each LED ig marked with an abbreviated name. The following
+describes the function of each of the front—panel LEDB.
+NAME
+DCD
+SEND
+MULT
+STA
+TRANS
+CONV
+CON
+CMD
+DESCRIPTION
+LED FUNCTION
+Data Carrier Detect Lit when data signa 1B are received
+Send
+Mult iple
+Status
+Trangparent
+Converge
+Connected
+Comma nd
+Lit when PTT line is active
+Lit when multiple connections exigt
+Blinkg when receive buffer ig full
+Lit when you have gent a packet
+that hag not yet been acknowledged
+BI inks when you have MailDrop meggages
+Lit when in the Trangparent Mode
+Lit when in the Converge Mode
+Lit when a packet Connection exist g
+Lit when in the Command Mode

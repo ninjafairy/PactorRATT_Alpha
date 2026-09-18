@@ -1,0 +1,69 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.9
+4.9. 1
+4. 9.2
+4. 9.3
+4.9. 4
+7/92
+Advanced Packet Operat ion
+Your DSP—2232 has many commands and features that are not used for
+Still, as you become more familiar
+day—to—day connects conversations.
+with packet, some of these features may become important to you.
+Transparent Mode
+The TRANSPARENT mode allows any 8—bit binary character to be sent by
+You usually must use the TRANSPARENT mode to
+your packet station.
+transfer binary and program files to and from other stations.
+You can enter the TRANSPARENT mode either by typing TRANS at the cmd:
+prompt after you connect, or by setting CONMODE to TRANS. Either way,
+once in the transparent mode, any character you type will be sent
+automatically after the PACTIME setting. This way the DSP—2232 can
+send any character. We recornrnend using HARDWARE f low control in
+transparent mode but SOFTWARE flow control is available with the
+TRFLOW and TXFLOW commands. To get back to Command mode after you are
+finished with transparent mode, you must type the COMMAND character
+(default <CTRL—C>) 3 times within the "Guard time" set by the
+CMDTIME command (default 1 second) .
+Gateway Operation
+The DSP—2232 can allow packet stations on one radio port to communicate
+When the DSP—2232 bridges two packet
+with stations on the other port.
+frequencies in this manner, it is said to be a "Gateway.
+operation is a dual port feature and requires that one of the dual
+port packet modems be loaded. Once this has been done the gateway
+function is enabled by entering a callsign in MYGATE. The callsign
+must not be the same call sign and SS ID as MYCALL or MYMAIL.
+When another station digipeats via the callsign in MYGATE, your
+If
+DSP—2232 will Gateway between Radio Port 1 and Radio Port 2.
+provide this feature to users in your area, you may want to BEACON a
+message on both ports informing users that your gateway is available.
+At this time however, unattended operation below 30 MHz is not legal
+for US amateurs unless they hold a Special Temporary Authorization
+(STA) from the FCC. This restriction may someday change, but until
+then US amateurs must always have control of their HF transmitters
+when an automatic device such as the DSP—2232 Gateway is in use.
+Sending 8—bit Data in Converse Mode
+Sometimes you may need to send a file that contains some 8—bit data,
+but
+you
+The
+The
+and
+new
+to.
+BIT
+In this case,
+not need all the features of the TRANSPARENT mode.
+may find turning the command 8B ITCONV ON is all that is needed.
+Packet ORA Feature
+DSP—2232 recognizes UI frames with a destination field of "QRA"
+This is helpful for others
+will respond by sending an ID packet.
+to your area that are looking for other packet stations to talk
+To disable this feature and remain anonymous, simply set User
+is ON.
+22 OFF (UBIT 22 OFF).
+The defaulv

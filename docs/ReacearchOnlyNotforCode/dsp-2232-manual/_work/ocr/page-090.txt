@@ -1,0 +1,49 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+If all 18K of the RAM is used, the Mail Drop displays the message
+If there is room, the Mail Drop displays the
+Subject request message prompt :
+" Subject : "
+Enter a short (up to 27 character) description of the subject of the
+message. The MailDrop will then send the message prompt:
+"Enter message,
+-Z (CTRL-Z) or /EX to end"
+5.4.9.1
+12/91
+After entering the message there are two ways to end the message.
+Either the <CTRL—Z> may be entered followed by a carriage return, or
+the 3 characters "/EX" and a carriage—return on a line by itself will
+end the message being sent. After this the Mail Drop prompt should
+appear indicating that the Mail Drop is ready for another command.
+After ending the message, if you or the calling party see the message
+" *** No free memory", this means that the message was too large for
+If this occurs,
+the available Mail Drop memory and has been deleted.
+you must shorten the message to fit into available memory shown in the
+Mail Drop prompt, and re—send the• message.
+When logged on from your local keyboard, if you use the "S" command
+without a call sign, •you '11 see the error message "*** Need call sign" .
+However, a calling station may use the S command without a call sign;
+it is understood that the message is directed to the DSP—2232's SYSOP.
+As soon as a calling station uses the S command to send you (the
+SYSOP) a message, the STA light starts blinking to show that a message
+has been left for you. When you log on to your Mail Drop with the
+MDCHECK command the STA LED will stop blinking .
+Sendinq Other Types of Messages with SEND
+Each message in the DSP—2232 Mail Drop has a flag to show whether it is
+Private, Traffic or a Bulletin. A "P, " "T" or "B" after the message
+number shows the status of every message. A user sets this with the
+The SYSOP may set this with
+SP, ST and SB forms of the Send command.
+If only S is used as the Send
+the Edit (E) cormand described above.
+command, the Mail Drop will ass ign the message a Private (P) status.
+The DSP—2232 MailDrop also accepts SEND cornmands of the form
+The call sign after the "<" goes into the "From"
+"SP SYSOP < WIAW."
+field of the message header.
+For example, your Mail Drop accepts the following additional
+information in a Send command:
+S N7ML @ K6RFK < N61A
+The above means you want to send a message to N 7 ML who uses the K6RFK
+Bulletin—Board and the message is from N61A.

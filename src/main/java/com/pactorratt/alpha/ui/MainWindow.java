@@ -6,6 +6,9 @@ import com.pactorratt.alpha.config.AppConfig;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -17,8 +20,15 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.JToolTip;
 import javax.swing.JTree;
+import javax.swing.MenuElement;
+import javax.swing.MenuSelectionManager;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.ToolTipManager;
 import javax.swing.WindowConstants;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
@@ -31,11 +41,14 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class MainWindow extends JFrame {
 
@@ -43,6 +56,10 @@ public final class MainWindow extends JFrame {
     private static final String NODE_HEARD = "Heard";
     private static final String NODE_MENTIONED = "Mentioned";
     private static final String NODE_CONNECT = "<C>onnect";
+    private static final String CONNECT_LABEL = "Begin ARQ";
+    private static final String LISTEN_LABEL = "FEC/Monitor";
+    private static final String LISTEN_TIP = "Opens window for sending and monitoring FEC";
+    private static final String CONNECT_TNC_FIRST_TIP = "Connect to TNC first";
 
     private final AppController app;
 
@@ -50,9 +67,21 @@ public final class MainWindow extends JFrame {
     private final JLabel tncLabel = new JLabel();
     private final JLabel callingLabel = new JLabel();
     private final JButton cancelCallingButton = new JButton("Cancel");
+    private JDialog callingDialog;
+    private JLabel callingDialogCall;
+    private JLabel callingDialogLongpath;
     private final JTextField callsignField = new JTextField(12);
-    private final JButton connectButton = new JButton("Connect");
-    private final JToggleButton listenToggle = new JToggleButton("Listen");
+    private final JButton connectButton = new PassThroughWhenDisabledButton(CONNECT_LABEL);
+    private final JToggleButton listenToggle = new PassThroughWhenDisabledToggle(LISTEN_LABEL);
+    /** Hit-target while the button is disabled (disabled children do not get mouse events). */
+    private final JPanel connectTipWrap = tooltipWrap(connectButton);
+    private final JPanel listenTipWrap = tooltipWrap(listenToggle);
+    private final List<HoverTip> hoverTips = new ArrayList<>();
+    private final Timer tncPulseTimer = new Timer(500, e -> pulseTncOffline());
+    private boolean tncPulseBright;
+    /** Session-only long-path modifier for outbound {@code PG}. Does not persist. */
+    private final JCheckBox longpathToggle = new JCheckBox();
+    private final JLabel mycallLabel = new JLabel();
     private JMenuItem tncConnectItem;
     private JMenuItem tncDisconnectItem;
 
@@ -76,6 +105,9 @@ public final class MainWindow extends JFrame {
         root.add(heardNode);
         root.add(mentionedNode);
         root.add(connectNode);
+        tncPulseTimer.setRepeats(true);
+        ToolTipManager.sharedInstance().setEnabled(true);
+        ToolTipManager.sharedInstance().setInitialDelay(400);
         buildMenu();
         buildUi();
         loadBuddies();
@@ -90,13 +122,23 @@ public final class MainWindow extends JFrame {
             public void windowClosing(WindowEvent e) {
                 attemptExit();
             }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+                hideHoverTips();
+            }
         });
-        setSize(420, 560);
+        setSize(640, 560);
         setLocationByPlatform(true);
     }
 
     public boolean isListenSelected() {
         return listenToggle.isSelected();
+    }
+
+    /** Session-only. When true, outbound {@code PG} gets a leading {@code !} unless already present. */
+    public boolean isLongpathSelected() {
+        return longpathToggle.isSelected();
     }
 
     public void setListenToggleSilently(boolean selected) {
@@ -108,15 +150,45 @@ public final class MainWindow extends JFrame {
     public void refreshConnectionState() {
         boolean connected = app.isTncConnected();
         boolean busy = app.isTncBusy();
-        tncLabel.setText(busy ? "TNC: connecting…" : (connected ? "TNC: connected" : "TNC: offline"));
-        connectButton.setEnabled(connected && !busy);
-        listenToggle.setEnabled(!busy);
+        boolean online = connected && !busy;
+        if (busy) {
+            tncLabel.setText("TNC: connecting…");
+            startTncPulse();
+        } else if (connected) {
+            tncPulseTimer.stop();
+            tncLabel.setText("TNC: connected");
+            tncLabel.setForeground(UiColors.TNC_CONNECTED);
+        } else {
+            tncLabel.setText("TNC: offline");
+            startTncPulse();
+        }
+        String mycall = app.tncMycall();
+        if (online && mycall != null && !mycall.isBlank()) {
+            mycallLabel.setText("MYCall: " + mycall);
+        } else {
+            mycallLabel.setText("MYCall: connect to tnc");
+        }
+        connectButton.setEnabled(online);
+        listenToggle.setEnabled(online);
         if (tncConnectItem != null) {
             tncConnectItem.setEnabled(!connected && !busy);
         }
         if (tncDisconnectItem != null) {
             tncDisconnectItem.setEnabled(connected || busy);
         }
+    }
+
+    private void startTncPulse() {
+        if (!tncPulseTimer.isRunning()) {
+            tncPulseBright = true;
+            tncLabel.setForeground(UiColors.TNC_OFFLINE);
+            tncPulseTimer.restart();
+        }
+    }
+
+    private void pulseTncOffline() {
+        tncPulseBright = !tncPulseBright;
+        tncLabel.setForeground(tncPulseBright ? UiColors.TNC_OFFLINE : UiColors.TNC_OFFLINE_DIM);
     }
 
     public void refreshModeLabel() {
@@ -134,6 +206,11 @@ public final class MainWindow extends JFrame {
         callingLabel.setVisible(show);
         cancelCallingButton.setVisible(show);
         statusRowRevalidate();
+        if (show) {
+            showCallingDialog(callsign.trim());
+        } else {
+            hideCallingDialog();
+        }
     }
 
     /**
@@ -150,7 +227,73 @@ public final class MainWindow extends JFrame {
         callingLabel.setText(call + " no answer");
         callingLabel.setVisible(true);
         cancelCallingButton.setVisible(false);
+        hideCallingDialog();
         statusRowRevalidate();
+    }
+
+    private void showCallingDialog(String pgCall) {
+        boolean longpath = pgCall.startsWith("!");
+        String display = longpath ? pgCall.substring(1) : pgCall;
+        ensureCallingDialog();
+        callingDialogCall.setText("Calling: " + display);
+        callingDialogLongpath.setText(longpath ? "Longpath" : " ");
+        callingDialogLongpath.setVisible(longpath);
+        callingDialog.pack();
+        if (!callingDialog.isVisible()) {
+            callingDialog.setLocationRelativeTo(this);
+            callingDialog.setVisible(true);
+        }
+    }
+
+    public void hideCallingDialog() {
+        JDialog dialog = callingDialog;
+        callingDialog = null;
+        callingDialogCall = null;
+        callingDialogLongpath = null;
+        if (dialog != null) {
+            dialog.setVisible(false);
+            dialog.dispose();
+        }
+    }
+
+    private void ensureCallingDialog() {
+        if (callingDialog != null) {
+            return;
+        }
+        callingDialog = new JDialog(this, "Calling", false);
+        callingDialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+        callingDialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                app.cancelOutboundCall();
+            }
+        });
+
+        callingDialogCall = new JLabel("Calling: ");
+        callingDialogCall.setFont(callingDialogCall.getFont().deriveFont(Font.BOLD, 16f));
+        callingDialogLongpath = new JLabel("Longpath");
+        callingDialogLongpath.setVisible(false);
+
+        JButton abort = new JButton("Abort");
+        abort.setToolTipText("Stop the outbound ARQ call (PN if Listen on, else Pt)");
+        abort.addActionListener(e -> app.cancelOutboundCall());
+
+        JPanel text = new JPanel(new GridLayout(0, 1, 0, 6));
+        text.setOpaque(false);
+        text.setBorder(BorderFactory.createEmptyBorder(16, 24, 8, 24));
+        text.add(callingDialogCall);
+        text.add(callingDialogLongpath);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttons.setOpaque(false);
+        buttons.setBorder(BorderFactory.createEmptyBorder(4, 16, 12, 16));
+        buttons.add(abort);
+
+        callingDialog.getContentPane().setBackground(UiColors.PANEL_BG);
+        callingDialog.setLayout(new BorderLayout());
+        callingDialog.add(text, BorderLayout.CENTER);
+        callingDialog.add(buttons, BorderLayout.SOUTH);
+        callingDialog.setResizable(false);
     }
 
     private void statusRowRevalidate() {
@@ -164,12 +307,8 @@ public final class MainWindow extends JFrame {
         JMenuBar bar = new JMenuBar();
 
         JMenu file = new JMenu("File");
-        JMenuItem preview = new JMenuItem("Preview ARQ window");
-        preview.addActionListener(e -> app.openPreviewArqWindow());
         JMenuItem exit = new JMenuItem("Exit");
         exit.addActionListener(e -> attemptExit());
-        file.add(preview);
-        file.addSeparator();
         file.add(exit);
 
         JMenu settings = new JMenu("Settings");
@@ -209,12 +348,29 @@ public final class MainWindow extends JFrame {
         tncMenu.add(tncConnectItem);
         tncMenu.add(tncDisconnectItem);
         tncMenu.addSeparator();
+
+        JMenu devTools = new JMenu("Dev Tools");
         JMenuItem debugMonitor = new JMenuItem("Debug Monitor…");
         debugMonitor.addActionListener(e -> app.openDebugMonitor());
-        tncMenu.add(debugMonitor);
+        devTools.add(debugMonitor);
         JMenuItem statusMonitor = new JMenuItem("Status Monitor…");
         statusMonitor.addActionListener(e -> app.openStatusMonitor());
-        tncMenu.add(statusMonitor);
+        devTools.add(statusMonitor);
+        JMenuItem ubit10Monitor = new JMenuItem("UBIT 10…");
+        ubit10Monitor.addActionListener(e -> app.openUbit10Monitor());
+        devTools.add(ubit10Monitor);
+        JMenuItem displayMonitor = new JMenuItem("Display…");
+        displayMonitor.addActionListener(e -> app.openDisplayMonitor());
+        devTools.add(displayMonitor);
+        devTools.addSeparator();
+        JMenuItem previewArq = new JMenuItem("Preview ARQ window");
+        previewArq.addActionListener(e -> app.openPreviewArqWindow());
+        devTools.add(previewArq);
+        JMenuItem previewFec = new JMenuItem("Preview FEC window");
+        previewFec.addActionListener(e -> app.openPreviewFecWindow());
+        devTools.add(previewFec);
+        tncMenu.add(devTools);
+        openSubmenuOnHover(bar, tncMenu, devTools);
 
         JMenu help = new JMenu("Help");
         JMenuItem about = new JMenuItem("About");
@@ -228,24 +384,48 @@ public final class MainWindow extends JFrame {
         setJMenuBar(bar);
     }
 
+    /** Nested menus already hover-open after a delay; this opens Dev Tools immediately. */
+    private static void openSubmenuOnHover(JMenuBar bar, JMenu parent, JMenu submenu) {
+        submenu.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                MenuSelectionManager.defaultManager().setSelectedPath(new MenuElement[] {
+                        bar,
+                        parent,
+                        parent.getPopupMenu(),
+                        submenu,
+                        submenu.getPopupMenu()
+                });
+            }
+        });
+    }
+
     private void buildUi() {
         getContentPane().setBackground(UiColors.WINDOW_BG);
         setLayout(new BorderLayout(6, 6));
 
-        JPanel top = new JPanel(new GridLayout(2, 1));
+        JPanel top = new JPanel(new BorderLayout());
         top.setBackground(UiColors.PANEL_BG);
         modeLabel.setFont(modeLabel.getFont().deriveFont(Font.BOLD));
+        mycallLabel.setFont(modeLabel.getFont());
+        mycallLabel.setText("MYCall: connect to tnc");
         callingLabel.setVisible(false);
         cancelCallingButton.setVisible(false);
         cancelCallingButton.setToolTipText("Stop the outbound ARQ call (same as Abort: PN if Listen on, else Pt)");
         cancelCallingButton.addActionListener(e -> app.cancelOutboundCall());
-        JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel statusRow = new JPanel(new BorderLayout());
         statusRow.setBackground(UiColors.PANEL_BG);
-        statusRow.add(modeLabel);
-        statusRow.add(callingLabel);
-        statusRow.add(cancelCallingButton);
-        top.add(statusRow);
-        top.add(tncLabel);
+        JPanel statusLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        statusLeft.setOpaque(false);
+        statusLeft.add(modeLabel);
+        statusLeft.add(callingLabel);
+        statusLeft.add(cancelCallingButton);
+        JPanel statusRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        statusRight.setOpaque(false);
+        statusRight.add(mycallLabel);
+        statusRow.add(statusLeft, BorderLayout.WEST);
+        statusRow.add(statusRight, BorderLayout.EAST);
+        top.add(statusRow, BorderLayout.CENTER);
         top.setBorder(BorderFactory.createEmptyBorder(6, 8, 4, 8));
 
         stationTree.setRootVisible(false);
@@ -325,8 +505,15 @@ public final class MainWindow extends JFrame {
         callRow.add(new JLabel("Callsign:"));
         callsignField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
         callRow.add(callsignField);
-        callRow.add(connectButton);
-        callRow.add(listenToggle);
+        callRow.add(connectTipWrap);
+        callRow.add(listenTipWrap);
+        JLabel lpLabel = new JLabel("Use Longpath");
+        longpathToggle.setOpaque(false);
+        longpathToggle.setToolTipText("Long path: prefix ! on PG unless already typed. Session only; does not change the callsign field.");
+        callRow.add(lpLabel);
+        callRow.add(longpathToggle);
+        tncLabel.setFont(tncLabel.getFont().deriveFont(Font.BOLD));
+        callRow.add(tncLabel);
 
         connectButton.addActionListener(e -> app.requestConnect(callsignField.getText()));
         listenToggle.addActionListener(e -> {
@@ -336,6 +523,10 @@ public final class MainWindow extends JFrame {
             app.setListenEnabled(listenToggle.isSelected());
             refreshModeLabel();
         });
+        installHoverTip(connectButton, this::beginArqTip);
+        installHoverTip(connectTipWrap, this::beginArqTip);
+        installHoverTip(listenToggle, this::fecMonitorTip);
+        installHoverTip(listenTipWrap, this::fecMonitorTip);
 
         bottom.add(callRow, BorderLayout.CENTER);
 
@@ -526,8 +717,114 @@ public final class MainWindow extends JFrame {
             }
         }
         persistExpandState();
+        tncPulseTimer.stop();
+        hideHoverTips();
         app.shutdown();
         dispose();
         System.exit(0);
+    }
+
+    private String beginArqTip() {
+        return connectButton.isEnabled() ? null : CONNECT_TNC_FIRST_TIP;
+    }
+
+    private String fecMonitorTip() {
+        return listenToggle.isEnabled() ? LISTEN_TIP : CONNECT_TNC_FIRST_TIP;
+    }
+
+    private void installHoverTip(JComponent host, Supplier<String> text) {
+        hoverTips.add(new HoverTip(host, text));
+    }
+
+    private void hideHoverTips() {
+        for (HoverTip tip : hoverTips) {
+            tip.hide();
+        }
+    }
+
+    private static JPanel tooltipWrap(JComponent child) {
+        JPanel wrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        wrap.setOpaque(false);
+        wrap.add(child);
+        return wrap;
+    }
+
+    /**
+     * Disabled Swing buttons drop mouse events, so hover never reaches them.
+     * Returning false from {@code contains} lets the wrap receive the hover instead.
+     */
+    private static final class PassThroughWhenDisabledButton extends JButton {
+        PassThroughWhenDisabledButton(String text) {
+            super(text);
+        }
+
+        @Override
+        public boolean contains(int x, int y) {
+            return isEnabled() && super.contains(x, y);
+        }
+    }
+
+    private static final class PassThroughWhenDisabledToggle extends JToggleButton {
+        PassThroughWhenDisabledToggle(String text) {
+            super(text);
+        }
+
+        @Override
+        public boolean contains(int x, int y) {
+            return isEnabled() && super.contains(x, y);
+        }
+    }
+
+    /** Shows a tooltip on mouse-enter without relying on ToolTipManager mouse delivery. */
+    private static final class HoverTip {
+        private static final int DELAY_MS = 400;
+        private final JComponent host;
+        private final Supplier<String> text;
+        private final Timer delay;
+        private Popup popup;
+
+        HoverTip(JComponent host, Supplier<String> text) {
+            this.host = host;
+            this.text = text;
+            delay = new Timer(DELAY_MS, e -> show());
+            delay.setRepeats(false);
+            host.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    delay.restart();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hide();
+                }
+            });
+        }
+
+        private void show() {
+            hidePopup();
+            String t = text.get();
+            if (t == null || t.isBlank() || !host.isShowing()) {
+                return;
+            }
+            JToolTip tip = host.createToolTip();
+            tip.setTipText(t);
+            Point loc = host.getLocationOnScreen();
+            popup = PopupFactory.getSharedInstance().getPopup(
+                    host, tip, loc.x, loc.y + host.getHeight() + 2);
+            popup.show();
+        }
+
+        void hide() {
+            delay.stop();
+            hidePopup();
+        }
+
+        private void hidePopup() {
+            if (popup != null) {
+                popup.hide();
+                popup = null;
+            }
+        }
     }
 }

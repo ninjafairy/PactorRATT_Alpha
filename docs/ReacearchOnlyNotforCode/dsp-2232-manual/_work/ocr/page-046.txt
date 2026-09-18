@@ -1,0 +1,57 @@
+4.2
+12/91
+DSP-2232 OPERATING MANUAL
+4-2
+PACKET RADIO
+Packet Introduction
+You •ve now connected your DSP—2232's transmit audio output to its
+receive audio input.
+Your DSP—2232 can now "talk to itself" in
+packet .
+1.
+Set the side—panel AFSK level control for RADIO—I at
+( straight up and down) for the following Packet introduction.
+NOTE :
+If you have adjusted the RADIO—I side—panel AFSK level
+control for a particular transceiver in chapter 3, then mark
+this setting with a pencil so it can be reset when finished.
+2.
+Turn on your computer. Load and run your communications program.
+If you are using an AEA PAKRATT Program, follow the program
+manual to enter the Packet mode on Radio Port 1, and then skip to
+step 4.
+If you are using another Computer program or a Terminal, set the
+comrnunication parameters as done in Chapters 2 and 3.
+3.
+Press the DSP—2232's rear panel power switch to the ON position
+if you have not already done so.
+You should notice the sign—on message seen in chapter 2. The LCD
+STATUS display should indicate you are in the Packet mode.
+4.
+After you have seen the sign—on message and/or entered the Packet
+mode, you must enter your own callsign (with the MYCALL Command )
+if you are to converse with any other Packet stations.
+If you
+try to connect to a station without entering your call sign, your
+DSP—2232 will send you the following message:
+? need MY call
+If you are a SWL and do not intend to transmit, you should enter
+"AAA" as a Callsign (MYCALL) .
+If you are using an AEA PAKRATT program, follow the instructions
+If you are using a
+in the Program Manual to enter your call sign.
+terminal or terminal emulating program on your computer, you must
+use the MYCALL command to install your call siqn.
+Note that since the DSP—2232 has two radio ports, you must enter
+a callsign for each port. The callsigns may be the same, or can
+be different to make life a little easier in the "two Ham"
+family. You must change the callsign from the default "DSP" on
+each radio port, or that port will not transmit packets.
+For
+example, if your Callsign is WX2BBB, enter the following:
+cmd:MYCALL WX2BBB/WX2BBB
+Mycali was DSP/DSP
+now WX2BBB/WX2BBB
+MYca11
+Both Packet radio ports will now
+assume the callsign WX2BBB.

@@ -1,0 +1,66 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.9
+7/92
+NAVTEX Operation
+NAVTEX is an international system which stands for NAVIGATIONAL TELEX.
+It is a direct printing service designed to distribute navigational
+and meteorological warnings and other urgent information to ships.
+TO enter the NAVTEX mode, simply type "NAVTEX" at the command prompt .
+The ARRL has also adopted this format for transmitting bulleting.
+In
+amateur radio this same format is starting to be referred to as AMTEX.
+AMTEX transmissions can be found on ARRL bulletin frequencies.
+NAVTEX is broadcast in Mode—B AMTOR (SITOR) on a frequency of 518 kHz.
+NAVTEX may be selectively monitored, so you will see only information
+of interest and never see the same message twice, It is this unique
+feature of NAVTEX that the DSP-2232 uses with the NAVSTN and NAVMSG
+commands to allow the user to monitor only messages of importance.
+NAVTEX/AMTEX messages are prefaced by the characters " ZCZC" and
+then a four character Preamble as diagramed below.
+Zczc AA99
+Serial Number 2nd Digit.
+Serial Number 1st Digit—J
+Message Classification (A to Z)
+NÅVTEX Station Identification (A to Z)
+The first character of the Preamble is a letter that identifies the
+NAVTEX transmitter. Transmitter Identification letters can be any of
+the characters A through Z. This 1 imits the number of NAVTEX stations
+in an area to 26.
+The NAVSTN Command can be used to selectively
+monitor or reject certain NAVTEX transmitters.
+The second character of the Preamble is the Message Classification.
+The NAVMSG command is used to selectively monitor or reject any of the
+message classes shown below:
+NAVTEX
+Navigational Warnings
+A.
+Meteorological Warnings (Storm Warnings)
+B.
+C.
+Ice Reports
+Search and Rescue Information
+D.
+Weather Forecasts
+E.
+Pilot Service Messages
+F.
+DECCA System Information
+G.
+LORAN—C System Informat ion
+H.
+I.
+Omega Systems Messages
+J.
+SATNAV System Messages
+K—Z. Reserved for future use
+The exception to this is that message classes A, B and D CANNOT be
+excluded and will always be copied if the transmitting station is
+enabled by NAVSTN .
+The last two numbers form a serial number from 00 through 99 that is
+The DSP—2232 remembers the Preamble of
+different for each message.
+the 200 most recent messages and will not re—print a message that has
+the same preamble if it has already been received without many errors.
+7-21
+Last page of Chapter 7 — AMTOR and NAVTEX Operation

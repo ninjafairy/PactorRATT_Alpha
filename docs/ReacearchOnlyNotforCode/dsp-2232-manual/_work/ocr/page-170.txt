@@ -1,0 +1,106 @@
+DSP-2232 OPERATING MANUAL
+12.10. 1
+Select inq Modems
+PACTOR OPERATION
+The various modems available in the DSP—2232 can be seen with the
+DIRECT (ory) command. To display all the available modems Bimply
+enter the Conmand Mode of the DSP—2232 and then DIR ag shown.
+DIR
+The DSP—2232 will respond with the following:
+(930315)
+1:
+3:
+5:
+10:
+12:
+14:
+16:
+18:
+22:
+25:
+30:
+31:
+32:
+33:
+34:
+35:
+40:
+42:
+44:
+46:
+51:
+61:
+cmd :
+12.10.2
+3/93
+RTTY/TOR 170: 2125/2295
+RTTY/TOR 425: 2125/2550
+RTTY/TOR 200: PACTOR 2110/2310
+pl Packet 300 bps HF 2110/2310
+pl Packet 1200 bps VHF
+pl Packet 1200 bps PSK
+pl Packet 4800 bps PACSAT
+pl Packet 9600 bps FSK K9NG/G3RUH
+p2 Packet 1200 bps VHF
+p2 Packet 2400 bps V. 26B
+2:
+4:
+6:
+11:
+13:
+15:
+17:
+20:
+23:
+28:
+RTTY/TOR 170: 2125/2295; p2 Packet 300
+RTTY/TOR 170: 1445/1275
+RTTY/TOR 850: 2125/2975
+RTTY/TOR 200: PACTOR 1460/1260
+pl Packet 300 bps HF 1460/1260
+pl Packet 1200 bps PACSAT
+pl Packet 2400 bps V. 26B
+pl Packet 4800 bps PSK
+p2 Packet 300 bps HF 2110/2310
+p2 Packet 1200 bps PACSAT
+p2 Packet 9600 bps FSK K9NG/G3RUH
+bps HF 2110/2310
+RTTY/TOR 170: 2125/2295; p2 Packet 1200 bps VHF
+RTTY/TOR 200:PACTOR 2119/2310; p2 Packet 300 bps HF 2110/2310
+pl Packet 300 bps HF 2110/2310; p2 Packet 1200 bps VHF
+RTTY/TOR 200: PACTOR 2110/2310; p2 Packet 1200 bps VHF
+pl Packet 1200 bps VHF; p2 Packet 1200 bps VHF
+Morse 750 Hz
+Analog FAX APT
+DSP data 400 bps OSCAR-13
+DSP data Spectrum
+pl Packet 2400 bps MSK
+p2 Packet 2400 bps MSK
+41:
+43:
+45:
+50:
+60:
+Analog FAX HF
+Analog SSTV
+RTTY/TOR 1200 bps ASCII OSCAR-II
+pl Packet 1200 bps MSK
+p2 Packet 1200 bps MSK
+Any modem from the list may be loaded with the MODEM command, but
+only modems 5, 6, 32 and 34 will operate correctly in PACTOR.
+For example, to operate PACTOR on radio port I and 1200 bps VHF packet
+on radio port 2 you must select MODEM 34.
+First, enter the Command
+Mode of the DSP—2232 and then type MODEM 34 as shown below:
+MODEM 34
+The DSP—2232 will respond with the following:
+MODem was x (The previous modem)
+MODem now 34
+Selectinq A Default PACTOR Modem
+When you enter the PACTOR mode, the modem number stored in the QPTOR
+command is automatically loaded. QPTOR defaults to 5 which
+automatically loads the 2110/2310 single port PACTOR modem. If you
+wish to load the low—tone modem (MODEM 6), or one of the dual port
+PACTOR modems (MODEM 32 or 34), enter the corresponding modem number
+into QPTOR.
+12-16

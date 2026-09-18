@@ -1,0 +1,49 @@
+DSP-2232 OPERATING MANUAL
+12 .10.6.3 Dual Port Mail Drop Operation Notes
+PACTOR OPERATION
+With the above parameters set, packet connections to the MYMAIL
+call Bign on Radio Port 2 will be sent to your MailDrop if you or a
+remote PACTOR station iB not using it.
+If you or any other station iB
+using your MailDrop, the remote user attempting the packet connection
+will be sent a "*** Busy" message.
+Similarly, a remote PACTOR station linking to you will be given accegg
+to your MailDrop provided no one else is using it.
+If you or a remote
+packet station ig using your Mail Drop, the PACTOR station may link to
+you, but will not be given access to your MailDrop. For thig reason,
+you may wish to disable Radio Port I (by turning the RADIO parameter
+to 0/2) when logging into your own Mail Drop for maintenance. Thig
+will prevent remote PACTOR stations from linking with you.
+If you will be Reverse Forwarding messages into the Packet network, be
+sure to check your MailDrop often for new messages. Remember that you
+must use the Edit command in the Mail Drop to select which messages
+will be Reverse Forwarded.
+Note :
+At this time unattended operation below 30 MHz ig not legal
+for US amateurs unless they hold a Special Temporary
+12.11
+3/93
+Authorization ( STA) from the FCC. Although this may soon
+change, US •amateurs must be sure to have control of their
+HF transmitters when any device such ag the DSP—2232
+PACTOR/Packet Mail Drop is in operation.
+PACTOR Switchinq—Time Considerations
+For operation in PACTOR ARQ, your transceiver or transmitter—
+receiver combination must be able to change between transmit and
+receive within 100 milliseconds. Most modern solid state radios can
+easily meet this specification. Many older tube—type radios that use
+electromechanical relays also operate very well in PACTOR ARQ.
+If the changeover from transmit to receive is too long, the minimum
+working distance is extended; the signal to the distant station will
+arrive before the station has switched back to receive. However, if
+the transmitting station is further away, the transmission time over
+the propagation path will delay the arrival of the signal until after
+For this reason, you may be able
+the station has switched to receive.
+to "Link with" stations across the country, but not across town.
+If the receiving station's changeover from transmit to receive is too
+slow, the transmitting station delay between "PTT" and "data send" can
+be extended. See the ADELAY comrnand in the Command Summary to adjust
+the DSP—2232 ts PACTOR timing characteristics to compensate for this.
+12-21

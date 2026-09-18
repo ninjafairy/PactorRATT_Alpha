@@ -118,3 +118,34 @@ Pactor OPMODE replies (`PN`, `Pt`, `PG`, `PD`) still have two unnamed payload by
 Example trailers: `1000` (*u*=100, *s*=normal), `2000` (*u*=200, *s*=normal), `1010` (*u*=100, *s*=longpath).
 
 ARQ (`PG`) *w* values seen in `docs/pgmesg status.txt`: `$31` Phasing (connect start), `$32` Change-over (only with *x*=`R` in that capture), `$33` Idle, `$34` Traffic, `$35` Error, `$36` RQ. `$30` is not used while `PG` — disconnect returns to `Pt`. `$37` Sync not seen yet.
+
+## UBIT 10 status-change (`SOH $50 n ETB`) — Pactor hardware
+
+Printed PK-232 UBIT 10 text lists AMTOR, FAX, TDM, NAVTEX only. **Pactor firmware does emit the same on-change block** (validated 2026-09-14 on a live PK-232). One frame per *w* transition; not a stored log.
+
+Host mnemonic `UB` (Ch. 4 §4.2: no space after the mnemonic; **space between arguments**):
+
+| Action | Host payload |
+|---|---|
+| Query bit 10 | `UB10` |
+| Enable | `UB10 ON` |
+| Disable | `UB10 OFF` |
+
+Do **not** glue `Y`/`N` (`UB10Y` is wrong). Default is OFF.
+
+When ON and `HPOLL` is OFF, each Idle / Traffic / Error / RQ (etc.) change pushes:
+
+```text
+SOH $50 n ETB
+```
+
+`n` is `$30`–`$36`, the same *w* byte OPMODE furnishes. `$37` Sync is not in that range. Payload is a **single byte**, not link text.
+
+CTL `$50` is also used for `CONNECTED to`, `DISCONNECTED:`, and `Timeout`. Distinguish:
+
+| Payload | Meaning |
+|---|---|
+| one byte `$30`–`$36` | UBIT 10 status change (*w*) |
+| `CONNECTED to …` / `DISCONNECTED: …` / `Timeout` | link message |
+
+The `$50 n` block is **only *w***. Direction (`S`/`R`), baud (*u*), longpath (*s*), and mode tag (`PG`/`PN`/`PD`/`Pt`) still come from solicited `OP`.

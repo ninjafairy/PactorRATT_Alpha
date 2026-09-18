@@ -1,0 +1,50 @@
+12.9
+12.9. 1
+12.9.2
+12.9.3
+3/93
+DSP-2232 OPERATING MANUAL
+12-12
+PACTOR OPERATION
+PACTOR MailDrop Operat ion
+The DSP—2232 allows PACTOR as well ag Packet and AMTOR accegg to the
+MailDrop. Messages that originate in Packet or AMTOR can be accessed
+remotely in PACTOR and messages that originate from a remote PACTOR
+station can be accessed by Packet and AMTOR users of your MailDrop.
+Thig section of the manual talks about basic PACTOR mailbox operation.
+Section 12.10 will discuss how to pass message traffic from PACTOR to
+Packet and vice versa.
+Make sure that you understand Mail Drop Operation in Chapter 5 and the
+basic PACTOR operation described earlier in this chapter before
+putting your PACTOR Mail Drop on the air.
+Special Operatinq Considerations
+The PACTOR MailDrop has been designed with a "Watchdog" safety feature
+so that it may perform safely without constant attention.
+If a remote
+station is linked with your PACTOR MailDrop and no traffic is passed
+for 5 minutes, the link will drop and your transmitter will Bhut off.
+At this writing however, unattended operation below 30 MHz ig not
+legal for US amateurs unless they hold a Special Temporary
+Authorization ( STA) from the FCC for thig purpose. This restriction
+may soon change, but •until then US amateurs must be sure to always
+have control of their HF transmitters when any automatic device such
+as the DSP—2232 MailDrop is in operation.
+With this in mind, we have designed the PACTOR Mail Drop so that it can
+be disabled at any time during an ARQ link simply by turning the
+command TMAIL (TOR MAIL) OFF. This allows you the SYSOP to make your
+MailDrop available to other stations and still break in to chat with
+remote stations at any time. This could come in handy should you
+want to provide some help or information to a remote station using
+your PACTOR MailDrop.
+Settings For PACTOR Mail Drop Operation
+Before a remote PACTOR user can access your MailDrop, be certain that
+MYPTCALL and MYCALL (on Port 1) are set to your Arnateur call sign.
+Start inq PACTOR Mail Drop Operation
+Remote access to your PACTOR MailDrop ig controlled by the command
+TMAIL which is short for TOR MAIL. The TMAIL command controls remote
+access to the PACTOR and AMTOR MailDrop in the same way that the
+MAILDROP command controls remote Packet access .
+Turn the TMAIL command ON (default OFF) to allow remote stations to
+access your Mail Drop in ARQ PACTOR. Turn TMAIL OFF to have normal ARQ
+QSOg with other stations in the
+PACTOR mode.

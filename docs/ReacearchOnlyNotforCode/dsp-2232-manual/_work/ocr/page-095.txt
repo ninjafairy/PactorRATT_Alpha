@@ -1,0 +1,49 @@
+5.6. 1
+5.7
+5.7. 1
+12/91
+DSP—2232 OPERATING MANUAL
+5-11
+MAILDROP OPERATION
+Message Numbers
+Any message that is sent to the DSP—2232 Mail Drop by a remote user or
+you, the SYSOP is given a message number. Message numbers start at 1
+and over time work their way up to 999 and then wrap back around to 1
+again.
+Sometime it is desirable to reset the message counter. Thig
+can be done with the LASTMSG command which is described in the Command
+summary.
+Forwarding and Reverse Forwarding with the DSP—2232 Mail Drop
+Forwarding allows your large community Bulletin Board System (BBS) may
+automatically connect to your MailDrop and send messages to you.
+Similarly, Reverse Forwarding allows your conununity BBS to connect to
+your Mail Drop and get messages you wish to send to others.
+Forwarding and Reverse Forwarding (or simply Auto—Forwarding) can be
+an advantage in a local area. The community BBS can be set to connect
+to your Mail Drop at times when local traffic is low, such as late at
+night. This can spread out the traffic volume on a packet frequency
+which can become quite heavy in the "prime time" early evening hours.
+Auto—Forwarding is involved and requires the cooperation of both you
+and your community BBS Operator. Not all large BBSs will forward to
+individual users.
+Some packet frequencies are so busy forwarding to
+other BBSs that they can not forward to individuals.
+You must contact
+the community BBS SYSOP to determine the guidelines in your area.
+MailDrop Settings for Auto—Forwarding
+The following must all be set properly for Auto—Forwarding to operate.
+Enter your MYCALL. Enter your MYMAIL if you desire to use a
+separate call sign for the Mail Drop.
+Make arrangements with your local BBS SYSOP to Auto—Forward to
+your MailDrop. Make sure you let the him know the MailDrop call
+sign you will use. The BBS SYSOP must program his system to
+connect to your MailDrop or Auto—Forwarding will not function.
+Enter the call sign of this comrnunity BBS in the HOMEBBS command.
+Leave your DSP—2232 and radio ON THE AIR so that your local BBS
+can connect to your Mail Drop. If your packet station is not on
+when the local BBS tries to connect, the advantage of Auto—
+Forwarding is lost and the BBS SYSOP may drop you from the
+Forwarding list .
+Once the above have been completed, you a.re ready to receive messages
+automatically from your local BBS. The next section describes how to
+prepare messages for Reverse Forwarding to the local BBS (HOMEBBS) .

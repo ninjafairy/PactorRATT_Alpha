@@ -1,0 +1,42 @@
+DSP-2232 OPERATING MANUAL
+12.10. 3
+12.10.4
+3/93
+Digplavinq Received Data
+The Radio conunand may be used to disable port 2.
+PACTOR OPERATION
+This may be
+desirable when operating PACTOR and you do not want to be disturbed
+with any packet signal B that may be received on radio port 2. To
+disable port 2, enter:
+RADIO ON/OFF or RADIO 1/0
+For dual port operation, type
+RADIO ON/ON or RADIO 1/2
+The DSP—2232 gortB and displays received data from each Radio Port
+using the same technique as multi—connect packet operation described
+in Chapter 4. That is, when operating on one port and the other
+port becomes active, the displayed data from the inactive port is
+shown prefaced by the "channel designator" followed by a colon ( : ) .
+Recall that Radio Port 1 is designated by "logical" channels from 0—9
+and that Port 2 is designated by "logical" channels A—Z.
+Switchinq Between Ports
+If you are using an AEA PARRATT program, switching between Radio Ports
+is described in the program manual.
+If you are using a terminal
+program, this section describes how to direct your transmitted text.
+Switching between PACTOR on Port 1 and Packet on Port 2 is similar to
+switching between Packet and Packet .
+If you have not yet read through
+the Switching Between Radio Ports section of Chapter 4, please do go
+now and define a CHSWITCH character before reading the example below.
+Recall from chapter 4 that the channels on Port 1 are labeled 0—9 and
+the channels on Port 2 are labeled A—Z. To select Radio Port 1
+( PACTOR) press the CHSWITCH character you defined, followed by the
+number O. To select Radio Port 2 (Packet), pregg the CHSWITCH
+character, followed by a letter from A—Z.
+For example, you are conversing with an PACTOR station and are in the
+middle of a QSO when a station on VHF connects to you. The following
+shows how your screen would look and suggests how you might handle
+such an occurrence.
+The underlined text is the text that you type.
+12-17

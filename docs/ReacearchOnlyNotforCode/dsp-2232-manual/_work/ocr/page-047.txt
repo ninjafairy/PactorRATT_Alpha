@@ -1,0 +1,50 @@
+DSP-2232 OPERATING MANUAL
+5.
+PACKET RADIO
+6.
+7/92
+If you are using an AEA program follow the instructions in the
+Program manual to CONNECT in packet mode to your own callsign
+(the one you just entered in MYCALL) .
+If you are using a Computer Terminal or a non—AEA program,
+entering the following after the "cmd:"
+command mode prompt will
+cause the DSP—2232 to Connect to yourself:
+CONNECT (your call sign) <Enter>
+After pressing <Enter>, you should observe the Port 1 SEND LED
+and DCD LED light, and the Port I TUNING bar graph spread. After
+a few moments, your monitor should display:
+*** CONNECTED to (your call sign)
+Notice that the front panel Port 1 Connect LED (CON) has lighted
+and the STATUS display indicates that the DSP—2232 ig connected
+to a packet station.
+You may also notice that the Port 1
+Converse LED (CONV) is lit indicating that the DSP—2232 is ready
+to CONVerse with the station (in this case it is yourself) .
+This is how a packet connection is established. Whether you are
+"Connecting" to another Amateur, a Packet Bulletin Board System
+(PBBS) or a Netw.orking Switch (more on this later) this initial
+procedure must be used to establish each and every Connection.
+Type a few characters to yourself such as "Hello this is my first
+packet Connect. My name is " then press the <Enter> key.
+Shortly after pressing the <Enter> key, you should see the
+If you had connected
+message you typed reappear on your screen.
+to a distant station, they would have seen the message you typed
+appear at nearly the same time .
+After you have typed a few lines (packets) to yourself, you will
+probably want to end the connection or "DISCONNECT" .
+If you are using an AEA program, follow the instructions to
+DISCONNECT from the packet station you are talking to.
+If you are using a Computer Terminal or a non—AEA terminal
+program, the following will cause the DSP—2232 to DISCONNECT:
+Enter <CONTROL—C> (hold down the Ctrl and then type the letter C) .
+Your monitor should respond with the comrnand prompt :
+cmd :
+Enter D
+Your monitor should respond with :
+cmd: DISCONNECTED: (your call sign)
+pl (your call) * > (your call) (UA)
+Note that the front panel Connect LED (CON) should go out and the
+LCD STATUS display should indicate you are Disconnected.
+4—3

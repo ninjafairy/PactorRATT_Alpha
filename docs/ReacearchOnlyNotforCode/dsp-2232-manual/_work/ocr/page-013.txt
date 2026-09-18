@@ -1,0 +1,130 @@
+DSP-2232
+8.1
+8-1
+8.2
+8-1
+8-1
+8-1
+8.3
+8-2
+8-3
+8.4
+4.1
+4.2
+4.3
+4.5
+8.5
+8-5
+8.6
+9.1
+9-1
+9-2
+9.2
+9-2
+9-3
+9.3
+9.4
+4.1
+4.2
+4.3
+9.5
+9-5
+9.6
+6.1
+6.2
+9—6
+6.3
+6.4
+7.1
+9.8
+9.9
+OPERATING
+Overview
+Where to
+MANUAL
+CHAPTER
+TABLE
+OF
+CONTENTS
+8
+- MORSE
+OPERATION
+Paragraph
+8.2. 1
+8.2. 2
+8.2.3
+8.3. 1
+8.
+8.
+8.
+8.4. 4
+8.
+9.1. 1
+9.1.2
+9.2. 1
+9.
+9.
+9.
+7/92
+Operate
+Morge
+Entering the Morse
+Mode
+HF Receiver Settings
+Tuning in Morse
+Going On The Air
+A Typical Morse
+Morge Operating Tips
+Stat ions
+Contact
+The DSP—2232 Morse Modem
+Speed Change (MSPEED)
+Echoing Transmitted Characters As
+Sent
+( EAS )
+Sending Only Complete
+speed Lock (LOCK)
+Special Morse Characters
+Words
+( WORDOUT )
+Morse Code Practice
+CHAPTER
+9 - FACSIMILE
+OPERATION
+Overv iew
+Facsimile
+Slow Scan
+Television
+Finding FAX Frequencies
+Finding SSTV Frequencies
+FAX and SSTV Analog Signal Operation
+Black & White FAX Operation
+HF Receiver Settings
+Tuning In HF Facsimile Stations
+DSP—2232 Facsimile Parameter
+Receiving Facsimile Broadcasts
+Facsimile Operating Tips
+Settings
+Setting PRTYPE for Your Printer
+Printing Direction (LEFTRITE)
+Inverting Black and White (FAXNEG)
+Printing Density (GRAPHICS)
+Printing Other Services
+The DSP-2232
+Transmitting FAX.
+Adjusting the DSP—
+FAX Modem
+2232 4.0 MHz
+Pace
+. 8-1
+. 8-3
+. 8-5
+. 9-1
+. 9-3
+. 9-5
+. 9—6
+. 9—6
+. 9-8
+Master
+TOC-7
+Oscillator

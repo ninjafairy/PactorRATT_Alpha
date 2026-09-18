@@ -1,0 +1,62 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+5.4. 5
+5.4. 6
+5.4. 7
+5.4. 8
+5 . 4.9
+12/91
+(J LOG) (Remote only command)
+The "J" command sent by the distant station will cause your Mail Drop
+to send the DSP—2232ts MHEARD List to the station. This command ig
+not available to you the SYSOP since you can simply enter MHEARD at
+the DSP—2232 coaunand prompt .
+(KILL [Mine 1)
+The "K n" command (Host abbreviation KI) deletes message number "n"
+from the Mail Drop. As SYSOP, you can kill any. message. A calling
+station can kill only messages addressed to or from that station.
+Messages are killed by number, not call sign. The remote user may
+enter the "KM" (Kill Mine) cornmand to KILL all of his or her messages
+that have been read previously.
+(LIST [Mine 1)
+The "L" command (Host abbreviation L 1) shows you the SysOp a I i Bt of
+ALL active messages on the Mail Drop. The 1 ist is preceded by the
+following column header:
+Msg#
+Size To
+From @ BBS
+Date
+T ime
+Title
+AIL active messages are listed under this line with the most recent
+message first.
+DAYTIME must be set for the Date and Time to appear.
+When a remote user types the LIST command, the Mail Drop lists only the
+messages that user may read, including messages to "ALL" and "QSTe t'
+The Mail Drop accepts the
+Messages to other users are not displayed.
+LM ( List Mine) command from the remote user. This command actg only
+on messages addressed to the remote user, not messages to "ALL" or
+"QST."
+(READ n [Minen
+The "R n" command displays the header and text of message number "n"
+Messages are read by number, not call sign. As SYSOP, you can read
+all messages. A remote user may READ only messages addressed to hig
+call sign, or to "ALL" or "QST" .
+The Mail Drop accepts the RM (Read
+Mine) command from remote users. This command acts only on messages
+The RM
+addressed to the remote user, not messages to "ALL" or "QST. "
+command displays only messages that have not been read previously.
+callsign (SEND callsiqn)
+The "S cållsign" command notifies the Mail Drop that either you as
+SYSOP or the calling station will now send text into a message.
+If 3RDPARTY is ON, then the calling station can leave a message for a
+If the station attempts to leave third
+station other than the SYSOP.
+party traffic with 3RDPARTY OFF,
+*** No 3rd party traffic.
+(AEA DSP-2232)
+18396 free
+5-5
+then the calling station will see:

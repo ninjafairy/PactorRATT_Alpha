@@ -1,0 +1,76 @@
+DSP-2232 OPERATING MANUAL
+Either station may initiate
+-o
+—O
+PACKET RADIO
+the ID
+source
+source
+exchange .
+D isconnect :
+destinat ion
+Disconnect acknowledgment :
+destination
+B
+Y
+c
+z
+DISC 01
+CTRL PID
+UA 01
+CTRL PID
+3B 38
+I short
+58 32
+I short
+58 32
+address
+3E 38
+address
+At the end of the connect ion, the two stations must once again
+identify using both long and short addresses.
+AEA firmware supporting Packet Lite also contains code that permits
+monitoring of Packet Lite and extended AX. 25 frames.
+Packet Lite Shortened Address Technical Details
+The Packet Lite address field consists of 26 bits distributed over 4
+bytes (or octets, as the AX. 25 spec calls them) .
+These bits are
+considered to be two groups
+of 13 bits each, roughly equivalent to a
+destination and a source ID.
+If •we label the bits and show their
+use in the address field of
+a Lite frame, the bits are distributed as
+fol lows :
+ABC DE F GO
+L MO N OPQRSTO y UVWXYZI
+x HI JK
+The least significant bit of each byte is used to show whether or not
+the byte is the final byte in the address field, as in standard AX. 25.
+The bits "x" and "y" (lower case) have the function of command and
+response, similar to the function of the standard AX. 25 version 2.0
+SS ID byte C bits (see AX. 25 Protocol version 2 . O, section 2.4. 1.2) .
+In the AEA implementation of Lite addressing, the standard callsigns
+are compressed to yield short addresses. The destination callsign is
+compressed into bits A—Mt and the source into N—Z. These bits are
+used as the address field suggestion following the control byte in the
+Connect ( SABM) frame. When the bits are used following the control
+byte as an ID suggestion or a real extended ID, the format is:
+OABCDEFG O OH 1 JK LM O N OPQRST O OUVWXYZ
+If we label the 7 standard right—justified callsign bytes 1—6 and
+SSID, here is how we derive the first group of address bitg A—M:
+ABCDE
+FGHI
+JKLM
+(byte 1 XOR byte 4 )
+(byte 2 XOR byte 5 )
+AND
+AND
+(byte 3 XOR byte 6 XOR SSID) AND
+AEA firmware derives the second group of bits the
+implementations are free to select any combinat ion of
+game way. Other
+26 bits when
+setting up the short address in either the initial SABM frame or its
+UA response.
+7/92

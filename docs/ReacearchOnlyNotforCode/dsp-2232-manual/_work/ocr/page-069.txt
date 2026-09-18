@@ -1,0 +1,69 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4. 7.1
+4.7. 2
+4.7. 3
+7/92
+Where to Operate HF Packet
+Before you can operate HF Packet, you must first find the activity.
+Most HF packet operation is on the 20—meter amateur band starting at
+14. 103 MHz and every 2 kHz above that up to 14.111 MHz.
+Note that
+14. 103 MHz is the HF Packet calling frequency and a good place to
+start. The higher frequencies such as 14.109 and 14. 111 are used
+mostly by HF PBBS systems and are not good places to look for a QSO.
+DSP—2232 HF Packet Settings
+Radio Port I on the DSP—2232 is intended for multi—mode operation go
+either a VHF or HF transceiver may be connected. The packet
+parameter defaults have been set for VHF Packet operation on both
+radio ports and should be changed for HF packet operation as shown
+be ow.
+The table below shows the parameters that should be set differently
+for HF and VHF packet operation.
+If you will be operating HF Packet,
+you should make note of these parameters and change them accordingly.
+Recommended
+300 baud HF Packet
+SLOTTIME 12
+PACLEN
+64. or
+MAXFRAME 1
+less
+Port I & 2 Defaults
+1200 baud VHF Packet
+SLOTTIME 30
+128
+PACLEN
+MAXFRAME 4
+FRACK
+VHF
+HBAUD
+MODEM
+8
+OFF
+300
+10
+FRACK
+VHF
+HBAUD
+MODEM
+5
+ON
+1200
+12
+Note that the HF (VHF OFF) modem number is tied to the QHPACKET
+command and the VHF (VHF ON) modem number is tied to QVPACKET.
+The Radio Port baud rate HBAUD is tied to the Modem number selected.
+When HF Packet operation is selected by turning VHF OFF for the Radio
+Port in use, the Modem and baud rate (HBAUD) for that port are
+automatically selected as well. The modem selected for HF operation
+may be set with the QHPACKET command. This is handy s ince it allows
+both the modem and the HBAUD rate to be changed with a single command.
+You should set MONITOR to 6 on the port used for HF Packet when tuning
+in your first HF Packet stations.
+HF Receiver Settings
+Set your HF receiver (or transceiver) to Lower Sideband (LSB) unless
+you connected your DSP—2232 through the direct FSK keying lines, in
+which case you should select the PSK or RTTY operating mode. Adjust
+the volume to a comfortable listening level.
+4—25

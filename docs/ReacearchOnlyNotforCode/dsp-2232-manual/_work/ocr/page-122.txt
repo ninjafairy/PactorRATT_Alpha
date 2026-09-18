@@ -1,0 +1,57 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.6. 6
+7.6. 7
+7.6. 8
+7.6.8.1
+7.6. 8.2
+7.6. 8.3
+7.6.8.4
+7.6. 8.5
+7.6. 8.6
+12/91
+Monitor Mail Drop Operat ion
+The local user (SYSOP) can monitor the dialog by setting MDMON ON.
+The DSP—2232 stays in command mode during remote Mail Drop access.
+SYSOP MailDrop Commands
+The Mail Drop commands that you the SYSOP have access to are the game
+as those described in Chapter 5 of the manual on Mail Drop Operation.
+Remote User Mail Drop Commands
+When a remote user has logged onto your Mail Drop the following
+commands are available to
+The remote user may end a
+the distant station:
+command with either + ? or a carriage return.
+A brief description of each command follows in the next sections. The
+description is expanded where the command operation differs from the
+Packet Maildrop section found in • Chapter 5.
+(ABORT) (Remote only)
+The "A" command aborts the listing or reading of messages by the
+remote calling station as described in chapter 5. The difference in
+AMTOR is that the remote
+reverse the direction of
+The remote user also has
+been mis—typed by typing
+(BYE)
+The "B" command logs the
+user must send the ACHG command first to
+the link before he can issue the Abort cornmand .
+the ability to abort a command that may have
+" /// " on the same line as the bad command.
+remote station off the Mail Drop. In AMTOR
+the remote station may simply gracefully shut down the link with the
+RECEIVE character or the CWID character .
+(HELP)
+The "H" command sends the remote station a help list of the available
+commands shown in Chapter 5.
+(JLOG) (Remote only command)
+The "J" command sent by the distant station will cause the Mail Drop to
+send the list of stations who have logged in to your AMTOR Mail Drop.
+n (KILL n [Mine))
+The "K n" command deletes message number
+described in Chapter 5.
+(LIST [Mine l)
+from the Mail Drop as
+The "L" command shows the remote user only a list of the messages he
+or she may read as descr i. bed in Chapter 5.
+7-12

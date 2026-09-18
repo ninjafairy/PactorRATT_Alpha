@@ -1,0 +1,51 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7. 6.2
+7.6. 3
+7.6. 4
+7.6. 4.1
+12/91
+At this time however, unattended operation below 30 MHz is not legal
+for US amateurs unless they hold a Special Temporary Authorization
+(STA) from the FCC for this purpose. This restriction may someday
+change, but until then US amateurs must be sure to always have control
+of their HF transmitters when any automatic device such as the
+DSP—2232 Mail Drop is in operation.
+With this in mind, we have designed the AMTOR Mail Drop so that it can
+be disabled and then re—enabled at any time during an ARQ link simply
+by turning the command TMAIL (TOR MAIL) OFF. This allows you the
+SYSOP to make your MailDrop available to other stations and still
+break in to chat with remote stations at any time. This could come in
+handy should you want to provide some help or information to a remote
+station using your AMTOR Mail Drop.
+Settings For AMTOR Mail Drop Operation
+Before a remote AMTOR user can access your Mail Drop, be certain that
+MYCALL (on Port 1) is set to your Amateur callsign and MYSELCAL iB set
+to your 4 —character AMTOR SelCa11. To allow CCIR 625 AMTOR access to
+your Mail Drop, your 7 —character MY IDENT must also be entered. Once
+these commands have been entered, you must then enter the AMTOR mode.
+Start inq AMTOR Mail Dfop Operation
+Remote access to your AMTOR Mail Drop is controlled by the cornrnand
+TMAIL which is short for TOR MAIL. The TMAIL command controls remote
+access to the AMTOR Mail Drop in the same way that the MAILDROP command
+controls remote Packet access.
+Turn the TMAIL command ON (default OFF) to allow remote stations to
+access your Mail Drop in ARQ AMTOR. Turn TMAIL OFF to have normal ARQ
+QSOs with other stations in the AMTOR mode.
+Local Loqon to the Mail Drop
+To locally access your Mail Drop use the MDCHECK command as described
+in chapter 5 of this manual on Mail Drop operation.
+Remote Logon to your AMTOR Mail Drop
+The AMTOR maildrop user interface is slightly different from the
+packet interface due to the differences between the two modes.
+When CODE is set to O and the ITA#2 alphabet is used in AMTOR, only
+UPPER case characters are sent.
+If you the SYSOP set CODE to 2
+enabling the Cyrillic extensions, both upper and lower case characters
+can be sent and received. See the CODE command for information and
+limitations of this feature.
+When a station links with your AMTOR Mail Drop, your DSP—2232 first
+identifies your station by sending your callsign and the amount of
+free Mail Drop memory as shown below:
+DE WX7AAA (AEA DSP-2232) 17528 FREE.
+7-10

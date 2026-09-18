@@ -1,0 +1,70 @@
+DSP-2232 OPERATING MANUAL
+-->
+PACKET RADIO
+NET/ ROM. developed by Software 2000, quickly became a standard that
+others imitated. Many networking "Nodes" today use a similar if not
+identical set of commands. We will discuss the typical NET/ ROM
+commands you will likely encounter when connecting to a packet switch.
+When you connect to a NET/ ROM Node you will not initially get any
+Since NET/ ROM commands are few and easily memorized, they did
+prompt .
+not see a need to clutter the channel with prompts.
+Like other
+automatic systems however, if you send an "H" or a for Help you
+can expect to get a "Help" response similar to the following:
+Invalid command (CONNECT INFO NODES ROUTES USERS)
+In our example, the line above is from the Seattle node, g imply known
+as SEA. The callsign for the node is N7HWD—8.
+" Invalid Command"
+means that the node did not understand the comrnand you sent, so it
+returned the above "help" line to remind the user of the commands it
+knows. These are CONNECT, INFO, NODES, ROUTES and USERS.
+Most often you will use the nodes CONNECT command to connect to other
+stations. Once you have connected to the node, simply send the
+command "CONNECT (call sign) " or simply "C (call sign) where (call sign)
+is the call of the packet station you want to connect to that ig in
+range of the node.
+Not everyone you want to talk to is in range of your local Node.
+Fortunately, NET/ ROM will learn about other nodes it can reach and
+allow you to connect to these nodes as well. To f ind out what other
+nodes your local station can reach, simply type the command "NODES"
+after you connect.
+This will display something like the following:
+Nodes:
+BALDY : WB6VAC-8
+ELN : N7HHU-8
+MSO: W7DVK-5
+PTN:K7TPN-8
+SPOKN : WB7NNF-8
+BOI : W7SC
+EVT : KA7VEE-8
+OLY : K 7 APT-8
+RLIMB : WORL1-2
+SVBBS : KA7RNX
+BOISE:N7FYZ-8
+LSO:K7ZVV-8
+PDT:N7ERT-5
+SALEM:AF7S-1
+TAC:W7DK-8
+COE : KK7X-4
+MCW:WB7DOW-12
+PDX7 : KA7AGH-8
+SEAW: N8GNJ-8
+YKM: K3GPJ-8
+When you connect to a node (either directly or through another
+node) you may want to know who else is using that particular node.
+Type the cornmand "USERS" to f ind out who is using the system. You
+will see your own call in the list as well as anyone else who is using
+the node. An example is shown below:
+NET/ROM Version 1.3 (662)
+Uplink(W7MCU)
+KA7RZK)
+Uplink( "your call sign")
+Downlink(W7MCU-15 WA7ZUE)
+12/91
+The IDENT command simply sends you an identification packet from the
+node that may give its location and owner as shown below:
+SEA: N7HWD-8> NORTHWEST AMATEUR PACKET RADIO ASSOCIATION
+145.01 MHZ, USER LANt GRASS MTN.
+Local BBS is N7HFZ
+4-11

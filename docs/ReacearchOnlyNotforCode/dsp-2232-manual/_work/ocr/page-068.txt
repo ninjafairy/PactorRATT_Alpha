@@ -1,0 +1,58 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4. 6.3
+4. 6.4
+4. 6.5
+4. 6.6
+4.6. 7
+4.7
+.2/91
+This same procedure is used to select a logical channel on Radio
+Port 2, only instead of pressing a channel "number" from 0—9, a
+" letter" from A—Z is pressed. This is in fact the method used to
+switch back and forth between Radio Ports 1 and 2.
+Please see the
+section on switching between Radio Ports later in this chapter for a
+more complete description of this process.
+Will You Accept Multiple Connects
+Setting the CHSWITCH character only allows you to make outgoing
+multiple connects.
+For the DSP—2232 to allow multiple incoming
+connections, you must set the USERS parameter to more than one (1) for
+each Port that you wish to allow incoming multiple connections .
+The number you enter in the USERS command tells the DSP—2232 how many
+other users you will allow to connect to you at one time.
+Displav Multiple Connected Callsiqns
+Multiple Connection operation can be confusing — especially
+remembering who is connected on what channel. To help this, you may
+want to turn ON the CHCALL command to display the callsign of the
+station who is connected to you on a given channel.
+Doubling Received CHSWITCH Characters
+If you want to be able to tell the difference between the CHSWITCH
+characters you type, and characters from other stations that happen to
+be the same as your CHSWITCH character, then set CHDOUBLE ON .
+Check inq Your Connect Status with the CSTATUS Command
+To check what channels your DSP—2232 is currently set tot as well as
+who is connected to you, you may find the CSTATUS command helpful.
+CSTATUS is an imxnediate command that shows you the status of all
+packet channels as well as the channel you are currently on.
+The MULT LED
+You will know you are connected to more than one packet station on
+each Radio Port when the MULT LED for that port on the front panel of
+the DSP—2232 lights.
+NOTE :
+The MULT LED will blink if the DSP—2232's receive buffer is
+filled. This can happen if your computer is not connected to
+the DSP—2232 and the MONITOR command was left ON, or if for
+some reason, your communications program no longer can accept
+any further inbound data.
+HF Packet Operat ion
+In this section we
+HF Packet is much trickier than operating on VHF-
+will assume you have as completed section 4.2 of this chapter and at
+If at all
+least read section 4.3 and the MONITORING sections of 4.4.
+possible, get some experience with VHF packet before trying packet on
+Although this is not absolutely required, the experience will
+help you make HF packet contacts.
+4-24

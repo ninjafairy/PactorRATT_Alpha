@@ -1,0 +1,70 @@
+Once all the above settings have been made, simply issue the standard
+CONNECT request as described earlier in the chapter .
+If the station you are connecting to also has Packet Lite enabled, a
+Packet Lite connection will result and you and the distant station
+4.11.2
+4.11. 3
+7/92
+DSP-2232 OPERATING MANUAL
+Initiatinq a Packet Lite Connection
+2.
+3.
+—O
+PACKET RADIO
+should enjoy a more reliable QSO than others on
+Compatibility With Standard AX. 25 Stations
+If the station you connect to does not have the
+extensions, there are three known possibilities
+1.
+WAIABC>WB2XYZ (C, P) 01 3B 38 58 32
+WB2XYZ>WAIABC (UA, F)
+the same frequency .
+Packet LITE protocol
+that will occur.
+{Packet Lite attempt}
+{Standard ack}
+In this case, the non—Lite station sees the [C, P) control byte but
+ignores the non—standard bytes following it.
+It replies with a
+standard UA frame, and the connection proceeds as standard AX. 25.
+.WAIABC>WB2XYZ [C, P) 01 3B 38 58 32
+WB2XYZ>WAIABC (FR): 3F 00 03
+WAIABC>WB2XYZ (C, P)
+WB2XYZ>WAIABC (UA,F)
+{Packet Lite attempt}
+{Frame Reject}
+{Standard attempt}
+{Standard ack}
+In this case, the non—Lite station notices the non—standard bytes
+following the control byte and issues a FRMR (Frame Reject) to signify
+that a protocol violation has taken place. The DSP—2232 receives the
+FRMR and automatically reverts to standard AX. 25, sending the connect
+retries without the Lite PID and address bytes.
+WAIABC>WB2XYZ [C, P) 01 3E 38 58 32
+{Packet Lite attempt}
+{No response}
+In this case, the non—Lite station notices the non—standard bytes
+following the control byte but sends no response at all.
+If this
+occurs, you must turn the command LITE OFF and try to connect again to
+the distant station. No adverse effects are caused by this, but
+transparency with standard AX. 25 is lost when the receiving station
+does not acknowledge a Packet Lite connect request in some manner.
+We know that TCP/IP, NET—ROM and DRSI stations ignore Packet Lite
+Connect requests. These stations are normally found on VHF, but to be
+safe, the LITE command should be turned OFF when not in use.
+Packet Lite Protocol Enhancement Summarv
+The following describes the Packet Lite protocol extension in depth
+for those interested in the technical details.
+It is not necessary to
+read or understand the following section to use the protocol.
+Here is a summary of a Packet Lite exchange, where WAIABC calls WB2XYZ:
+Connect :
+dest inat ion
+B
+c
+source
+SABM 01
+CTRL PID
+3E 38 58 32
+I short address

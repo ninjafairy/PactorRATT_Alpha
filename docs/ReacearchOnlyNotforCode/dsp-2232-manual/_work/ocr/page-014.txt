@@ -1,0 +1,166 @@
+Paragraph
+10.2. 1
+10.3. 1
+10.3. 2
+10.
+10.
+10.
+11.1
+11.2
+11.3
+11.4
+11.5
+11.5. 1
+11.5. 2
+11.6
+II.
+11.8
+11.8. 1
+11.8. 2
+12.1
+12.2
+12.3
+12.3. 1
+12.3. 2
+12.4
+12.5
+12.6
+12.
+12.
+12.
+6. 3.1
+12.
+12.
+6.5
+3/93
+DSP-2232
+10.1
+10.2
+10.3
+10.4
+4.1
+4.2
+4.3
+6.1
+6.2
+6.3
+7.1
+12-2
+12-3
+12—4
+6.1
+12—4
+6.2
+12.6. 3
+12—6
+6.4
+OPERATING MANUAL
+CHAPTER 10
+overview
+SIAM Operation
+Tuning In
+- SIGNAL
+IDENTIFICATION
+AND
+TDM
+TABLE
+OPERATION
+OF
+CONTENTS
+FSK
+Narrow
+and
+Wide
+Stat ions
+Using the SIAM Mode
+Copy ing Encoded RTTY
+The CODE Corrunand for
+TDM Receive Operation
+TDM Parameters
+Transmissions
+Internat ional
+RTTY
+Compat ibi 1 i ty.
+Monitoring TDM Signals
+Where to
+Overv iew
+Preparation
+Operat ion
+Find TDM Signals
+CHAPTER
+11 - SATELLITE OPERATION
+Paqe
+10-1
+10-1
+10-1
+10-2
+10-3
+10-3
+10—4
+10—4
+10—4
+10—4
+11-1
+11-1
+11-2
+DSP-2232 satellite
+Modems
+1200
+9600
+1200
+1200
+bits/ sec BPSK Operation
+BPSK Transmitter and Receiver
+Settings
+Tuning in BPSK Satellite Stations
+bits/ sec Direct FSK Operation
+FSK Transmitter and Receiver Settings
+Tuning in FSK Satellite
+satellite Programs
+and 4800 bits/ sec ASCII
+ASCII Receiver Settings
+Stations
+Operation
+bits/ sec AFSK FM AX. 25 Operation
+AFSK FM Receiver Settings
+Tuning in AX. 25 Satellite Stations
+CHAPTER 12
+- PACTOR
+OPERATION
+Overview
+Where to Operate PACTOR
+DSP—2232 Parameter Settings
+Entering Your Callsign
+Enter the PACTOR Mode
+HF Receiver Settings
+Tuning in PACTOR Stations
+Operat ing on PACTOR
+Going On the Air
+Calling CQ in Unproto
+(MYPTCALL)
+PACTOR
+. 11-2
+. 11-2
+11-3
+. 11-3
+. 11—4
+. 11—4
+11-5
+11—6
+11 _ 7
+11 _
+11-8
+11-8
+. 11-8
+. 12-1
+. 12-1
+12-2
+• 12-2
+. 12-3
+. 12—4
+. 12-5
+Answering an Unproto PACTOR CQ .
+Ending an ARQ PACTOR Contact
+Long Path Contacts
+LCD Status and Mode Indicators
+TOC-8

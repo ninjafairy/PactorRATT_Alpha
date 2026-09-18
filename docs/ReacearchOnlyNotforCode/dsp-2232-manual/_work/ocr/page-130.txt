@@ -1,0 +1,16 @@
+DSP—2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7. 8.2
+7/92
+Possible Areas for AMTOR Performance Improvement
+If switching—time problems persist, you may have to make changes in
+the radio to eliminate excessive time delays:
+o
+o
+o
+Remove large decoupl ing capacitors from the Push—To—Ta1k line to
+allow faster PTT (transmitter) activation;
+Improve power supply decoupling, especially in audio stages .
+Do not use squelch.
+In case you can't solve your radio's switching—time problems, please
+call AEA Technical Support Department (see the front of this manual) .

@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7. 7.4
+7/92
+Now you want to let WX7EEE on VHF know that you are there, but that
+you are involved in another QSO on HF. This way he will understand
+that it may take you a little longer to respond to his packetg.
+Before you can send data to Radio Port 2, you must switch to thig Port
+with or the text you type will be sent to Radio Port 1 on AMTOR
+when Jim turns the link over to you again.
+You receive a transmission from Jim on AMTOR telling you he needs to
+in front of the text showg this wag
+sign off to go to bed. The "O: "
+received on Radio Port 1.
+Now you want to sign off with Jim on HF. Again, first you must switch
+to Radio Port I with the " O" since your last transmission wag
+Now you can make your final transmission to Jim
+directed to Port 2.
+ending with his callsign followed by your call sign.
+This time when
+you are through typing your text, you send a <CTRL—D> to the DSP—2232
+which breaks the ARQ link and returns Radio Port 1 to AMTOR Standby
+after the text has been sent.
+More Thoughts on Port Switch inq
+One problem of having more than one Radio Port is remembering which
+port you are currently using. In the dual port sample QSOs above,
+this was not a problem, but after it has been hours or days since you
+have used your DSP—2232, you may forget which port you last used.
+With AEA Pakratt Software programs, the on—screen status will alwayg
+show which port you are using so this is not a problem. With other
+programs, you will have to query the DSP—2232 with the CSTATUS SHORT
+command. The CSTATUS command displays. the status of the logical
+channels of Port 1 and Port 2 of the DSP-2232. The CSTATUS SHORT
+command displays the status of the active channel and any packet
+channels that are connected. After completing the sample QSOs above,
+the DSP—2232 would display the following.
+cmd:CSTATUS S
+Ch. A - 10 DISCONNECTED
+This reminds you that Channel A is your current 1/0 channel. Any text
+that you type in the Converse mode will be sent to channel A on Radio
+If you had been connected to any other packet stations, the
+Port 2 .
+callsign and channel would have also shown in the display.
+Sometimes you might not want to be bothered with anything from the
+Radio Port you are not using. For these times either Radio Port may
+For example, let's say that in
+be turned OFF with the RADIO command.
+the above example QSO you wanted to work HF packet and did not want to
+be interrupted with any VHF connects. Typing the following command
+would cause Radio Port 2 to be disabled.
+cmd:RADIO /0
+RAdio was 1/2
+RAdio now 1/0
+When a DSP—2232 Radio Port is disabled, the front panel LCD •STATUS
+indicator for that port will be extinguished as a reminder.
+7-17

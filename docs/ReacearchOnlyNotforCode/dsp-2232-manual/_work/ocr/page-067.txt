@@ -1,0 +1,57 @@
+DSP-2232 OPERATING MANUAL
+CHECK and RELINK
+PACKET RADIO
+4.6
+4.6. I
+4. 6.2
+12/91
+If someone connects to you and then turns his TNC off, you would
+probably not want to stay connected to the station forever. The CHECK
+timer determines the amount of time the DSP—2232 will wait before
+testing the link if no data has been sent or received.
+The RELINK command sets what happens when the CHECK timer expires.
+If
+If ON,
+RELINK is OFF, the DSP—2232 changes to the Disconnected state.
+the DSP—2232 attempts to reconnect to the other station.
+Multiple Connection Operation
+Since packet radio allows many stations to share the same channel,
+many QSOs can be going on at the same time. Because packet has this
+channel sharing capability, there is no reason you cannot connect to
+more than one station at the same time. Being connected to multiple
+stations at once is a powerful feature of your DSP—2232.
+Multiple Connection Descript ion
+The DSP—2232 offers 10 logical packet channels on Radio Port 1 and 26
+logical packet channels when using Radio Port 2.
+Each logical channel
+can support a connection with another packet station. So with the
+DSP—2232, you may be connected to a total of 36 other packet stations
+s imultaneously.
+Multiple connect operation is much like a multi—line telephone with
+automatic hold. When you are connected to multiple stations you will
+automatically receive everything sent TO you. You must select the
+proper channel (in effect push the proper line button on the
+telephone) to send data to a particular station.
+If you are using an AEA PARRATT program, this is described in the
+If you are using a terminal, the rest of this section
+program manual.
+will describe how to set up the DSP—2232 for multiple connections.
+The Channel Switchinq Character
+The logical channels are selected with the CHSWITCH character. You
+must choose a CHSWITCH character that you do not normally type such as
+the• vertical bar
+(ASCII $7C), or the tilde
+(ASCII $7E). once
+this has been selected and entered into the DSP—2232, you may initiate
+multiple connections with others on your radio channel.
+The 26
+The ten logical channels on Radio Port 1 are numbered 0—9.
+logical channels on Radio Port 2 are labeled A—Z. After the CHSWITCH
+character has been selected, you can now initiate connects on any of
+the logical channels numbered zero through nine (0—9) on Port I or "A"
+through "Z" on Port 2.
+To change logical channels on Radio Port 1, press the CHSWITCH
+character you just defined, and then a number from 0—9. Remember that
+the text that you type will only be sent out tb the station connected
+to the logical channel your DSP—2232 is currently on.
+4—23

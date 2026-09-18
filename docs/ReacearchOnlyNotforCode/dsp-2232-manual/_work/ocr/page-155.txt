@@ -1,0 +1,51 @@
+DSP-2232 OPERATING MANUAL
+SATELLITE OPERATION
+The following is a sample PG program configuration file PG.CFG.
+speed 19200
+port 2
+bbscall uosat5—12
+bdcstcall uosat5—11
+mycall n4hy—O
+maxdupes 10
+maxsel 50
+restart delay 36
+break delay 36
+The DSP—2232 displays monitored packets with a port identifying "pl"
+or "p2" in front of the header to identify which port heard the
+packet. While helpful to the human user, computer programs can have
+problems with "extra" information such as this. To eliminate the
+"pl" and "p2" from monitored packets the User BIT 19 command
+(UBIT 19) may be turned OFF. With the versions of PB and PG
+available in July of 1992, we recommend turning UBIT 19 OFF.
+1200 and 4800 bits/ sec ASCII Operation
+The UoSAT OSCAR 11 can transmit 1200 bits/sec FM AFSK ASCII signals
+which can be received by the DSP—2232 with MODEM 45.
+Place the
+DSP—2232 into the ASCII mode and then select MODEM 45.
+Finally
+select the desired ASCII baud rate (ABAUD) to 1200.
+The satellite receiver should be set to the FM mode.
+Tuninq in ASCII Satellite Stations
+Tuning in 1200 or 4800 bits/ sec AFSK ASCII satellite stations
+properly is critical to successful operation.
+Follow the procedure
+below for the best results.
+11.7
+11.7. 1
+7/92
+o
+Make certain your satellite receiver is in the FM mode.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Tune your receiver carefully to the 1200 or 4800 bits/ sec
+satellite downlink frequency. Be sure that you have calculated
+the satellite's path and that it is one you can copy with good
+Do not forget that the signal may be a few KHz
+signal strength.
+away from the exact downlink frequency due to Doppler shift.
+If your FM receiver has discriminator metering, use this ag a
+check to be sure you are exactly on the proper frequency.
+When the station is tuned, the you should see a display as
+shown below .
+Tuned In
+11-7

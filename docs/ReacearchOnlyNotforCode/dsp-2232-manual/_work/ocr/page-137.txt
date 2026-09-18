@@ -1,0 +1,52 @@
+DSP-2232 OPERATING MANUAL
+FACSIMILE OPERATION
+CHAPTER 9
+9.1
+9. 1.1
+7/92
+FACSIMILE AND SSTV OPERATION
+Overv i ew
+While facsimile and SSTV are not digital modes, the personal computer
+coupled with a high resolution monitor makes an excellent display for
+these images. The DSP—2232 contains modems that can receive both FM
+and APT facsimile signals as well amateur Slow Scan Television (SSTV) .
+The DSP—2232 filters and digitizes the received audio signal for
+processing by software running on your personal computer. Therefore
+this chapter only provides an overview of FAX and SSTV operation.
+The program used to display FAX and SSTV should provide operating
+instructions and detailed information about the modes it supports.
+Note: The Analog mode is intended to replace the old black & white
+FAX mode originally developed for the PK—232. As of July 1992, there
+is no display software yet available for gray scale FAX or SSTV.
+The black & white FAX mode is retained only to support the PK—FAX and
+MACRATT with FAX programs while oew display software is developed.
+Facsimile
+Facsimile is the term used to describe the transmission of black &
+white images. There are several different Facsimile standards in use.
+Over the telephone, either "Group—2" or "Group—3" transmission
+standards are used. Sending facsimile by radio has some special
+problems so different and incompatible transmission methods are used.
+There are two basic types of facsimile signals transmitted over radio.
+Frequency Modulated (FM) • facsimile is often found in the HF . Short
+Wave bands, while an Amplitude Modulated (APT) system is used by
+satellites in the VHF and Microwave bands.
+Weather Facsimile (FM WEFAX) is transmitted throughout the Short—
+Wave spectrum, primarily to provide information to ships at sea.
+Typical stations you may find broadcast maps with weather conditions
+and satellite photographs showing cloud cover over a large area.
+Not only weather information is transmitted, but also news
+photographs from the wire services (see the frequency list below) .
+With FY. facsimile, the picture information is modulated in an audio
+In between
+tone between I, 500 Hz (Black) and 2,300 Hz (White) .
+these two frequencies are shades of gray. The DSP—2232's MODEM 41
+receives these signals and can discern 250 levels (shades of gray)
+between these two frequencies .
+Facsimile signals can also be received directly from satellites that
+are found in the 137 MHz VHF band as well as the 1691 and 1694.5 MHz
+Microwave frequencies. These satellites broadcast images of the
+earth as seen from above. The satellites transmit an FM signal with
+a 2 400 Hz Amplitude Modulated sub—carrier. A modulation of the
+sub—carrier corresponds to black, and an modulat ion level
+corresponds to white. The DSP—2232's MODEM 42 receives 256 levels
+of modulation (shades of gray) for this type of facsimile signal.

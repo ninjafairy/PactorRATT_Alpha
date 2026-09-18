@@ -1,0 +1,59 @@
+DSP-2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+CHAPTER 2
+COMPUTER INSTALLATION
+2.1
+2.1. 1
+U)
+(d
+(d
+rd
+2.2
+12/91
+Overv i ew
+In this chapter we will connect the DSP—2232 to the RS—232 Serial port
+of your Computer or Computer Terminal . After the Serial connection
+has been made we will perform a quick check of the internal software.
+Finally we will check the DSP—2232's modem by performing a Packet
+" loop—back" test. When you have completed this chapter, you will be
+ready to connect the DSP—2232 to your receiver or transceiver and
+begin using it on the air.
+Equ ipment Required
+You will need the following for this chapter:
+o
+o
+o
+o
+o
+o
+o
+o
+o
+your DSP—2232 Data controller;
+a 13.6—v01t DC, 1. 5—amp (or. greater) regulated power supply such
+as those sold by Radio Shack (or an AEA AC—4) ;
+(the power supply must be able to supply at least 12 VDC to the
+DSP—2232 while it is operating under load)
+the included DSP—2232 DC power cord unless the AC—4 is used;
+your Computer or Computer Terminal ;
+a Communications or Terminal Emulation program for your computer;
+(not needed if a Computer Terminal is being used)
+the included RS—232 cable with 9—pin "D" connector on one end and
+a 25—pin "D" connector on the other end;
+one of the included 5—pin shielded "Radio cables" •
+(note that the radio cables may arrive as a single 10—ft.
+which should be cut in half producing two 5—ft. cables.
+the 5—pin DIN connector with the jumper wire "Loop—back" .
+cable
+wire cutters and strippers or a small pocket knife, a small
+straight—blade screwdriver and a medium Phillips—head screwdriver .
+Unpacking the DSP—2232
+Carefully remove the DSP—2232 from the box and its plastic bag.
+Inspect the unit for signs of damage that may have occurred in
+shipping. If there is visible damage, please contact the dealer or
+shipper. Do not attempt to install or use a damaged DSP—2232.
+We will be discussing some of the Controls, Indicators and Connections
+in this installation so take a few moments to familiarize yourself
+with them. The f igures on the next pages may help with their
+locations .
+2-1

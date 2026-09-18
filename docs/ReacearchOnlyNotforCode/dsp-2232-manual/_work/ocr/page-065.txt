@@ -1,0 +1,53 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.4. 8.2
+4.5
+4.5. I
+4.5. 2
+12,/91
+AXDELAY and AXHANG
+Although it is not common, packet can be used through voice repeaterg.
+When sending packets through an audio repeater you may require a
+longer key—up delay than is normally needed for direct communications.
+The AXDELAY command adds more key—up delay in your DSP—2232 so that
+the repeater can stabilize. The AXHANG command sets the time your
+DSP—2232 assumes ig needed for the repeater to drop.
+Packet Protocol Bagicg
+Here we will talk a little about the AX. 25 packet protocol. You do
+not need to know the protocol to use packet, but it helps in
+understanding the protocol parameters .
+There are two modes of packet transmissions, Connected mode and
+Unconnected mode. Usually you will converse with another packet
+station in Connected mode. Still, the Unconnected or Unprotocol mode
+comes in handy for beacon transmissions and roundtable conversations.
+All packets have basically the same construction.
+Packetg contain
+source and destination callsigns (and any digipeaters if used), as
+well as information identifying the type of packet. This packet
+identification can be• seen with the MONITOR command discussed earlier.
+All packets contaih an error check code called the CRC. This
+virtually ensures that when a packet is received, it will not contain
+a single error. The command PASSALL can disable the CRC error check,
+but this should only be done for experimental purposes.
+Unconnected Packets
+In order to allow amateurs to send message beacons and to call CQ, the
+AX. 25 protocol has the ability to send packets that are intended for
+more than one specific packet station to see.
+Since all packets must
+have a destination "call sign", the DSP—2232 sends Unprotocol packets
+TO the callsign of CQ. This can be changed with the UNPROTO command,
+but most people like this since it makes calling CQ easy.
+Connected Packets
+When you Connect to another station, the AX. 25 packet protocol ensures
+that the station to whom you are connected receives all the packets
+that you send. Similarly, the protocol ensures you will receive all
+the packets that the other station sends to you. The following
+describes briefly how the protocol does this.
+FRACK and RETRY
+When the DSP—2232 sends a packet to a Connected station, it expects an
+acknowledgment (ACK) packet from the other station to confirm that the
+packet was received. The AX. 25 packet protocol will automatically
+retransmit (Retry) packets when an acknowledgment is not received from
+the distant end of •the link within a specified time.
+The FRACK command (FRame ACKnow1edge time) sets the time lapse allowed
+before the originating station retransmits (retries) the packet.

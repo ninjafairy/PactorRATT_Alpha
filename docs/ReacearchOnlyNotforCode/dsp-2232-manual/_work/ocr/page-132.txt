@@ -1,0 +1,58 @@
+DSP-2232 OPERATING MANUAL
+MORSE OPERATION
+8.1
+8.2
+8.2. 1
+8.2. 2
+8.2.3
+7/92
+CHAPTER 8
+MORSE OPERATION
+Overv i ew
+The DSP—2232 will both send and receive International Morge Code.
+The
+computer based Morse operator can use the DSP—2232 to send "perfect"
+code at much higher speeds than are typical of hand sent code.
+As a rule, no machine can receive Morse as well as the FSK modes.
+Your DSP—2232 is no exception. A strong signal and a good " fist"
+are both required for the DSP—2232 to do a reasonable job of copying
+Morse code.
+Don't expect your DSP—2232 to do miracles and produce
+good copy from bad fists !
+Where to Operate Morse
+Before you can operate Morse, you must first know where the activity
+is. Morse operation is permitted on any amateur f requency, but most
+often occurs in the lower 100 to 250 kHz of a band.
+Enter inq the Morse Mode
+If you are using an 4EA PARRATT program, follow the instructions in
+the program manual to enter the Morse mode.
+If you are using a terminal, simply type "MORSE" or "MO" from the
+Command Mode followed by the <Enter> key to enter the Morse mode on
+Radio Port 1.
+Packet operation on port 2 is dissabled when in the
+Morse mode .
+Opmode
+Opmode
+HF Receiver
+Set your HF
+volume to a
+The DSP—2232 responds by displaying the previous mode:
+was PAcket
+now MOrse
+Settings
+receiver (or transceiver) to che CW mode. Adjust the
+Be certain that any IF—Shift
+comfortable listening level.
+and Passband Tuning controls are centered or set to the OFF position.
+Tuning in Morse Stations
+Tuning in Morse stations properly is critical to successful operation.
+Follow the procedure below for the best results in tuning in Morse
+stations.
+o
+o
+o
+Make certain your HF receiver is in the CW mode.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Tune your receiver carefully in the lower portion •of your
+favorite amateur band and look for Morse signals.

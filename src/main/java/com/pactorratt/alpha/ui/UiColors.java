@@ -11,6 +11,11 @@ public final class UiColors {
     public static final Color LOCAL_PENDING = Color.GRAY;
     public static final Color LOCAL_CONFIRMED = new Color(0x00, 0x80, 0x00);
     public static final Color STATUS_BG = new Color(0xE8, 0xE4, 0xD8);
+    public static final Color TNC_CONNECTED = new Color(0x00, 0xA0, 0x00);
+    public static final Color TNC_OFFLINE = Color.RED;
+    public static final Color TNC_OFFLINE_DIM = new Color(0x66, 0x00, 0x00);
+    public static final Color TX_OFF_LIVE_BG = new Color(0x22, 0xB0, 0x22);
+    public static final Color TX_ON_LIVE_BG = new Color(0xFF, 0x6B, 0x6B);
 
     private UiColors() {
     }

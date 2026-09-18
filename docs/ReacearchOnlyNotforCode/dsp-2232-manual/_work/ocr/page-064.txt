@@ -1,0 +1,59 @@
+DSP-2232 OPERATING MANUAL
+Without the PASS character, this message would
+By prefixing the first <CR> with <CTRL—V>, you
+while maintaining the <CR> as part of the text.
+can be useful in formatting text Messages such
+Packet Transmit Timinq
+PACKET RADIO
+go out as two packets.
+send it all at once,
+The PASS character
+as CTEXT as well.
+4.4. 8
+4.4. 8.1
+12/91
+Your DSP—2232 has a number of built—in timers used to control the
+packet protocol and transmit timing. The default values have been set
+at the factory to provide reasonable performance, but the values may
+not be opt imum for your local area. Most protocol parameters should
+be adjusted only after carefully reading about them later in the
+You SHOULD however adjust TXDELAY for your transmitter as
+chapter .
+indicated below.
+TXDELAY and AUDELAY
+Radios vary in the time it takes to switch from receive to transmit.
+If your DSP—2232 starts sending data before your transmitter is up to
+power, the packet will not be received properly at the distant end.
+TXDELAY controls the delay between your transmitter's key—up and the
+The default value
+moment when your DSP—2232 starts sending data.
+of • 30 corresponds to a time of 300 mSec and works with most VHF/UHF FM
+transceivers. With dodern transceivers TXDELAY can often be reduced
+which will improve packet performance in your area. You should
+perform the following procedure to optimize TXDELAY for your station.
+o
+o
+o
+o
+o
+o
+Find another station who can reliably digipeat your signals.
+Set your UNPROTO path to TEST via the callsign of the station who
+can digipeat your signals.
+Set the MONITOR corrunand to at least 1.
+Go to CONVERSE mode and send a few packets by pressing the
+<Enter> key. Note that you should see them on your own screen
+when they are digipeated by the other station.
+Start reducing TXDELAY by units of 5 each time making sure the
+other station is still digipeating ALL your UNPROTO packets.
+Eventually you will find a value where the other station can no
+longer copy your packets to digipeat them.
+When this happens, increase TXDELAY in units of one or two until
+the other station again digipeats ALL of your packets. This will
+be the optimum setting of TXDELAY .
+After TXDELAY is adjusted as indicated above you may want to adjust
+the audio delay (AUDELAY) as indicated in the Command Summary.
+The next sections of this chapter will discuss some of the more
+advanced packet features including Multiple Connects, Packet Timing
+and Protocol, and HF Packet Operation.
+4—20

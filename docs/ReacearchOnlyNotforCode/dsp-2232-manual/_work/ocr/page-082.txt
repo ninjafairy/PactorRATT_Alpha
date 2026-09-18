@@ -1,0 +1,103 @@
+DSP-2232 OPERATING MANUAL
+The destination and the source are both 7 bytes long.
+-o
+-o
+—O
+PACKET RADIO
+Everything up
+to the CTRL byte ( SABM) is standard AX. 25 version 2 . O. The "Protocol
+I D" of 01 hex is Packet Lite's reserved value, which provides a way of
+interpreting the following bytes. This leaves room for other
+extensions to AX. 25 in the future. The short address bytes are the
+right—justified bytes of the address field that WAIABC proposes to use
+in subsequent Packet Lite frames with WB2XYZ.
+In this case, the AEA
+3E38 iB a
+implementation of the short address is illustrated .
+compressed version of the destination WB2XYZ and 5832 is a compression
+of WA 1 ABC. However, any combination of 26 bits may be used
+(see "Technical Details" below) .
+Connect acknowledgment :
+destination
+WB2XYZ replies to WAIABC.
+Y
+z
+source
+UA 01
+CTRL PID
+58 32 3B 38
+I short address
+Again everything up to the CTRL byte (UA)
+is standard AX. 25. The "Pl D" of 01 and the short address confirm that
+The short address is
+WB2XYZ has accepted the Packet Lite connection.
+again the right—justified representation of the address field that
+In this
+WB2XYZ will be using in subsequent Packet Lite transmissions.
+case WB2XYZ has accepted the short address field suggested by WA 1 ABC,
+and has shown his acceptance by echoing the address back in reverse
+order ( 5832 = WAIABC and 3E38 = WB2XYZ) . AEA products always accept
+the short address from the SABM frame; however, the Packet Lite
+protocol allows the sender of the UA frame to propose a different
+combination of 26 bits, to avoid conflicting with another Lite QSO.
+In either case, the sender of the original SABM must accept the 26
+bits in the UA frame, reversing the address order for its own transmissions.
+Transmission of data:
+3E38 shifted
+short dest.
+BO 65
+5832 shifted
+short source
+10
+CTRL •
+PID
+Test <CR>
+text
+The address field
+WAIABC sends data to WB2XYZ in Packet Lite format.
+consists of the short address from WB2XYVs UA frame, reversed and
+left—shifted. The added bits come from AX. 25 version 2 .O's command
+and response bits, and the end—of—address bit .
+Acknowledgment of data :
+BO 64
+5832 shifted
+short dest.
+3E38 shifted
+short source
+31
+CTRL
+WB2XYZ acknowledges the data from WA 1 ABC. The address f ield is
+This is the shortest length frame possible in Packet Lite.
+reversed .
+4 address bytes + 1 CTRL byte + 2 flags + 2 CRC bytes =
+Every 10 minutes the stations must identify using both
+addresses :
+9 bytes .
+long and short
+w
+w
+7/92
+B
+destination
+dest inat ion
+w
+B
+source
+source
+B
+Y
+4-38
+c
+z
+01
+CTRL PID
+01
+CTRL PID
+3E 38
+I short
+58 32
+short
+58 32
+address
+BE 38
+address

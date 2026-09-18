@@ -224,11 +224,14 @@ public final class ConfigStore {
         append(sb, "commitMode", c.getCommitMode().name(), true);
         append(sb, "listenOnStart", c.isListenOnStart());
         append(sb, "debugLogEnabled", c.isDebugLogEnabled());
+        append(sb, "Display Startup", c.isDisplayStartup());
         append(sb, "cannedHandoverText", c.getCannedHandoverText(), true);
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
+        append(sb, "cannedCqText", c.getCannedCqText(), true);
         append(sb, "wrapColumns", c.getWrapColumns());
         append(sb, "fec200", c.isFec200());
         append(sb, "fecRetries", c.getFecRetries());
+        append(sb, "cqRepeat", c.getCqRepeat());
         append(sb, "opPoll", c.getOpPoll());
         append(sb, "buddiesExpanded", c.isBuddiesExpanded());
         append(sb, "heardExpanded", c.isHeardExpanded());
@@ -290,7 +293,7 @@ public final class ConfigStore {
         if (map.containsKey("commitMode")) {
             try {
                 config.setCommitMode(CommitMode.valueOf(map.get("commitMode")));
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException e) {
                 config.setCommitMode(CommitMode.LINE);
             }
         }
@@ -300,11 +303,19 @@ public final class ConfigStore {
         if (map.containsKey("debugLogEnabled")) {
             config.setDebugLogEnabled(Boolean.parseBoolean(map.get("debugLogEnabled")));
         }
+        if (map.containsKey("Display Startup")) {
+            config.setDisplayStartup(Boolean.parseBoolean(map.get("Display Startup")));
+        } else if (map.containsKey("displayStartup")) {
+            config.setDisplayStartup(Boolean.parseBoolean(map.get("displayStartup")));
+        }
         if (map.containsKey("cannedHandoverText")) {
             config.setCannedHandoverText(map.get("cannedHandoverText"));
         }
         if (map.containsKey("cannedDisconnectText")) {
             config.setCannedDisconnectText(map.get("cannedDisconnectText"));
+        }
+        if (map.containsKey("cannedCqText")) {
+            config.setCannedCqText(map.get("cannedCqText"));
         }
         if (map.containsKey("wrapColumns")) {
             config.setWrapColumns(parseInt(map.get("wrapColumns"), 80));
@@ -314,6 +325,9 @@ public final class ConfigStore {
         }
         if (map.containsKey("fecRetries")) {
             config.setFecRetries(parseInt(map.get("fecRetries"), 1));
+        }
+        if (map.containsKey("cqRepeat")) {
+            config.setCqRepeat(parseInt(map.get("cqRepeat"), 1));
         }
         if (map.containsKey("opPoll")) {
             config.setOpPoll(parseInt(map.get("opPoll"), 0));

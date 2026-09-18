@@ -1,0 +1,68 @@
+3.3. 3
+Pin
+1
+2
+3
+4
+5
+DSP-2232 OPERATING MANUAL
+3-3
+RADIO
+INSTALLATION
+Check Your Transceiver's Operatinq Manual
+Locate the Operating Manual for your transceiver and turn to the page
+describing the connector to which you will attach your DSP—2232.
+Even
+if you found the exact model of your transceiver in APPENDIX E, it ig
+a good idea to verify that your transceiver •g manual agrees with the
+information in the appendix. If the information does not agree, or
+you could not find the exact transceiver model in APPENDIX E, then you
+should use the information contained in your transceiver' g manual to
+connect the DSP—2232.
+Specific Connection Points
+Whether you are connecting an HF Single Side Band transceiver for
+RTTY/FAX operation, or a VHF/UHF transceiver exclusively for packet,
+the minimum connections to your transceiver will be almost identical .
+HF transceivers have a few optional connections that will be covered
+after the basic connections have been made.
+The following table and figure will be helpful in identifying the
+proper basic connection points to the DSP—2232 radio cable.
+Signal Name
+Microphone audio
+Ground
+Push-To-Ta1k
+Receive audio
+Squelch Input
+Shield/ Drain Wire
+Table 3—1
+Wire
+Co Ior
+Wh ite
+Brown
+Red
+Green
+Black
+Silver
+Descr ion
+AFSK from DSP—2232 to transceiver
+Audio and PTT cornmon return
+DSP—2232 keyg transmitter
+Audio from receiver to DSP—2232
+Allows DSP—2232 to detect activity on a
+shared mode channel (optional)
+Shield of cable / Microphone Ground
+J4 and J 5 Radio Port and Cable Connections
+TO
+EXTERNAL
+SPEAKER
+(OPT
+12/92
+REAR VIEW
+S PIN OIN
+CLIP SHtELO
+THIS EFO
+BRN
+TO SPEXER
+HI c GRCRR-•O
+Figure 3—2
+DSP—2232 to Radio Cable Connections

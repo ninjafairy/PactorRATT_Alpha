@@ -1,0 +1,107 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+5.4. 3
+5.4. 4
+12/91
+(EDIT (SYSOP only command)
+The Edit command (Host abbreviation E 1) is a powerful tool for
+controlling the status of messages on your Mail Drop. The SYSOP must
+access the Mail Drop before typing this command.
+Here are all possible
+ways to use
+this command:
+WORM
+WHIZ
+N7ML
+N7ML.MT.NA
+E
+E
+E
+E
+E
+E
+E
+E
+E
+12
+48
+49
+58
+61
+62
+63
+64
+>
+B
+T
+Y
+Shows the following short help file:
+E msg#
+E msg# B/ T/ P
+E msg# Y/N/F
+E msg# >/</@ callsign
+Shows message 12' s info line.
+Sets "WORM" as message 23' s destination.
+Sets "WHIZ" as message 35' s source.
+Sets "N7ML" as message 48 •s destination BBS.
+Sets "N7ML" as message 49' s destination BBS.
+and adds the hierarchical forwarding
+information . MT. NA signifying that N7ML BBS
+is located in the state of Montana (MT)
+which is located in North America (NA) .
+Clears message 58' s destination BBS field.
+status to Private.
+Sets message 60's
+status to Bulletin.
+Sets message 61' s
+status to Traffic.
+Sets message 62 's
+status to Has—Been—Read.
+Sets message 63 's
+status to Has—Not—Been—Read.
+Sets message 64's
+status to Reverse Forward.
+Sets message 49 's
+The command
+"E n F" sets the message status to enable Reverse
+Forwarding of a message number. To cancel forwarding, set the status
+to either "Y" or "N. "
+Please read the section on Reverse Forwarding
+(below) if you are interested in this feature.
+( HELP) ( Remote only command)
+The "H" command sends the distant station a HELP list of all available
+MailDrop commands as shown below. The " ? " will also cause the HELP
+file to be sent.
+bort-)
+J ( log)
+K (ill)
+L (ist)
+R (ead)
+S (end)
+V ( ersion)
+Stop Read or List
+Log off
+Display this message
+Display stations heard
+L
+RM
+s
+Kill
+Kill
+: List
+: List
+Read
+Read
+Send
+Send
+message number n
+messages you have read
+message titles
+messages to you
+message number n
+all your unread messages
+a message to SYSOP
+a message to station n
+Display TNC firmware version
+Same as H (e 1 p)
+5—4

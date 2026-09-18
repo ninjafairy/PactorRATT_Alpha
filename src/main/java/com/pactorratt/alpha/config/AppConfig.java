@@ -18,8 +18,20 @@ public final class AppConfig {
     private CommitMode commitMode = CommitMode.LINE;
     private boolean listenOnStart = false;
     private boolean debugLogEnabled = false;
+    /**
+     * When false, skip PK-232 startup-message dialogs and the TNC firmware/hardware
+     * ({@code $0009}) info window during connect.
+     */
+    private boolean displayStartup = false;
     private String cannedHandoverText = "KKK";
     private String cannedDisconnectText = "SK";
+    /** Listen CQ button payload (one copy per {@link #cqRepeat} line). */
+    private String cannedCqText = "";
+    /**
+     * How many times the Listen CQ button sends {@link #cannedCqText}. Range 0–10;
+     * {@code 0} means the button sends nothing.
+     */
+    private int cqRepeat = 1;
     private int wrapColumns = 80;
     /** PTSend {@code n}: false → 1 (100 baud), true → 2 (200 baud). */
     private boolean fec200 = false;
@@ -115,6 +127,14 @@ public final class AppConfig {
         this.debugLogEnabled = debugLogEnabled;
     }
 
+    public boolean isDisplayStartup() {
+        return displayStartup;
+    }
+
+    public void setDisplayStartup(boolean displayStartup) {
+        this.displayStartup = displayStartup;
+    }
+
     public String getCannedHandoverText() {
         return cannedHandoverText;
     }
@@ -129,6 +149,45 @@ public final class AppConfig {
 
     public void setCannedDisconnectText(String cannedDisconnectText) {
         this.cannedDisconnectText = cannedDisconnectText == null ? "" : cannedDisconnectText;
+    }
+
+    public String getCannedCqText() {
+        return cannedCqText;
+    }
+
+    public void setCannedCqText(String cannedCqText) {
+        this.cannedCqText = cannedCqText == null ? "" : cannedCqText;
+    }
+
+    public int getCqRepeat() {
+        return cqRepeat;
+    }
+
+    /** Clamps to 0–10 (Listen CQ copies; 0 = send nothing). */
+    public void setCqRepeat(int cqRepeat) {
+        if (cqRepeat < 0) {
+            this.cqRepeat = 0;
+        } else if (cqRepeat > 10) {
+            this.cqRepeat = 10;
+        } else {
+            this.cqRepeat = cqRepeat;
+        }
+    }
+
+    /**
+     * Listen CQ payload: canned text copied {@link #cqRepeat} times, each copy on its own
+     * line. Empty if the canned string is blank or repeat is 0.
+     */
+    public String cqFecPayload() {
+        if (cqRepeat <= 0) {
+            return "";
+        }
+        String canned = cannedCqText == null ? "" : cannedCqText.replace("\r\n", "\n").replace('\r', '\n');
+        if (canned.isBlank()) {
+            return "";
+        }
+        String block = canned.endsWith("\n") ? canned : canned + "\n";
+        return block.repeat(cqRepeat);
     }
 
     public int getWrapColumns() {

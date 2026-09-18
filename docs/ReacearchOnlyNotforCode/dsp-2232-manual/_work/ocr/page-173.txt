@@ -1,0 +1,48 @@
+DSP-2232 OPERATING MANUAL
+PACTOR OPERATION
+12.10.5
+3/93
+After making thig transmission on PACTOR, you gee WX7EEE on VHF hag
+offered you a ride to the hamfest. We know this text from Radio
+Port 2 since the previous packet displayed by the DSP—2232 wag the
+"A: *** CONNECTED" message from Port 2.
+Now you want to let WX7EEE on VHF know that you are there, but that
+you are involved in another QSO on HF. Thig way he will understand
+that it may take you a little longer to respond to his packets.
+Before you can gend data to Radio Port 2, you must switch to thig Port
+with or the text you type will be gent to Radio Port 1 on PACTOR
+when Jim turns the link over to you again.
+You receive a transmission from Jim on PACTOR telling you he needs to
+Bign off to go to bed. The "O: "
+in front of the text shows thig wag
+received on Radio Port 1.
+Now you want to sign off with Jim on HF. Again, first you must switch
+to Radio Port 1 with the " 10" since your last transmission wag
+directed to Port 2 .
+Now you can make your final transmission to Jim
+ending with his callsign followed by your call sign. Thig time when
+you are through typing your text, you send a <CTRL—D> to the DSP—2232
+which breaks the ARQ link and returns Radio Port 1 to PACTOR Standby
+after the text has been sent.
+More Thouqhts on Port. Switchinq
+One problem of having more than one Radio Port is remembering which
+port you are currently using.
+In the dual port sample QSOs above,
+this was not a problem, but after it has been hours or days since you
+have used your DSP—2232, you may forget which port you last used.
+With AEA Pakratt Software programs, the on—screen status will always
+show which port you are using so this is not a problem. With other
+programs, you will have to query the DSP-2232 with the CSTATUS SHORT
+command. The CSTATUS command displays the status of the logical
+channels of Port 1 and Port 2 of the DSP-2232. The CSTATUS SHORT
+command displays the status of the active channel and any packet
+channels that are connected. After completing the sample QSOs above,
+the DSP—2232 would display the following.
+cmd:CSTATUS S
+Ch. A - 10 DISCONNECTED
+This reminds you that Channel A is your current 1/0 channel. Any text
+that you type in the Converse mode will be sent to channel A on Radio
+Port 2 .
+If you had been connected to any other packet stations, the
+callsign and channel would have also shown in the display.
+12-19

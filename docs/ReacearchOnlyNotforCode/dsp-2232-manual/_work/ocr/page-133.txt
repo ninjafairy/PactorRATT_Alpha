@@ -1,0 +1,42 @@
+DSP-2232 OPERATING MANUAL
+MORSE OPERATION
+o
+o
+When you find a station, slowly vary the VFO on your receiver and
+look for a display on the DSP—2232 tuning indicator as shown
+below when the station is "keyed down" .
+Tuned In
+(Key Down)
+When the station is not "keyed down" or there is no station on
+frequency, the tuning indicator should look like the one below.
+Frequency
+Qu i et
+Adjust the receiver volume so that the DCD LED lights when a
+properly tuned Morse station is being received.
+8.3
+_ 2/91
+When a Morse station is tuned in, you should see the copy on your
+screen. The DSP—2232 will track the speed of the received signal.
+Going On The Air
+Make sure that you have connected the DSP—2232 to your transmitter for
+direct CW keying as discussed in Section 3.3. 6 of this manual.
+Although the DSP—2232 is capable of morse transmission using Audio
+Keying in the SSB mode of a transmitter, direct CW keying is
+preferred. Most modern transmitters and transceivers are designed for
+direct CW keying and often allow additional filtering to be switched
+in for improved Morse reception when operating in this mode.
+Adjust your transmitter for Morse operation as described in your
+transmitter's manual. Make sure your antenna is tuned and adjusted
+for the band and operating frequency you are using.
+If you are using a terminal or terminal program, the following will
+place your DSP—2232 and transceiver into the transmit mode.
+o
+o
+Make sure that you have selected your transmitted text to go to
+Port I by pressing the CHSWITCH character defined in Chapter 4
+followed by a number from O through 9.
+Type "X" for XMIT and then press the <Enter> key to key your
+transmitter and automatically enter the Converse mode.
+As soon as you type the <Enter> key you will be transmitting!
+At this point you are also in the CONVERSE mode and anything you type
+will be sent in Morse by your transmitter.

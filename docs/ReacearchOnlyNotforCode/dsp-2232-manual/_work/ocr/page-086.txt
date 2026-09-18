@@ -1,0 +1,57 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+5.2
+5.2. 1
+5.2. 2
+12/91
+Local Logon
+Type MDCHECK to verify that you have local control of the Mail Drop.
+You must not be connected or linked to any other stations to do this.
+Once logged on to your Mail Drop from your local keyboard, you are
+shown the Mail Drop prompt as though you were the calling station:
+[AEA DSP-2232)
+18396 free >
+You can now EDIT, KILL, LIST, READ or SEND messages.
+The number " 18396 free" is the RAM available for Mail Drop messages.
+While you ' re "logged on" to your MailDropt a connect request from
+another station will cause the DSP—2232 to send the "BUSY" frame.
+In
+AMTOR, the DSP—2232 simply ignores ARQ link requests while you are
+logged on to your Mail Drop. When you are f in i shed using the Mail Drop,
+type "B" (BYE) to "log off" .
+This returns the DSP—2232 to normal
+operation and makes your MailDrop available to other stations.
+In Packet mode, you must leave the MAILDROP command ON to make it
+available for others.
+No other stations can reach your Mail Drop
+unless the MAILDROP command is turned ON .
+In AMTOR, TMAIL must be ON.
+You have full control• of your DSP—2232 while the MAILDROP is ON.
+You
+can connect to others and carry on normal QSOs using the call sign in
+MYCALL provided you have entered a separate MY MAIL Mail Drop call sign.
+Monitor Mail Drop Operation
+Set MDMON to ON to monitor other stations' use of your Mail Drop.
+Set
+MDMON OFF (default) to cancel MailDrop monitoring. User bit 13 allows
+Mail Drop connect and status messages to be disabled as well.
+See the
+UBIT command in the commarid summary for specifics.
+The MDMON command permits you to monitor a station's activity on your
+Mail Drop showing you both sides of the QSO. Packet headers are not
+shown while a caller is connected to your MailDrop. When a caller is
+connected to the Mail Drop, MCON determines what packets are monitored.
+When your MailDrop is idle, MONITOR determines what packets are seen.
+Caller Prompts
+MTEXT is the Mail Drop connect—message prompt sent to a packet station
+connecting to the Mail Drop if MMSG is ON. The default message is:
+"Welcome to my AEA DSP—2232 maildrop.
+Type H for help. "
+MDPROMPT is the Message prompt sent to a station by the Mail Drop.
+This prompt is given to a station sending a message.
+You can enter
+any text with a maximum length of 80 bytes. The default prompt is:
+"Subject: / Enter message,
+-Z (CTRL-Z) or /EX to end"
+You may wish to enter a CTEXT message announcing the presence of a
+mailbox and the call sign (MY MAIL) used to access your Mai_lDrop.

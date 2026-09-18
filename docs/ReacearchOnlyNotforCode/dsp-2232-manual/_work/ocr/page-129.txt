@@ -1,0 +1,51 @@
+Note:
+7.8
+7. 8.1
+7/92
+DSP-2232 OPERATING MANUAL
+7--19
+AMTOR AND NAVTEX OPERATION
+At this time unattended operation below 30 MHz is not legal
+for US amateurs unless they hold a Spec ial Temporary
+Authorization ( STA) f rom the FCC. US amateurs must be gure
+to have control of their HF transmitters when any device
+such as the DSP—2232 AMTOR/Packet Mail Drop is in operation.
+AMTOR Switchinq—Time Considerations
+For operation in AMTOR Mode A (ARQ), your transceiver or transmitter—
+receiver combination must be able to change between transmit and
+receive within 20 milliseconds. Most semiconductor—based radios can
+easily meet this specification. Many older tube—type radios that use
+electromechanical relays operate very well in AMTOR Mode A (ARQ) .
+If the changeover from transmit to receive is too long, the minimum
+working distance is extended; the signal to the distant station will
+arrive before the station has switched back to receive. However, if
+the transmitting station is further away, the transmission time over
+the propagation path will delay the arrival of the signal until after
+the station has switched to receive. For this reason, you may be able
+to U Link with" stat ions across the country, but not across town.
+If the receiving station's changeover from transmit to receive is too
+slow, the transmitting station delay between "PTT" and "data send" can
+be extended. See the ADELA Y command in the Command Summary to adjust
+the DSP—2232's AMTOR timing characteristics to compensate for this.
+Suggested AMTOR Operating Settinas
+If you have trouble synchronizing with another AMTOR ARQ station, try
+some of the following operating tips before calling AEA or deciding
+that your radio equipment needs modif ications:
+o
+o
+o
+o
+o
+Try to work the distant station on Mode B (FEC) to establish that
+the other station's system is fully functional.
+— use the PTT line from your interface.
+Don't use VOX control
+Turn off the AGC circuit
+— use the RF gain control to prevent
+receiver blocking on stronger signals.
+Turn off all compression or other audio processing.
+Keep the AFSK audio input level to the microphone circuit as low
+as possible
+— avoid overdriving the audio input stages.
+Disable the ALC circuit or reduce excessive ALC action; use more
+effective RF antenna loading to adjust output power levels.

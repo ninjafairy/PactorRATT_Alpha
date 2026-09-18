@@ -1,0 +1,63 @@
+7/92
+DSP-2232 OPERATING MANUAL
+Hello YQ_g are print inq solid
+here and have an S 7 signal.+?
+THANKS BOB, YOUR ALSO A SOLID S 7
+HERE AS WELL. +?
+A: CONNECTED to WX7EEE
+Thanks for the siqnal report Jim
+only runninq 100 watts here. + ?
+Hey Bob, I •m going to the hamfest
+thig weekend if you want a ride.
+IAHe110 Mike am on HF AMTOR
+talking to a station in Boston.
+O: WELL BOB, 1 HAD BETTER BE GOING
+TO
+BED. WORK STARTS PRETTY EARLY 73.+0
+1073 Jim was nice met ina you.
+WXIAAA de WX7BBB SK <CTRL-D>
+7-16
+AMTOR AND NAVTEX OPERATION
+You send the AMTOR station
+a signal report }
+The other station responds
+with a signal report
+WX7EEE connects to you on
+VHF (Radio Port 2)
+You make another transmission
+to Jim on HF AMTOR }
+Your friend on VHF packet
+wants to go to the hamfest }
+You switch to Port 2 by
+typing to answer on VHF
+Jim on HF AMTOR signs off
+with you.
+You switch back to HF with
+and sign off with Jim
+As you may have noticed, communicating with different modes on the two
+Radio Ports at the same time is almost identical to the method used in
+Let's discuss the sample
+chapter 4 for Packet and Packet operation.
+QSOs above to see how the Port switching occurs.
+The first text we see in the sample above is the signal report you are
+sending to Jim, the HF AMTOR station you are communicating with. This
+example assumes you have already set up the ARQ AMTOR contact with the
+ARQ comznand discussed earlier in the chapter. When you are through
+sending your signal report to Jim on AMTOR, you turn the link over to
+The DSP—2232 then responds by
+become the IRS by sending the "+? "
+sending a blank line to the display to break up the received text.
+The next text you see is your signal report received from Jim on
+AMTOR.
+You are in the middle of a QSO with Jim on AMTOR and all of a sudden
+your friend WX7EEE connects to you. WX7EEE has connected on Radio
+Port 2 (VHF) which is shown by the "A: " before the connect message.
+Remember that the 26 channel designators for Radio Port 2 are A—Z.
+Before you respond to WX7EEE on VHF, you send a transmission to Jim on
+AMTOR telling him how much power your transmitter is running. When
+you are finished with your text, you again cortunand the DSP—2232 to be
+the IRS by sending a "+0 "
+After making this transmission on AMTOR, you see WX7EEE on VHF has
+offered you a ride to the hamfest. We know this text •is from Radio
+Port 2 since the previous packet displayed by the DSP—2232 was the
+"A: *** CONNECTED" message from Port 2 .

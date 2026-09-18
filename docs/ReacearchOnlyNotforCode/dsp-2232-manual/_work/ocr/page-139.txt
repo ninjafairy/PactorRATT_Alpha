@@ -1,0 +1,45 @@
+DSP-2232 OPERATING MANUAL
+FACSIMILE OPERATION
+9. 2.1
+9.3
+7/92
+Find inq SSTV Frequencies
+In the US, SSTV is presently most popular on the 20 meter HF amateur
+band. Most evenings an active group of SSTV enthusiasts can be
+found on 14.230 and 14.233 MHz. This is a good place to start
+looking for signals. Once you recognize the different sounds of
+common SSTV signals, you may find activity on other frequencies and
+bands especially as propagation changes.
+FAX and SSTV Analog Signal Operation
+To acconunodate the characteristics of gray—scale FAX and SSTV analog
+signals, the DSP—2232 uses a special Analog mode.
+Software programs
+to display images should automatically set the DSP—2232 Analog
+parameters so most users need not concern themselves with the
+following information. If you are curious how the DSP—2232 works in
+thig mode, or are interested in writing your own display software,
+this information may be helpful.
+Note: The Analog mode requires special display software that has been
+written for each familly of personal computer be used. Software
+is necessary in order to handle the gray scale FAX and SSTV
+images. This software is not provided with the DSP—2232
+because the unit operates with many different types Of computers.
+Without display software, the Analog mode should not be used.
+The Analog mode is designed to pass data for communications methods
+that require "gray scales" or color such as FAX and SSTV. In HF FAX
+and SSTV signals, the information is contained in an audio signal
+that varies from 1, 500—2, 300 Hz for FAX and 1, 100—2 , 300 Hz for SSTV.
+In APT FAX signals, the information is contained in the amplitude of
+a 2,400 Hz audio carrier.
+Modems 41, 42 and 43 filter and digitize these analog signals and
+convert the range of interest an 8 bit unsigned binary number.
+Low values (e.g. $00) correspond to low frequencies and amplitudes,
+while high values ($FF) correspond to high amplitudes and frequencies.
+In order for the image informat ion to have any meaning, it must be
+sampled at a periodic rate. This rate is set with the Analog SAMPLE
+(ANSAMPLE) comxnand. ANSAMPLE allows the application program to
+choose the sample rate for the signal up to 2,222 times per second.
+See the Command Summary Appendix for more detailed information on the
+Analog mode and the ANSAMPLE command if you are interested in
+prograrnming a display application for the DSP—2232 .
+9-3

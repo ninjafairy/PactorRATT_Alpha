@@ -1,0 +1,69 @@
+DSP-2232 OPERATING MANUAL
+CHAPTER 1
+- INTRODUCTION
+1.4.3
+1.4. 4
+1.4. 5
+7/92
+Input (Output Connect ions
+Radio Interface:
+Input [Output Lines
+Direct F SK Outputs:
+CW keying Outputs:
+Satellite UP/ DOWN Outputs:
+Terminal Interface:
+Input/output
+Terminal Data Rates
+Parallel Printer Port
+Controls and Indicators
+Front Panel Indicators :
+Two five—pin DIN connectors,
+simultaneous operation
+software selectable on
+Receive audio
+Transmit audio
++/- Push-To-Ta1k (PTT)
+External squelch input
+Ground
+Normal and reverse for
+on the DSP-2232,
+the DSP-1232
+(+25 /
+- 40 VDC)
+each radio port
+Positive: +100 VDC max, at up to 100 mA
+Negative: —30 VDC max, at up to 20 mA
+For each radio port
+UP/ DOWN Frequency control outputs for
+each port
+RS-232-C 9-pin DB-9P connector
+RS—232—C with full handshake (hardware
+and software)
+Autobaud selection of 110, 300, 600,
+1200, 2400, 4800, 9600 and 19200 BPS.
+TBAUD adds 150, 200, 400 and 38400 BPS.
+IBM compatible 25—pin bi—directional
+parallel port (DB—25 connector )
+Ten—segment discr iminator—type bargraph
+indicator for tuning of each radio port
+STATUS LCD Display showing Mode status
+Power LED (green)
+Status Display
+Power Indicator
+LED Status indicators
+General
+Power Requirements :
+Mechanical :
+for each channel (DSP—2232) :
+DCD (Data Carrier Detect)
+SEND (XMIT)
+MULT (MULTipIe packet connect )
+STA (packet acknowledge STAtus)
+CON (packet CONnect status)
+TRANS (TRANSparent mode)
+CONV (CONVerse mode)
+CMD (CoMmanD mode )
++13 VDC (12 to 16 VDC) at 1100 mA
+Overall, 12" x 9.8" x 2.9"
+(305 mm X 249 mm X 74 mm)
+Weight 3 pounds 12 oz. (1.69 kilograms)

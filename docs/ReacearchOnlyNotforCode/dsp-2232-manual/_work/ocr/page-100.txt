@@ -1,0 +1,67 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+When you are finished transmitting, use one Of the following methods
+to return to receive.
+o
+o
+o
+Type <CTRL—D> (the RECEIVE character) to shut off your
+transmitter and return to the Command Mode.
+Type <CTRL—F> (the CWID character) to send a Morse ID and shut
+off your transmitter and return to Command Mode.
+Type <CTRL—C> (the COMMAND character) to return to the Command
+Mode and then type "R" to shut down your transmitter and end the
+contact .
+6.4
+6.4. 1
+6. 4.2
+12 1
+See the following sections for a sample QSO as well as some Baudot
+operating hints.
+Typical Baudot RTTY Contact
+As with most amateur operating modes, you can start a contact either
+by "calling CQ" or by answering a "CQ" call by another station.
+Calling CQ
+To call CQ first you tell your DSP—2232 to start transmitting.
+o
+o
+o
+o
+Type "X" to key your transmitter and start the DSP—2232 sending.
+Type in your CQ message
+CQ CQ
+CQ CQ
+CQ CQ
+CQ CQ
+CQ CQ CQ CQ CQ
+CQ CQ CQ CQ CQ
+CQ CQ CQ CQ CQ
+CQ CQ CQ CQ CQ
+DE
+DE
+DE
+DE
+(use YOUR call sign) such as the one below:
+YOURCAL YOURCAL YOURCAL
+YOURCAL YOURCAL YOURCÄL
+YOURCAL YOURCAL YOURCAL
+YOURCAL YOURCAL YOURCAL K
+Type <CTRL-D> at the
+end of your CQ call. The puts both
+your radio and the DSP—2232 into the receive mode.
+Wait a bit to see if you get a response.
+If not, you can repeat
+the above procedure.
+Answering A CQ
+Let's assume you hear KZ7G calling CQ. To answer, do the following:
+o
+Type "X" to key your transmitter and start the DSP—2232 sending.
+Call the other station by giving his call followed by your call,
+(KZ7G DE YOURCAL) .
+Start the transmission with a line of RYS ag
+a tuning signal for the distant station. Here's an example:
+RYRYRYRYRYRYRYRYRYRYRYRYRYRYRYRYRYR
+KZ7G KZ7G KZ7G DE YOURCAL YOURCAL YOURCAL
+KZ7G KZ7G KZ7G DE YOURCAL YOURCAL YOURCAL
+KZ7G KZ7G KZ7G DE YOURCAL YOURCAL YOURCAL
+6-4

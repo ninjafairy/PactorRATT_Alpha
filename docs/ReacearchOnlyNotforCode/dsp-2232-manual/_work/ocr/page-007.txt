@@ -1,0 +1,156 @@
+Paraqraph
+1.1. 1
+1.1.2
+1.3. 1
+1.
+4.
+1.
+1.4. 4
+4.
+2.1.1
+2.2. 1
+2.3.1
+2.3. 2
+2.3. 3
+2.
+2.
+4.
+2.
+6.
+2.6.2
+2. 6.6
+7.
+12/91
+DSP-2232
+1.1
+1-1
+1-1
+1.2
+1.3
+1-2
+1-2
+1.4
+4.1
+1-3
+1-3
+4.3
+2.1
+2-1
+2.2
+2-1
+2.3
+2-3
+2-3
+3.4
+2.4
+4.1
+2-5
+2-5
+4.3
+2—6
+2.5
+2.6
+. 2-10
+6.3
+6.4
+6.5
+. 2-10
+7.1
+7.3
+. 2-12
+7.4
+7.5
+OPERATING
+Overv iew
+MANUAL
+TABLE OF
+TABLE
+OF
+CONTENTS
+CHAPTER
+CONTENTS
+1 - INTRODUCTION
+Capabilities
+Included Components
+Computer or Computer Terminal
+Station Requirements
+Requirement B
+System Trangmitter—Receiver
+DSP—2232 Specif icationg
+Modem Characteristics
+Processor System
+Performance
+Page
+. 1-1
+. 1-2
+Requirements..
+. 1-3
+I nput [Output
+Controls and
+General
+Connections
+Indicators
+CHAPTER 2
+- COMPUTER
+Overview
+Equipment Required
+Unpacking the DSP—2232
+Connecting Power
+Connect ing Your Computer
+INSTALLATION
+or
+Computer
+Terminal
+IBM-PC/XT/AT and compatibles
+Apple Macintosh Series of Computers
+Commodore 64 and 128 Computers
+Computer Terminal
+Setting Up Your Communications or Terminal
+Software
+Terminal Programs for IBM—PCB and Compatibles
+Terminal Programs for the Apple Macintosh
+Terminal Programs for the Commodore 64, 64C
+and
+System Startup and Loop—back Test
+Detailed RS—232 Connections for Other
+Apple II Series
+Commodore C—64, C—128 and Vic 20
+Computers
+. 2-1
+• 2-2
+Program
+128
+2-10
+IBM pcjr
+Tandy color Computer
+Tandy Model 100/102 and NEC
+Other Computers with RS—232—
+8201
+C Ports
+Other Computers with Non—standard Serial
+Terminal (Modem) Software for Other Computers .
+Ports
+11E and
+Terminal
+Terminal
+Terminal
+Terminal
+Terminal
+Programs for the Apple II, 11+,
+IIC..
+8201. .
+2-10
+2-10
+2-10
+2-11
+2-11
+2-12
+2-12
+2-12
+2-12
+2-13
+Programs for the Commodore Vic 20
+Program for the IBM PCjr
+Programs for the Tandy Color Computer
+Programs for the Tandy 100/102 and NEC
+TOC-I

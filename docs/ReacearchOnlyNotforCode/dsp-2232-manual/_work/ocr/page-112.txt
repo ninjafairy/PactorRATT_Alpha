@@ -1,0 +1,49 @@
+DSP-2232 OPERATING MANUAL
+AMTOR AND NAVTEX OPERATION
+7.2. 3
+7. 2.4
+7.2. 5
+12/91
+See the MYSELCAL command in the Command Summary if you are interested
+in more information on the translation process.
+Because the same call sign sequences are assigned in ten US district g,
+it is possible that your SELCALL could be used by another station.
+If
+you think a station in another call district is also active on AMTOR
+and is using the same SELCALL, see the MYSELCAL command for
+information on how to change your Selcall.
+Entering Your SELective CALI ing Code (MY IDENT)
+At the present time, most of the AMTOR activity on the amateur bandg
+is using the four—character SELCALL defined in CCIR 476 and described
+above. The seven—character SELCALL (MY IDENT) defined in CCIR 625
+solves the problem of non—unique SELCALLs by providing many more
+possible SELCALLs than CCIR 476 does with only four characters.
+To enter your seven—character SELCÄLL all you must do is enter your
+amateur call sign. The DSP—2232 will do the translation for you.
+If you are using an AEA PAKRATT program, follow the instructions in
+the program manual for entering the command MY IDENT.
+If you are using a terminal, then enter the following
+cmd:MYIDENT N7ML
+The DSP-2232 will tell you, MY Ident now VTMFFFF
+See the MY IDENT comrnand in the Command Summary if you are interested
+in more information on the translation process.
+Enter the AMTOR Mode
+Now that you have entered your personal MYSELCAL and MY IDENT Selective
+Calling codes, you are ready to enter the AMTOR mode.
+If you are using an AEA PAKRATT program, follow the instructions in
+the program manual to enter the AMTOR mode.
+If you are using a terminal, simply type "AMTOR" or "AM" from the
+Command Mode followed by the <Enter> key to enter the AMTOR mode.
+The DSP—2232 responds by displaying the previous mode:
+Opmode
+was PAcket
+Opmode
+now AMtor
+Your DSP—2232's front panel STATUS display will show that you are in
+the AMTOR Standby mode on Radio Port I, and the CMD LED will be lit .
+HF Receiver Settings
+Set your HF receiver (or transceiver) to Lower Sideband (LSB) unless
+you connected your DSP—2232 through the direct F SK keying lines.
+In this case, you should select the F SK or RTTY operating mode .
+Adjust the volume to a comfortable listening level.
+7-2

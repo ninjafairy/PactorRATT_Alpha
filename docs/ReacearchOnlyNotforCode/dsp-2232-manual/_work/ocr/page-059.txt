@@ -1,0 +1,60 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.4. 2
+4.4. 3
+4.4. 4
+12/91
+Automatic Greetings
+You can tell your DSP—2232 to send an automatic greeting (CTEXT) to
+any station that connects to you. This can be used to tell others
+that you are out of the shack and to leave you a message or for any
+other message you would like to send.
+To enable the CTEXT message, set your Connect Text message using the
+CTEXT command. Then set CMSG ON to enable the Connect Message
+feature. Think of the CTEXT message as the message your telephone
+answering machine might give to a caller.
+Beacon Operation
+Your DSP—2232 can send an automatic "beacon" message at a specified
+time interval . A beacon can send special announcements, or let others
+know you are on the air. To enable beacon operation do the following:
+o
+o
+o
+Set your beacon message with the BTEXT command.
+Set the beacon interval using the BEACON EVERY or AFTER command.
+A beacon frame is sent to the path given in the UNPROTO command.
+In the early days of packet, the beacon was useful to show your
+presence on the packet channel. With the growth
+feel that beacons have outlived their usefulness
+traffic.
+Use your beacon with consideration for
+As a reminder, if you set the BEACON timing at a
+small for busy channels (less than "90"), you ' 11
+WARNING: BEACON too often
+Digipeater Details
+You may wish to connect to a packet station that
+of packet, many users
+and interfere with
+others .
+value considered too
+see :
+is beyond your direct
+radio range. If a third packet station is on the air and both you and
+the station you want to talk to are in range of that third station,
+the third station can relav or "digipeat" your packets.
+You g imply
+set the "digipeater" routing when you connect.
+shows how digipeating can solve problems:
+WX2BBB
+WXIAAA
+Here's a sketch that
+WX3ccc
+You are station WXIAAA — you want to have a packet QSO with WX3CCC.
+There is a mountain between you and WX3CCC; you ' re out of simplex
+range of each other. However, you know that there' s a packet station
+located on the ridge WX2BBB — which is in ranqe of you and WX3CCC.
+Instruct your DSP—2232 to set up a connection to WX3CCC using WX2BBB
+as an intermediate digipeater. When you initiate the Connect, type:
+"CONNECT WX3ccc VIA WX2BBB" .
+If WX2BBB has turned off his station, you can still contact WX3CCC by
+going around the ridge through WX2DDD and WX2EEE as shown:

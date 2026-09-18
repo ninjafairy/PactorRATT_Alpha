@@ -1,0 +1,46 @@
+DSP—2232 OPERATING MANUAL
+PACTOR OPERATION
+12.4
+12.5
+3/93
+HF Receiver Settinqg
+Set your HF receiver (or transceiver) to Lower Sideband (LSB) unlegg
+you connected your DSP—2232 through the direct FSK keying lines. If you
+are using a transceiver with a RTTY or Packet mode and you have the
+DSP—2232 connected for direct FSK, keep in mind that PACTOR ugeg 200
+Hz shift.
+If your radio has 200 Hz shift FSK for packet use, you may
+use direct FSK. If your radio hag only 170 Hz shift capability, you
+should use the TX audio from your DSP—2232 to drive the microphone
+input of your radio. Although you may use either USB or LSB, LSB iB
+generally used to make mode changes easier and ig reconunended.
+Adjust the volume to a comfortable listening level.
+Tuning in PACTOR Stations
+Tuning in PACTOR stations properly is critical to successful
+operation. Since PACTOR stations use 200 Hz Frequency Shift Keying
+(FSK) to send data, tuning accuracy is very important.
+o
+o
+o
+o
+o
+Make certain your HF receiver is either in LSB or FSK/RTTY/Packet
+depending on your DSP—2232 set—up.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Enter the command "PTLIST" for PACTOR Listen to monitor both
+linked and unproto PACTOR data.
+Tune your receiver carefully between 14.065 and 14.085 MHz (or
+another band where you know there is PACTOR activity) and listen
+for the I—second data burst of ARQ PACTOR or the steady data of
+Be sure that the volume from the
+the unproto mode stations.
+receiver is high enough to activate the DCD LED indicator during
+the PACTOR data burst .
+When you find a station, slowly vary the VFO on your receiver and
+look for a display on the DSP—2232 tuning indicator as shown.
+Tuned In
+If the tuning indicator looks like the one below, the frequency
+from your speaker is too low for the DSP—2232 to copy the signal.
+Slowly tune the VFO and make the frequency higher.
+12-3

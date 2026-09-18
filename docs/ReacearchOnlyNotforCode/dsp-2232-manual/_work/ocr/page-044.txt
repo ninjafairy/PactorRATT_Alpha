@@ -1,0 +1,67 @@
+DSP-2232 OPERATING MANUAL
+10.
+11.
+12.
+13.
+14.
+NOTE :
+15.
+16.
+12/91
+Press the "K"
+Increase the
+a continuous
+RADIO INSTALLATION
+key on the keyboard to key the transmitter.
+transceiver's microphone gain control until you hear
+tone in the radio's monitor output.
+If you are able to hear the tones in radio's speaker, tap the
+space bar several times until you hear the lower pitched of the
+two tones ( "mark" ) .
+With the DSP—2232 keying the transmitter and transmitting the
+lower of the two tones, adjust the transmit audio level as
+fol lows :
+Type
+Type
+1.
+11.
+111.
+"Q"
+You have
+your SSB
+Rotate the microphone gain control clockwise (CW)
+approximately in the one—quarter ON position.
+Turn the DSP—2232 's side—panel AFSK Output Level
+adjustment screw clockwise (CW) until until the ALC
+meter shows a small deflection from the unmodulated
+reading. Check the radio's plate/ collector current or
+output power indicators.
+Adjust the AFSK Output Level control until the radio' g
+indicators show approximately thirty percent (30%) of
+the manufacturer's rated full—power reading.
+If the rnanufacturer's plate/collector current
+EXAMPLE :
+specification for CW operation is 200 mA, set
+the AFSK Output Level control and your
+microphone gain control so that the
+plate/ collector current indicates
+approximately 75 mA.
+to return to receive mode.
+to "Quit" (exit) the calibration routine.
+now set the DSP—2232's transmit audio output level and
+radio's microphone gain control to an approximately
+correct level for all operating modes .
+For Mode A (ARQ) AMTOR and packet radio operation, the
+radio's microphone gain control can be adjusted to produce
+the full—power output plate current recommended by the radio
+manufacturer. These modes are "burst y" modes; the
+transmitter is keyed on and off automatically by the
+DSP—2232. The resulting duty cycle is much less than 100%
+and full—power operation is generally acceptable.
+With your radio in receive mode, tune the receiver to a clear,
+unoccupied frequency .
+Set the receiver's audio volume control (AF GAIN) to the position
+you would normally use for CW reception. This is the approximate
+receiver audio output level
+your DSP—2232's modem.
+for best receive performance from

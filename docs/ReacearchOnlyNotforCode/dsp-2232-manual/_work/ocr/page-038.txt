@@ -1,0 +1,58 @@
+3.3. 6
+12/91
+DSP-2232 OPERATING MANUAL
+1.
+RADIO
+INSTALLATION
+Wirinq Your HF Transceiver for Direct CW Key inq
+The DSP—2232 can directly key CW with HF and VHF multi—mode
+transceivers. Thig requires that a cable be wired from the CW KEY OUT
+jack on the DSP—2232 'g rear panel to your CW keying input of your
+transceiver on the correct Radio Port. Refer to the instructiong
+below and Figure 3—3 to wire the DSP—2232 side of the cable.
+REM
+v-1232/2232
+Cu KEYING
+OR :
+Figure 3—3:
+Cu XEYttC,
+SAI ELO
+Direct CW Keying Cable diagram
+2.
+3.
+4.
+Locate an RCA connector from the DSP—2232 •s accessory bag.
+Locate some shielded audio cable from Radio Shack or other cable
+house and solder the RCA connector to the cable as shown above.
+Locate the connector for the CW keying input to your transceiver.
+These are often supplied in your transceiver' g accessory kit.
+Wire the transceiver connector as per the instructions in your
+transceiver •s manual for a "Straight key"
+Consult your radio •s instruction manual to determine if your radio
+uses neqative (Grid Block) or positive keying polarity. Connect the
+shielded cable you just wired from the DSP—2232 's or negative
+keying jacks to your radio's CW key input connector.
+See the Specifications on page 1—3 for maximum limits.
+Connections for Direct FSK Operation on RTTY
+Some HF SSB radios provide direct FSK (Frequency—Shift Keying) for
+RTTY operation. Direct FSK can be an advantage when using RTTY and
+AMTOR and can sometimes help in HF packet operation.
+FSK operation
+may be helpful if your transceiver can switch in f ilters. Be cautious
+of narrow filters as they can limit your data rate. Direct FSK is not
+always recommended for data speeds above 110 bauds. Consult your
+transceiver's manual for further recommendations on direct FSK.
+To install and operate your DSP—2232 and radio in the FSK mode:
+1.
+NOTE :
+Connect a shielded cable from the DSP—2232'g J 3 (DIN) receptacle,
+Pins 3
+pins 1 or 4, to the radio's F SK input for radio port 1.
+or 5 are the PSK outputs for radio port 2 .
+Polarity of the F SK signals is not standardized by the radio
+manufacturers. We have observed that I com radios most often
+use FSKN (pins 1 and 3), while Kenwood radios most often use
+Consult your transceiver's manual to
+FSKR (pins 4 and 5).
+identify the proper polarity.
+3-6

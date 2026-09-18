@@ -1,0 +1,119 @@
+operation on radio port 1 and radio port 2 at the same time. The
+dual port modems available in the DSP—2232 are listed below.
+4. 8.1
+DSP-2232 OPERATING MANUAL
+The second type of modem is "Dual Ported" ,
+2:
+4:
+PACKET RADIO
+that is allows for
+30:
+31:
+33:
+35:
+RTTY/TOR 170: 2125/2295; p2 Packet 300 bps HF 2110/2310
+RTTY/TOR 170: 2125/2295; p2 Packet 1200 bps VHF
+pl Packet 300 bps HP 2110/2310; p2 Packet 1200 bps VHF
+pl Packet 1200 bps VHF; p2 Packet 1200 bps VHF
+Selecting and Loading Modems
+The various modems available in the DSP—2232 can be seen with the
+DIRECT (ory) command. To display all the available modems simply
+enter the Command Mode of the DSP—2232 and then type DIR as shown.
+DIR
+The DSP—2232 will respond with the fol lowing:
+(920716)
+1:
+3:
+10:
+12:
+14:
+16:
+18:
+20:
+22:
+25:
+28:
+30:
+31:
+33:
+35:
+40:
+42:
+44:
+46:
+51:
+60:
+cmd :
+RTTY/TOR 170: 2125/2295
+RTTY /TOR 425: 2125/2550
+pl
+pl
+pl
+pl
+pl
+p2
+p2
+p2
+p2
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+300 bp.s HF 2110/2310
+1200 bps VHF
+1200 bps PSK
+4800 bps PACSAT
+II:
+13:
+15:
+17:
+9600 bps FSK K9NG/G3RUH
+300 bps HF 2110/2310
+1200 bps VHF
+2400 bps V. 26B
+23:
+RTTY/TOR 170: 1445/1275
+RTTY /TOR 850: 2125/2975
+pl Packet 300 bps HF 1460/1260
+pl Packet 1200 bps PACSAT
+pl Packet 2400 bps V. 26B
+pl Packet 4800 bps PSK
+p2 Packet 1200 bps PACSAT
+9600 bps FSK K9NG/G3RUH
+RTTY/TOR 170: 2125/2295; p2 Packet 300 bps HF 2110/2310
+RTTY/TOR 170: 2125/2295; p2 Packet 1200 bps VHF
+pl Packet 300 bps HF 2110/2310; p2 Packet 1200 bps VHF
+pl Packet 1200 bps VHF; p2 Packet 1200 bps VHF
+Morse 750 Hz
+Analog FAX APT
+DSP data 400 bps OSCAR-13
+DSP data Spectrum
+pl Packet 2400 bps MSK
+p2 Packet 1200 bps MSK
+41:
+43:
+45:
+50:
+52:
+61:
+Analog FAX HF
+Analog SSTV
+RTTY /TOR 1200 ASCII OSCAR-II
+pl Packet 1200 bps MSK
+pl Packet 9600 G3RUH U022 eq
+p2 Packet 2400 bps MSK
+Any modem from this list may be loaded with the MODEM command.
+For example, let's say that you want to operate 300 bps HF packet on
+radio port 1 and 1200 bps VHF packet on radio port 2 This operation
+is achieved with modem 33. To load modem 33, f irst enter the Command
+Mode of the DSP—2232 and then type MODEM 33 as shown below:
+MODEM 33
+The DSP—2232 will respond with the following:
+MODem was 12
+MODem now 3 3
+cmd: *** HBaud now 300/1200

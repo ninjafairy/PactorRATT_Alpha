@@ -1,0 +1,54 @@
+DSP-2232 OPERATING MANUAL
+We 1 come
+Congratulations! ! You 've purchased another f ine AEA product.
+PREFACE
+PLEASE, before we go any further, may we ask you to FILL OUT AND RETURN the
+Warranty Registration Card, which has been packed with your DSP—2232.
+Product Update Policv
+From time to time AEA may make available updates to the design of its products.
+We can only tell you about these updates if we have your warranty card on file.
+PLEASE SEND IT IN if you have not already done so.
+In Case of Trouble
+Application and troubleshooting assistance may be had by calling AEA during our
+8: 00—12 : 00, 1 : 00—4: 30 working hours in Lynnwood WA. Ask for the Technical
+Support Department .
+The phone number is (206) 775—7373.
+Please have your
+DSP—2232's serial number and version date of the software available. The
+version date is on the first screen that comes up when you turn on the DSP—2232.
+We will also need to know the nature of any other equipment connected to the
+DSP-2232 .
+You may wish to attempt to solve problems locally, using other hams or an AEA
+dealer. A helpful Arnateur with equipment similar to your own may literally be
+just around the corner.
+Substituting another DSP—2232 or Data Controller that
+you know is working properly for your questionable one is a diagnostic technique
+that will check out the rest of your station. You may also try running your
+DSP—2232 in another station if possible.
+AEA provides Technical Support for its line of amateur radio equipment by way of
+your personal computer and modem on CompuServe' s HamNet !
+If you are already a
+CompuServe member, just type GO HAMNET at any CompuServe prompt .
+For a free
+introductory CompuServe membership call 1—800—848—8199 and ask for
+representative 48.
+If you call for assistance, please have your DSP—2232 up and running beside the
+phone. Our Support technician will likely ask you to perform certain keyboard
+routines to aid in diagnosis.
+If you have a voltmeter handy, you might have the
+DSP—2232 open so you can report measurements to the technician.
+Many of the AEA products that are sent to us for repair are in perfectly good
+order when we receive them. There is a check—out charge for units returned to
+us in working order.
+Please perform whatever steps are applicable from the
+installation sections of this manual.
+PLEASE DO NOT RETURN THE DSP-2232 TO US WITHOUT CONTACTING US FOR PERMISSION AND
+AN RMA NUMBER. WE WOULD LIKE THE OPPORTUNITY TO TROUBLESHOOT THE PROBLEM OVER
+THE PHONE FIRST, SAVING YOU BOTH TIME AND MONEY .
+If the unit must be sent in, we will give you a Return to Manufacturer
+Authorization (RMA) number over the telephone
+This number allows us to track
+your unit and provide you with its status.
+Please write this number on the
+outside of the box so we may process your unit as quickly as possible.
+12/92

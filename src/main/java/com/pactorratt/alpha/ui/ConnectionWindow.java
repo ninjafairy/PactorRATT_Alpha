@@ -5,6 +5,7 @@ import com.pactorratt.alpha.config.CommitMode;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -18,6 +19,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.WindowConstants;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
@@ -29,6 +31,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
@@ -41,7 +47,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Listen or ARQ connection window: transcript, App TX buffer, compose, controls, status.
+ * Listen or ARQ connection window: transcript, App TX buffer, Compose, controls, status.
  */
 public final class ConnectionWindow extends JFrame {
 
@@ -59,7 +65,10 @@ public final class ConnectionWindow extends JFrame {
     private final JTextPane transcript = new JTextPane();
     private final JTextArea appTxBuffer = new JTextArea();
     private final JTextArea compose = new JTextArea(3, 40);
-    private final JLabel statusBar = new JLabel();
+    private final JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+    private final JLabel statusPrefix = new JLabel();
+    private final JLabel statusSuffix = new JLabel();
+    private final TxChip txChip = new TxChip();
     private final JLabel noticeLabel = new JLabel(" ");
     private final JButton sendButton = new JButton("Send");
     private final List<JButton> controlButtons = new ArrayList<>();
@@ -86,6 +95,9 @@ public final class ConnectionWindow extends JFrame {
     /** Current inbound line (after {@code $08}); Listen newline scan for Heard/Mentioned/Connect. */
     private final StringBuilder inboundLine = new StringBuilder();
     private Consumer<String> inboundLineListener;
+    /** ARQ preview-only: 0 dead TX OFF, 1 live TX OFF, 2 live TX ON. */
+    private Timer txPreviewTimer;
+    private int txPreviewStep;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
         super(kind == Kind.LISTEN ? "PtR FEC" : "PtR ARQ — " + titleCall);
@@ -98,6 +110,11 @@ public final class ConnectionWindow extends JFrame {
             @Override
             public void windowClosing(WindowEvent e) {
                 attemptClose();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                stopArqTxPreview();
             }
         });
         setSize(640, 520);
@@ -132,6 +149,7 @@ public final class ConnectionWindow extends JFrame {
                     }
                 }
                 flushIss();
+                return;
             } else if (handoverLocked) {
                 handoverSeenIssSinceLock = true;
             }
@@ -347,13 +365,8 @@ public final class ConnectionWindow extends JFrame {
         JScrollPane composeScroll = new JScrollPane(compose);
         composeScroll.setBorder(BorderFactory.createTitledBorder("Compose"));
 
-        sendButton.addActionListener(e -> {
-            if (app.config().getCommitMode() == CommitMode.LINE) {
-                commitComposeLines(true);
-            } else {
-                commitComposeLines(false);
-            }
-        });
+        sendButton.addActionListener(e ->
+                commitComposeLines(app.config().getCommitMode() == CommitMode.LINE));
 
         JPanel composeRow = new JPanel(new BorderLayout(4, 4));
         composeRow.setBackground(UiColors.PANEL_BG);
@@ -376,12 +389,17 @@ public final class ConnectionWindow extends JFrame {
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setBackground(UiColors.STATUS_BG);
         noticeLabel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
-        statusBar.setBorder(BorderFactory.createEmptyBorder(2, 6, 4, 6));
-        statusBar.setOpaque(true);
-        statusBar.setBackground(UiColors.STATUS_BG);
+        statusRow.setOpaque(true);
+        statusRow.setBackground(UiColors.STATUS_BG);
+        statusRow.setBorder(BorderFactory.createEmptyBorder(2, 6, 4, 6));
+        statusPrefix.setOpaque(false);
+        statusSuffix.setOpaque(false);
+        statusRow.add(statusPrefix);
+        statusRow.add(txChip);
+        statusRow.add(statusSuffix);
         bottom.add(noticeLabel, BorderLayout.NORTH);
         bottom.add(buildControlsScroll(), BorderLayout.CENTER);
-        bottom.add(statusBar, BorderLayout.SOUTH);
+        bottom.add(statusRow, BorderLayout.SOUTH);
         bottom.setMinimumSize(new Dimension(120, 90));
 
         JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chatPane, bottom);
@@ -419,7 +437,8 @@ public final class ConnectionWindow extends JFrame {
             addControl(p, "Disc. with text",
                     "Canned disconnect text + CTRL-D $04 in the same ch0 block",
                     () -> app.arqDiscWithText(this));
-            addControl(p, "Flush ISS", "Flush App TX buffer to TNC (Host data ch0); mark local ISS",
+            addControl(p, "Flush ISS",
+                    "Flush App TX buffer to TNC (Host data ch0); mark local ISS",
                     this::flushIss);
             handoverButtons.add(hoNow);
             handoverButtons.add(hoAfter);
@@ -427,6 +446,8 @@ public final class ConnectionWindow extends JFrame {
         } else {
             addControl(p, "FEC / End TX", "PTSend from Program settings (FEC 200 / Retries) → buffer → CTRL-D end",
                     this::fecEndTx);
+            addControl(p, "CQ", "Canned CQ text × CQ repeat (Program settings) → PTSend + CTRL-D",
+                    this::sendCq);
         }
 
         JButton save = new JButton("Save chat");
@@ -505,7 +526,6 @@ public final class ConnectionWindow extends JFrame {
             appTxBuffer.append(line);
             return;
         }
-        // ISS: grey transcript immediately; Host data when TNC connected (ARQ only).
         ensureTranscriptNewline();
         String forTranscript = line.endsWith("\n") ? line : line + "\n";
         appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
@@ -514,26 +534,6 @@ public final class ConnectionWindow extends JFrame {
         }
     }
 
-    /**
-     * Listen: one-shot unproto — grey transcript, then Host {@code PD} + ch0 data + CTRL-D.
-     * Does not flip IRS/ISS; further commits stay in App TX buffer until the next press.
-     */
-    private void fecEndTx() {
-        if (!sessionActive || kind != Kind.LISTEN) {
-            return;
-        }
-        String pending = appTxBuffer.getText();
-        if (pending == null || pending.isBlank()) {
-            showNotice("FEC / End TX — App TX buffer empty; commit text first.");
-            return;
-        }
-        String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
-        ensureTranscriptNewline();
-        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
-        appTxBuffer.setText("");
-        refreshStatus();
-        app.listenFecEndTx(this, pending);
-    }
 
     /**
      * Drain App TX to grey transcript and mark local ISS. Returns the drained text
@@ -561,19 +561,6 @@ public final class ConnectionWindow extends JFrame {
         return pending;
     }
 
-    /**
-     * IRS→ISS (and any App TX drain): if the transcript has text that does not already end
-     * on its own line, insert a newline so local outbound does not continue the last RX line.
-     * No-op on an empty transcript (no leading blank line after connect). Does not send Host data.
-     */
-    private void ensureTranscriptNewline() {
-        String existing = transcript.getText();
-        if (existing == null || existing.isEmpty() || existing.endsWith("\n")) {
-            return;
-        }
-        appendTranscript("\n", UiColors.LOCAL_PENDING);
-    }
-
     public boolean isAppTxEmpty() {
         String pending = appTxBuffer.getText();
         return pending == null || pending.isBlank();
@@ -593,6 +580,62 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         app.sendOutboundChat(this, pending);
+    }
+
+    /**
+     * IRS→ISS (and any App TX drain): if the transcript has text that does not already end
+     * on its own line, insert a newline so local outbound does not continue the last RX line.
+     * No-op on an empty transcript (no leading blank line after connect). Does not send Host data.
+     */
+    private void ensureTranscriptNewline() {
+        String existing = transcript.getText();
+        if (existing == null || existing.isEmpty() || existing.endsWith("\n")) {
+            return;
+        }
+        appendTranscript("\n", UiColors.LOCAL_PENDING);
+    }
+
+    /**
+     * Listen: one-shot unproto — grey transcript, then Host {@code PD} + ch0 data + CTRL-D.
+     * Does not flip IRS/ISS; further commits stay in App TX buffer until the next press.
+     */
+    private void fecEndTx() {
+        if (!sessionActive || kind != Kind.LISTEN) {
+            return;
+        }
+        String pending = appTxBuffer.getText();
+        if (pending == null || pending.isBlank()) {
+            showNotice("FEC / End TX — App TX buffer empty; commit text first.");
+            return;
+        }
+        appTxBuffer.setText("");
+        refreshStatus();
+        paintAndSendListenFec(pending, "FEC / End TX");
+    }
+
+    /**
+     * Listen CQ: canned text from Program settings, repeated CQ-repeat times (each on its
+     * own line), then the same {@code PD} + data + CTRL-D path as FEC / End TX.
+     * Does not use or clear App TX.
+     */
+    private void sendCq() {
+        if (!sessionActive || kind != Kind.LISTEN) {
+            return;
+        }
+        String pending = app.config().cqFecPayload();
+        if (pending.isBlank()) {
+            showNotice("CQ — set canned CQ text and CQ repeat in Program settings.");
+            return;
+        }
+        paintAndSendListenFec(pending, "CQ");
+    }
+
+    private void paintAndSendListenFec(String pending, String actionName) {
+        String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
+        ensureTranscriptNewline();
+        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        refreshStatus();
+        app.listenFecEndTx(this, pending, actionName);
     }
 
     private void editAppTxBuffer() {
@@ -653,10 +696,50 @@ public final class ConnectionWindow extends JFrame {
         }
     }
 
+    /**
+     * Preview ARQ window: cycle dead TX OFF / live TX OFF / live TX ON at 1 Hz.
+     * Visual only — does not enable the session.
+     */
+    public void startArqTxPreview() {
+        if (kind != Kind.ARQ) {
+            return;
+        }
+        stopArqTxPreview();
+        txPreviewStep = 0;
+        txPreviewTimer = new Timer(1000, e -> {
+            txPreviewStep = (txPreviewStep + 1) % 3;
+            refreshStatus();
+        });
+        txPreviewTimer.start();
+        refreshStatus();
+    }
+
+    private void stopArqTxPreview() {
+        if (txPreviewTimer != null) {
+            txPreviewTimer.stop();
+            txPreviewTimer = null;
+        }
+    }
+
+    private boolean isTxPreviewRunning() {
+        return txPreviewTimer != null && txPreviewTimer.isRunning();
+    }
+
     private void refreshStatus() {
+        boolean preview = kind == Kind.ARQ && isTxPreviewRunning();
+        boolean live = preview ? txPreviewStep != 0 : sessionActive;
+        boolean txOn = preview ? txPreviewStep == 2 : (sessionActive && !localIsIrs);
+
         String role = localIsIrs ? "IRS" : "ISS";
+        if (preview && txPreviewStep == 2) {
+            role = "ISS";
+        } else if (preview && txPreviewStep == 1) {
+            role = "IRS";
+        }
         String link;
-        if (opmodeWLabel != null && !opmodeWLabel.isBlank()) {
+        if (preview) {
+            link = live ? "ARQ" : "DEAD";
+        } else if (opmodeWLabel != null && !opmodeWLabel.isBlank()) {
             link = opmodeWLabel;
         } else if (sessionActive) {
             link = kind == Kind.LISTEN ? "LISTEN" : "ARQ";
@@ -664,9 +747,22 @@ public final class ConnectionWindow extends JFrame {
             link = "DEAD";
         }
         String speed = opmodeBaud != null ? String.valueOf(opmodeBaud) : "--";
-        statusBar.setText(String.format(
-                " %s | %s | TX OFF | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
-                role, link, speed, titleCall, app.isTncConnected() ? "connected" : "offline"));
+        String tnc = app.isTncConnected() ? "connected" : "offline";
+        statusPrefix.setText(String.format(" %s | %s | ", role, link));
+        statusSuffix.setText(String.format(
+                " | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
+                speed, titleCall, tnc));
+        if (kind == Kind.ARQ) {
+            if (!live) {
+                txChip.setMode(TxChip.Mode.DEAD_OFF);
+            } else if (txOn) {
+                txChip.setMode(TxChip.Mode.LIVE_ON);
+            } else {
+                txChip.setMode(TxChip.Mode.LIVE_OFF);
+            }
+        } else {
+            txChip.setMode(TxChip.Mode.DEAD_OFF);
+        }
     }
 
     private void attemptClose() {
@@ -692,5 +788,80 @@ public final class ConnectionWindow extends JFrame {
         }
         app.onConnectionWindowClosed(this);
         dispose();
+    }
+
+    /**
+     * TX indicator chip. Dead TX OFF is plain black; live TX OFF is bold on green;
+     * live TX ON is bold on red.
+     */
+    private static final class TxChip extends JComponent {
+        enum Mode { DEAD_OFF, LIVE_OFF, LIVE_ON }
+
+        private static final Font DEAD_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        private static final Font LIVE_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+
+        private Mode mode = Mode.DEAD_OFF;
+
+        TxChip() {
+            setOpaque(false);
+            setFont(DEAD_FONT);
+        }
+
+        void setMode(Mode mode) {
+            this.mode = mode == null ? Mode.DEAD_OFF : mode;
+            setFont(this.mode == Mode.DEAD_OFF ? DEAD_FONT : LIVE_FONT);
+            revalidate();
+            repaint();
+        }
+
+        private String label() {
+            return mode == Mode.LIVE_ON ? "TX ON" : "TX OFF";
+        }
+
+        private Color fill() {
+            return switch (mode) {
+                case LIVE_OFF -> UiColors.TX_OFF_LIVE_BG;
+                case LIVE_ON -> UiColors.TX_ON_LIVE_BG;
+                default -> null;
+            };
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            FontMetrics fm = getFontMetrics(LIVE_FONT);
+            int w = fm.stringWidth("TX OFF") + 12;
+            int h = Math.max(fm.getHeight() + 4, 16);
+            return new Dimension(w, h);
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setFont(getFont());
+            FontMetrics fm = g2.getFontMetrics();
+            String text = label();
+            Color fill = fill();
+            if (fill != null) {
+                g2.setColor(fill);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 4, 4);
+            }
+            int x = (getWidth() - fm.stringWidth(text)) / 2;
+            int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+            g2.setColor(Color.BLACK);
+            g2.drawString(text, x, y);
+            g2.dispose();
+        }
     }
 }

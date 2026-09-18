@@ -1,0 +1,81 @@
+DSP—2232 OPERATING MANUAL
+7.4. 2
+7.4. 3
+7.4. 4
+7.4. 5
+7.4. 6
+7/92
+Enter inq Your Auto—AnswerBack (AAB)
+AMTOR allows you to request the identity
+conversing with by sending your DSP—2232
+DSP—2232 to send a FIGS—D request to the
+For this reason, you should set your own
+AMTOR AND NAVTEX OPERATION
+of the station you are
+a < This causes the
+other station.
+Auto—AnswerBack (AAB) message
+to "DE YOUR-CALL MYSELCAL MY IDENT" .
+Your DSP—2232 will automatically
+send the AAB message when another station requests your identity, and
+then stop sending.
+Operating AMTOR with Other Modem frequencies and Shifts
+All Amateur (AMTOR) and commercial (SITOR) stations that we know of
+use either 170 or 200 Hz shift F SK modems. Modem 1 (default) is
+therefore the best choice for ARQ or FEC AMTOR use. The DSP—2232
+allows other modems to be used in AMTOR should the need arise. The
+following other modems may
+be selected with the MODEM cornmand.
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+1
+2
+3
+4
+30:
+31:
+AFSK Modem,
+AFSK Modem,
+APSK Modem,
+AFSK Modem,
+170 Hz shift, Mark=2125 Hz,
+170 Hz shift, Mark=1445 Hz,
+425 He shift, Mark-2125 Hz,
+850 Hz shift, Mark=212S Hze
+Space=2295 Hz
+space=1275 Hz
+Space=2550 Hz
+Space=2975 Hz
+(Dual Port Modems)
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 300 bps HF
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 1200 bps VHF
+Note that Modems 3 and 4 are wideshift modems and are not recommended.
+Speed Change Not Permitted
+In accordance with FCC 97 . 69 and international regulations, AMTOR is
+operated at 100 bauds.
+The DSP—2232 does not permit other speeds.
+Echoing Transmitted Characters As Sent _(EAS)
+EAS has special significance in ARQ AMTOR. If EAS is on, you will see
+characters echoed to your screen only after your partner in the AMTOR
+link, has validated them. With EAS ON, the characters appear on your
+screen three at a time.
+o
+o
+If the data scrolls across your monitor at an even rate, you can
+assume that you have a good ARQ link.
+If • the data hesitates or scrolls in "jerky" intermittent fashion,
+that 's generally a sign that the radio link is not too good.
+If the characters stop appearing on your monitor, the link is
+failing or has failed. The STATUS display will tell you this.
+Send inq Only Complete Words (WORDOUT}
+Some AMTOR users like to have their words sent out only when they are
+complete. This allows the word you are currently typing to be edited
+as long as you have not typed a <Space> character.
+Turning WORDOUT ON
+activates this feature.
+See the Command Summary for more information.
+7-8

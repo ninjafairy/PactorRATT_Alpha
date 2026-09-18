@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+MAILDROP OPERATION
+The DSP—2232 Mail Drop accepts hierarchical forwarding information that
+is helpful in reverse forwarding to full service BBS stations. An
+example of this ig shown below:
+SP N7ML @ K6RFK.WA.NA
+The above means that you want to send a message to N7ML who uses the
+K6RFK Bulletin—Board which is located WAshington which is located in
+North America.
+The DSP—2232 Mail Drop also supports BIDs (Bulletin I Ds) .
+This support
+is required for Reverse Forwarding (see below) .
+The BID beg ing with a
+"$" character and ig gent and received in the Send command line:
+S N7ML @ K6RFK < N61A $345 KB7B
+With the DSP—2232 Mail Drop you may also use just the
+as shown in the two examples below:
+all by itself
+or
+S N7ML @ K6RFK < N61A $
+S ALL $
+5. 4.10
+5.4. 11
+5.5
+5.5. 1
+12/91
+In this case, the DSP—2232 Mail Drop will assign its own BID to these
+messages .
+y (VERSION) (Remote only command )
+The "V" command causes the DSP—2232 to send the sign—on message and
+firmware date to the remote user only.
+? (HELP) (Remote only command)
+The "?" command sends the distant station a HELP list of all available
+Mail Drop commands shown above under the "H" command. Both the "?" and
+the "H" cause this same file to be sent to the remote user.
+Sample Mail Drop Session The Remote User's Point of View
+Let's see what the Mail Drop looks like to a calling station. Let's
+assume that your call is "WXIAÄÄ", and that you wish to connect and
+log on to "WX2BBB's" MailDrop system. During your session on his
+MailDrop, you wish to list the messages to see if there is a message
+for you, read it if it exists, kill it after you 're done reading it,
+send a return message to WX2BBB and finally log off or disconnect from
+his Mail Drop.
+Connect and Logon
+From the cmd: prompt, type the
+usual connect request:
+cmd:c wx2bbb
+*** CONNECTED to WX2BBB
+You have mail
+[AEA DSP-2232)
+16508 free
+{Connect request}
+{DSP—2232 status line}
+{informs the user
+mail is waiting}
+(A, > {Mail Drop's prompt}

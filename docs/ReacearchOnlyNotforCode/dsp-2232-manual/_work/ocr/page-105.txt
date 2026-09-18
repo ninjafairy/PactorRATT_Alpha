@@ -1,0 +1,86 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+Special Function Characters embedded in transmitted text :
+<CTRL-B>
+<CTRL-D>
+< CTRL —E >
+<CTRL-T>
+Changing ASCII
+Sends
+Shuts
+Sends
+Sends
+Sends
+AAB string as a HERE IS message.
+off transmitter after sending character buffer.
+"Who Are You" request to distant station.
+call sign in Morse and shuts off the transmitter.
+the Time if the DAYTIME clock has been set.
+6. 6.3
+6.6.4
+6.6.5
+7/92
+Baud Rates
+Assume you 've been receiving at 110 bauds and wish to increase the
+baud rate in steps.
+From the Command mode, type AB U followed by an
+The DSP—2232 responds with:
+ABaud was 110
+ABaud now 150
+The ABAUD command sets the ASCII RTTY speed. The most cormon speed
+is 110 bauds on HF, but other speeds including commercial speeds are
+See the Command Summary for all the supported speeds.
+supported .
+Operatinq at Commercial or VHF Wide ASCII RTTY Shifts
+Most cornmercial stations found in the non amateur Short Wave bands
+operate with a wide Frequency Shift keying of either 425 or 850 Hz
+shift. To allow these stations to be received other modems are
+available in the DSP—2232 and can be selected
+The following modems are available for Baudot
+with the MODEM command.
+and ASCII operation:
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+MODEM
+1
+2
+3
+4
+30:
+31:
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 170 Hz shift, Mark=
+AFSK Modem, 425 Hz shift, Mark=
+AFSK Modem, 850 Hz shift, Mark=
+(Dual Port Modems)
+2125 Hz,
+1445 Hz,
+2125 Hz,
+2125 Hz,
+space-2295 Hz
+space=1275 Hz
+Space=25SO Hz
+space=2975 Hz
+If your license
+the appropr late
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 300 bps HF
+RTTY/TOR 170 Hz: 2125/2295; p2 Packet 1200 bps VHF
+permits, you can also transmit to these stations when
+MODEM number and data rate is selected.
+Other RTTY Commands for ASCII Operation
+Many of the commands mentioned above in the Baudot Section also
+operate in the ASCII RTTY mode as well. They are listed below:
+AAB
+RXREV
+ACRDISP
+TXREV
+ALFDISP
+WORDOUT
+DIDDLE
+WRU
+EAS
+RFRAME
+6-9

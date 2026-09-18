@@ -1,0 +1,79 @@
+4.7 .5
+4. 7.6
+7/92
+DSP-2232 OPERATING MANUAL
+4-27
+PACKET RADIO
+Transmitter Adjustments
+Make sure your DSP—2232 is adjusted for your SSB transmitter ag
+described in section 3.5 and 3. 5.2 of this manual before transmitting.
+These are very critical adjustments.
+If the AFSK level and
+transmitter microphone gain are hot adjusted properly, other stations
+will not be able to copy your packets. Check your plate or collector
+current or the power output of your rig before going on the air.
+Going On The Air
+Make sure your transmitter and antenna are tuned and adjusted for the
+band and operating frequency you are using.
+On HF there are two ways you can go about talking to another station.
+o
+o
+First, you can look at the packets you have just MONITORED
+(or in your MHEARD list) and choose one of them to connect to.
+You can also "Call CQ" by entering the CONVERSE mode and pressing
+the <Enter> key a few times.
+Either way you decide to go on the air, remember that things happen
+HF packet
+much more slowly on HF packet than they do on VHF packet.
+requires patience and careful tuning in order to be used successfully.
+If you are having problems connecting to other HF packet stations, try
+working with an experienced HF packet operator in your area and listen
+to each other's signals.
+See if you can copy each other's packet
+signals.
+If he cannot copy your signals, have him listen to your
+signal in the CALIBRATE mode to make sure you are transmitting a pure
+tone. As mentioned earlier, any distortion caused by overmodulation
+or RF feedback will make your signal difficult or impossible to copy.
+Controlling the Radio Ports
+If you are using an AEA PAKRATT program designed for the DSP—2232,
+switching between Radio Ports is described in the program manual.
+If you are using a computer terminal, terminal program or the
+"Dumb Terminal Mode" of an older PAKRÄTT program, this section will
+describe how to control and switch between the radio ports. The
+RADIO command allows either (or both) Radio Port (s) to be disabled.
+Before the second radio port can be used for packet operation, a
+modem must be loaded that can access the second port. There are two
+types of modems available for radio port 2 .
+radio port 1 when in use and is designated
+be low.
+20:
+23:
+28:
+60:
+p2
+p2
+p2
+p2
+Packet
+Packet
+Packet
+Packet
+300 bps HF 2110/2310
+1200 bps PACSAT
+9600 bps FSK K9NG/G3RUH
+1200 bps MSK
+22:
+25:
+61:
+The first type
+These are
+" p2 " .
+p2 Packet 1200
+p2 Packet 2400
+p2 Packet 2400
+disables
+listed
+bps VHF
+bps V. 26B
+bps MSK

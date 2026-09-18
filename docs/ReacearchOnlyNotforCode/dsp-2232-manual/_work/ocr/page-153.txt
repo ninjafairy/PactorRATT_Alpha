@@ -1,0 +1,36 @@
+11.6. 2
+7/92
+DSP-2232 OPERATING MANUAL
+11-5
+SATELLITE OPERATION
+Tuning in FSK Satellite Stations
+Tuning in 9600 bits/ sec direct FSK satellite stations properly is
+critical to successful operation.
+Follow the procedure below for
+the best results.
+o
+o
+o
+o
+O
+Make certain your satellite receiver is in the FM mode.
+Turn any IF—Shift and Passband—Tuning controls to the Center or
+OFF position.
+Tune your receiver carefully to the 9600 bits/ sec satellite
+downlink frequency. Be sure that you have properly calculated
+the satellite's path and that it is one you can copy well with
+good signal strength. Do not forget that the signal may be a few
+KHz away from the exact downlink frequency due to Doppler shift .
+When you find a station, slowly vary the VFO on your receiver and
+look for a display on the DSP—2232 tuning indicator as shown.
+Tuned In
+If the tuning indicator looks like the one below, adjust the
+frequency of your receiver to center the display as shown above.
+If the tuning indicator looks like the one below, adjust the
+frequency of your receiver to center the display as shown above.
+Make sure that the output from the discriminator is high enough
+so that the DCD LED lights when a properly tuned FSK signal
+is being received.
+Note that the rear panel Satellite UP/ DOWN Doppler shift compensation
+outputs are not yet functional with the 9600 bits/ sec FSK modem.
+The UoSAT OSCAR 14 and 22 satellites currently use these modems.

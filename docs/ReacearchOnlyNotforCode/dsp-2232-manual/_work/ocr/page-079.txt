@@ -1,0 +1,61 @@
+DSP-2232 OPERATING MANUAL
+PACKET RADIO
+4.9. 5
+4.9. 7
+4. 9.8
+4.9 9
+4.9. 10
+4.9. 11
+4.10
+7/92
+If you wish to see who is available in your local area, simply set
+your UNPROTO path to QRA and send a packet. Within 1 to 16 seconds
+other stations should respond to your QRA request by sending an ID
+packet of their own. This feature is compatible with TAPR's QRA
+feature introduced in the I. 1.8 firmware release.
+The CFROM Command
+If you ever want to exclude certain stations from connecting or only
+allow friends to connect, you may do so with the CFROM Command.
+See
+The Command Summary for details of its operation.
+Operating in Ful I—Duplex
+Most packet operation is carried on over Half —Duplex transceivers that
+can transmit and receive but not do both at the same time. When a
+separate transmitter and receiver is used such as in satellite
+operation, you may want to use the FULLDUP Comrnand in the DSP—2232.
+Identifying as A Diqipeater
+If your DSP—2232 is being used as the primary digipeater in a local
+HID will automatically
+area, you may want to enable the HID command.
+identify your station for others to see.
+Digipeater Alias Calls ian
+If your packet station is being used as the primary digipeater in your
+local area, you may want to choose a simpler identifier for others to
+use with the MY ALIAS Command.
+Morse ID in Packet
+In most countries packet is an accepted mode of identification so this
+In some countries however a Morse ID is
+command should be left OFF.
+required when packet is used and so the MID command should be enabled.
+Sharing Packet Channels with Voice Operation
+Although it is seldom needed, the DSP—2232 does have an input for
+This
+SQUELCH information from a transceiver on the RADIO connectors.
+input should be used and the SQUELCH command set if the packet channel
+is to be shared with voice operation.
+Disablinq Transmit Operation
+Occasionally for test purposes it may be desired to disable the PTT
+circuit in the DSP—2232. This is done with the XMITOK Command.
+Seldom Used Commands
+The following commands operate in Packet, but are seldom needed.
+They are listed for reference and described in the Command Summary.
+AFi1ter
+MDMon
+BBSmsgs
+MRpt
+CONPerm
+MXmit
+CP act ime DCdconn
+4-35
+Flow
+HEAder1n

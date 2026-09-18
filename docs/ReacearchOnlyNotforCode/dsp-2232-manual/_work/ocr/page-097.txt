@@ -1,0 +1,48 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+CHAPTER 6
+6.1
+6.2
+6.2. 1
+12/91
+BAUDOT AND ASCII RTTY OPERATION
+Overv i ew
+Baudot ( pronounced Bod—dough) has been around for many year B . The
+five bit Baudot/Murray code was the basis of the Western Union Telex
+service and Baudot RTTY (Radio TeleTYpe) is still widely used on the
+HF amateur bands. The Baudot character set contains the upper—case
+letters, the numbers 0—9 and some common punctuation characters.
+Because Baudot hag only five bits, it is less prone to errors than
+seven bit ASCII.
+Your DSP—2232 provides Baudot RTTY at all standard
+speeds in use today, including commercial speeds up to 300 bauds.
+ASCII (pronounced Ask—kee), the American Standard Code for Information
+Interchange has been around for nearly 30 years. ASCII is a 7 —bit
+code and was designed to overcome the limitations of the Baudot
+character set by including both upper and lower case letters, numbers,
+all punctuation as well as many computer control codes. ASCII is not
+so popular on the amateur bands, -but its operation is almost identical
+to Baudot RTTY so we will describe them both in this chapter .
+Baudot and ASCII may be operated on Radio Port I on the DSP—2232.
+Packet may be used on Radio Port 2 at the same time, so you won't miss
+any connects while operating Baudot or ASCII on HF.
+Where to Operate Baudot and ASCII RTTY
+Before you can operate Baudot or ASCII RTTY, you must first know where
+the activity is. Most RTTY operation occurs on the 20—meter amateur
+between 14.08 and 14.10 MHz. RTTY activity can be found on the other
+HF amateur bands as well and is most often located between 80 and 100
+kHz up from the bottom of the band as it is on 20 meters .
+DSP—2232 Baudot RTTY Parameter Settings
+First you must enter the Baudot mode of the DSP—2232 .
+If you are using an AEA PAKRATT program, follow the instructions in
+the program manual to enter the Baudot mode.
+If you are using a terminal, simply type "BAUDOT" or "BA" from the
+Command Mode followed by the <Enter> key to enter the Baudot mode.
+The DSP—2232 responds by displaying the previous mode:
+Opmode
+was PAcket
+Opmode
+now BAudot
+Your DSP—2232's front panel STATUS display will show the Baudot
+operating mode on Radio Port 1 and the CMD LED will be lit.
+The Radio Baud rate (RBAUD) will also be shown on the STATUS display.

@@ -1,0 +1,53 @@
+DSP-2232 OPERATING MANUAL
+BAUDOT AND ASCII OPERATION
+6. 7.4
+• / 92
+Before you respond to WX7EEE on VHF, you send a transmission to Jim on
+HF RTTY telling him how much power your transmitter ig running.
+In
+order to do this however you must first enter the command mode of the
+DSP—2232 by typing a <CTRL—C> and then giving the RTTY Transmit
+command "x" followed by the <Enter> key. When you are f in i shed with
+your text, you com.mand the DSP—2232 back to receive with a <CTRL—D>.
+After making this transmission on HF RTTY, you see WX7EEE on VHF hag
+offered you a ride to the hamfest. We know this text is from Radio
+Port 2 since the previous packet displayed by the DSP—2232 wag the
+"A: CONNECTED" message from Port 2.
+Now you want to let WX7EEE on VHF know that you are there, but that
+you are involved in another QSO on HF. This way he will understand
+that it may take you a little longer to respond to his packets.
+Before you can send data to Radio Port 2, you must enter Converse Mode
+with the "k" cornmand and then switch to this Port with 't Jb" or the
+text you type will be sent to Radio Port 1 on RTTY the next time you
+enter the transmit command "x"
+You receive a transmission from Jim on HF RTTY telling you he needs to
+sign off to go to bed. The
+in front of the text shows this was
+received on Radio Port I.
+Now you want to sign off with Jim on HF. Again, first you must switch
+to Radio Port 1 with the " 10" since your last transmission was
+directed to Port 2. After this you must enter the command mode of the
+DSP—2232 by sending a <CTRL—C> and then place Port 1 into RTTY
+transmit with the • "x" command. Now you can make your f inal
+transmission to Jim ending with his callsign followed by your
+call sign. As before, when you are through typing your text, you send
+a <CTRL—D> to the DSP—2232 which returns Radio Port 1 to receive after
+the text has been sent .
+More Thoughts on Port Switch inq
+One problem of having more than one Radio Port is remembering which
+port you are currently using.
+In the dual port sample QSOs above,
+this was not a problem, but after it has been hours or days since you
+have used your DSP—2232, you may forget which port you last used.
+With AEA Pakratt Software programs, the on—screen status will always
+show which port you are using so this is not a problem. With other
+programs, you will have to query the DSP—2232 with the CSTATUS SHORT
+command. The CSTATUS command displays the status of the logical
+channels of Port 1 and Port 2 of the DSP-2232. The CSTATUS SHORT
+command displays the status of the active channel and any packet
+channels that are connected. After completing the sample QSOs above,
+the DSP—2232 would display the following.
+cmd:CSTATUS S
+Ch. A
+- 10 DISCONNECTED
+6-1 J

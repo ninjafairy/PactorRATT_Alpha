@@ -1,0 +1,76 @@
+12.7.8
+12.8
+3/93
+DSP-2232 OPERATING MANUAL
+12-11
+PACTOR OPERATION
+Little Used PACTOR Commands
+There are four seldom—used PACTOR commands that are acceggible with
+the UCmd corrunand. This command iB of the form UCmd n x, where n ig
+the UCmd number and x is
+the use of UCmd:
+UCMD
+UCMD
+UCMD
+UCMD
+UCMD
+2
+4
+1
+3
+10
+OFF
+ON
+Will
+Will
+will
+Will
+Will
+The PACTOR UCmd commands
+the setting. Several examples are shown in
+show the current getting of conunand 2
+set command 4 to the value 10
+set the value of command 1 to zero
+set the command 3 to i tg default value
+show the setting of the last UCMD entered
+are :
+maximum 30. This command sets the number of
+UCMD O:
+UCMD 1:
+UCMD 2:
+UCMD 3:
+Default 3,
+correct packets in a row that must be received before
+generating an automatic request to change from 100 to
+200 baud. Also, see the conunand PT200 in 12.7.4.
+Default 6 , maximum 30. Thig command sets the number of
+incorrect packets in a row that must be received before
+generating an automatic request to change from 200 to
+100 baud. Also see the conmand PT200 in 12.7.4
+Default 2 , maximum 9 . This comrnand sets the number of
+packets sent in a baud rate speed—up attempt .
+Default 5 , maximum 60. This command sets the maximum
+number of Memory ARQ packets that are combined to form
+one good packet. When this number is exceeded, all
+stored packets are erased and Memory ARQ is
+re—initialized.
+Monitor inq ARO PACTOR Contacts with PTLIST
+Use the "PTLIST" command to monitor ARQ traffic flowing between two
+stations linked in a PACTOR ARQ contact. Your DSP—2232 will try to
+display the text of whichever of the two linked ARQ stations is the
+Information Sending Station at the moment.
+Monitoring two linked PACTOR ARQ stations does not provide the error
+correction enjoyed by the linked stations.
+Since your DSP—2232 is not
+part of the "handshake" you do not generate the request for repeat.
+Your DSP—2232 will test for the correct CRC error check and will not
+display messages with errors.
+Data blocks with errors will be
+designated with four error symbols.
+The default error symbol is the
+underline ( ) •
+See the command summary for ERchr, the error symbol .
+Your DSP—2232 will not print a block of data if that block contains
+the same sequence number as the previous block. If the " I SS"
+(Information Sending Station) is repeating the same block, you won 't
+print it twice.

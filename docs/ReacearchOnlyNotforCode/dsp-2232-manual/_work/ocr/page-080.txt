@@ -1,0 +1,60 @@
+DSP-2232 OPERATING MANUAL
+4.11
+4.11. 1
+7/92
+Packet Lite HF Packet
+Amateur radio needs a
+Baudot and ASCII have
+PACKET RADIO
+Protocol Extension
+better communications mode for HF operation.
+no provision for error detection. AMTOR FEC and
+ARQ are more resistant to errors, but do not carry the full ASCII
+character set.
+300 baud AX. 25 packet is undesirable because the long
+transmissions are prone to bit errors, any one of which invalidate the
+whole frame .
+Packet Lite is, as its name suggests, an abbreviated form of packet.
+It is designed as a transparent extension to the AX. 25 protocol that
+reduces the "overhead" of all HF packet frames without digipeaters.
+Packet Lite does not solve HF packet 's problems, but it should provide
+some throughput improvement on HF where it is desperately needed.
+AEA's engineering department is interested in hearing from Packet Lite
+users with any comments or suggestions on improving the protocol.
+A Brief Description of the Packet Lite Protocol
+The main feature of Packet Lite that reduces overhead is that it uses
+an address f ield of only 4 bytes. A standard AX. 25 header without
+digipeaters uses 14 bytes of addressing.
+Shortening the packet frame
+header lessens the possibility of any given frame taking a hit.
+Packet Lite reduces the length of an I—frame slightly, but its real
+strength is the shortening of the acknowledgment frames, resulting in
+fewer garbled acks and therefore fewer unnecessary retries. An ack
+(RR, RNR or REJ frame) in standard AX. 25 consists of 19 consecutive
+bytes that must be copied with no hits; Packet Lite reduces the length
+to 9 bytes, or 47% of the standard ack length.
+A couple of restrictions are necessary to accomplish this.
+First, Packet Lite works only between two stations connected directly ,
+with no digipeating allowed.
+If digipeaters are introduced to the
+address field, the advantage of the reduced overhead disappears.
+Second, all Packet Lite connections emulate AX .25 version 2.0 (RR
+polling instead of retrying I—frames) . This is necessary for the 10—
+minute identification described below. Also, the main reason version
+1 continues to be used on HF is that on a retry a [RR,PI polling frame
+is so long that one might as well just send the I—frame again.
+Packet
+Lite's polling and ack frames are so short that the AX. 25 version 2.0
+polling method is now worth doing.
+Enablinq Packet Lite
+To begin using Packet Lite, first make sure you have made all the
+proper HF Packet settings discussed earlier in this chapter.
+Be
+careful to ensure VHF is OFF and a 300 bps Modem has been selected.
+Once these settings have been made, to enable the Packet Lite protocol
+extensions, turn the command LITE ON for the appropriate Port.
+For example to enable Packet Lite on Port 1, type "LITE ON" at the
+You must not be connected to any other stations on
+command prompt .
+that Port or you will not be allowed to change the LITE command.
+— 36

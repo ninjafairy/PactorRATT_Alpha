@@ -1,0 +1,56 @@
+2.5
+12/91
+DSP-2232 OPERATING MANUAL
+1.
+COMPUTER INSTALLATION
+System Startup and Loop—back Test
+Make sure that you have connected your DSP—2232 to a 12—14 Volt DC
+power source and to the RS—232 port of your computer or Terminal.
+If you are using a computer, you must also have a communications
+program and be familiar with its operation.
+You are now ready to
+begin the following DSP—2232 Startup and Loop—back test procedure.
+2.
+3.
+4.
+5.
+Don •t connect any cables to your radio yet !
+Remove the 5—pin DIN "Loop—back" connector from the DSP—2232
+accessory bag .
+Plug this connector into the RADIO—I connector on the
+DSP—2232's rear panel.
+Set both AFSK levels on the right side of the DSP—2232 to
+rotation (straight up and down) using a small screwdriver.
+Turn on your computer. Load and run your communications program.
+If you are using an AEA PAKRATT program, follow the program
+instructions to enter the Packet mode, then skip to step 11.
+If you are using another Terminal Program or a Computer Terminal,
+Set your computer' s terminal program to:
+o
+o
+o
+1200 bauds (if available) ;
+seven—bit word;
+even parity;
+one stop bit.
+NOTE: You may use other terminal baud rates with the DSP—2232 — we
+recommend 1200 baud here to keep this procedure easy and consistent .
+Press the DSP—2232's power switch to the ON position.
+At power—on, the LCD STATUS display on the left should light and
+If the STATUS display lights,
+soon display the words "Press *"
+but a message other than "Press *" is displayed, then the
+DSP—2232 has probably been initialized. If you know the terminal
+baud rate the DSP—2232 has been set to, you may proceed to step
+11; otherwise you must reset the DSP—2232 as described below.
+To reset the DSP—2232, simply press the rear—panel RESET switch
+at the same time you turn on the power switch. After this is
+done, the "Press *" message should be observed on the LCD STATUS
+display .
+If your serial port is operating at 1200 bauds as we recommend,
+you ' 11 see the "autobaud" message:
+Please type a star ( * ) for autobaud routine.
+If your serial port is operating at 300, 2400, 4800 or 9600
+bauds, you may see some "garbage" characters.
+This is normal and you should proceed with step 10.
+2-7

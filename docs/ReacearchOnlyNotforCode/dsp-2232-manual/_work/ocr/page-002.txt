@@ -1,0 +1,56 @@
+DSP-2232 OPERATING MANUAL
+PREFACE
+PREFACE TO THE DSP-2232 OPERATING MANUAL
+Please read this preface in its entirety. It contains information about how to
+receive warranty service from AEA and AEA's software update policy.
+RF Interference Information To User
+Thig equipment has been tested and found to comply with the limits for a class B
+digital device, pursuant to Part 15 of the FCC Rules. These limits are designed
+to provide reasonable protection against harmful interference in a residential
+installation.
+This equipment generates, uses and can radiate radio frequency
+energy and, if not installed and used in accordance with AEA's instructions, may
+cauge interference to radio and TV reception. However, there is no guarantee
+that interference will not occur in a particular installation. If this
+equipment does cause interference to radio or TV reception, which can be
+determined by turning the DSP—2232 on and off, the user is encouraged to try to
+correct the interference using one or more of the following measures:
+o
+o
+o
+Re—orient the antenna of the device receiving interference.
+Relocate the DSP—2232 or computer with respect to thig device.
+Plug the DSP—2232 into a different outlet so the DSP—2232 and the device
+are on different branch circuits.
+If necessary, the user should consult the dealer or an experienced radio/ TV
+The user may find "How to Identify and
+technician for additional suggestions .
+a booklet prepared by the FCC, helpful.
+Resolve Radio—TV Interference Problems" ,
+To comply with Federal Communications Commission rules you must do the following:
+o
+o
+YOU MUST USE SHIELDED CABLE FOR ALL CONNECTIONS
+INTERNAL MODIFICATIONS TO THE DSP-2232 MAY INCREASE RF INTERFERENCE AND
+VOID THE USERS AUTHORITY TO OPERATE THE UNIT
+This DSP—2232 has been certified under Part 15 of the FCC rules.
+Operation is subject to the following two conditions:
+1.
+2.
+This device may not cause harmful interference.
+This device must accept any interference received,
+which may cause undesired operation.
+including that
+As part of its continuing program of product improvement, AEA reserves the right
+to make changes in this product's specifications or documentation.
+There may be inaccuracies or typographical errors in this document.
+address comments and corrections to AEA Incorporated, PO Box C2160, Lynnwood,
+98036—0918. AEA reserves the right to incorporate and issue any information
+thus supplied in whatever manner it deems suitable without incurring any
+obligations whatsoever.
+1990. All rights reserved.
+Copyright Advanced Electronic Applications, Inc. ,
+No part of this manual may be reproduced or used in any form or by any means
+without prior written permission from the copyright owner.
+12/92
+WA

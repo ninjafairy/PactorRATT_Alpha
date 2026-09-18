@@ -1,0 +1,54 @@
+DSP-2232 OPERATING MANUAL
+COMPUTER INSTALLATION
+If you are using an
+11.
+12.
+13.
+We will now check the DSP—2232's HF modem.
+AEA program, follow the instructions to select the HF modem by
+turning the VHF Parameter OFF; this will automatically set the
+radio baud rate HBAUD to 300 for HF packet work.
+If you are using a Computer Terminal or a non—AEA terminal
+program, the following sets the HF mode of the DSP—2232:
+Type
+(Type C while pressing the <Ctr1> key down. )
+Your monitor should respond with the command prompt :
+cmd :
+Then enter VHF OFF
+Your monitor should respond with:
+Vhf
+Vhf
+was ON/ON
+now OFF/ON
+*** HBAUD now 300/0
+If you are using an AEA program type HELLO SELF <Enter>
+Your monitor should soon echo the message you 've just typed.
+If you are using a Computer Terminal or a non—AEA terminal
+program, you must first type CONV or K followed by a <Enter>.
+Now you may type a few characters. Your monitor should soon echo
+the characters you 've just typed.
+If you are using an AEA program, follow the instructions to
+DISCONNECT from a Packet station.
+If you are using a Computer Terminal or a non—AEA terminal
+program the following will cause the DSP—2232 to DISCONNECT:
+Enter <CONTROL-C>
+Your monitor should respond with the command prompt :
+cmd :
+Enter D <Enter>
+Your monitor should respond with:
+cmd: DISCONNECTED: AAA
+pl (UA)
+12/92
+If all of the above steps were successful, you 've completed the quick—
+check and are ready to proceed to Chapter 3.
+In Chapter 3 you will
+connect your DSP—2232 to your radio and begin using it "on the air" .
+If you have problems with the steps shown above, go back to Step 1
+AFTER checking all cables and connectors. Read each step again
+carefully.
+The most common problems are trying to connect to a call
+different from AAA, not having the loop—back jumper connected, or
+not setting the AFSK level to rotation.
+If you still have problems, leave your DSP—2232 ON and contact AEA's
+Technical Support Department as suggested in the front of this manual.
+2-9

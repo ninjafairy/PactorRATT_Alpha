@@ -1,0 +1,122 @@
+DSP-2232 OPERATING MANUAL
+4.
+PACKET RADIO
+Your DSP—2232 contains other Packet modems that may be selected
+with the MODEM command. If you wish to select a different DSP
+modem for Packet operation, simply type MODEM followed by a modem
+number from
+the list below:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+50:
+51:
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+pl
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+Packet
+300 bps HF 2110/2310
+300 bps HF 1460/1260
+(North America)
+( European )
+1200
+1200
+1200
+2400
+4800
+4800
+9600
+1200
+2400
+9600
+bps
+bps
+bps
+bps
+bps
+bps
+bps
+bps
+bps
+bps
+VHF
+PACSAT
+PSK
+V. 26B
+PACSAT
+PSK
+FSK K9NG/G3RUH
+MSK
+MSK
+G3RUH. U022. eq
+If you know
+the VHF activity in your area uses a modem from the
+above list other than the Bell 202 default, you may enter this
+modem number in the command QVPACKET. The modem in QVPACKET is
+automatically selected when . the VHF parameter is ON and the
+Packet mode is entered.
+Turn ON your VHF or UHF FM transceiver and tune to a known packet
+channel in your area. Most packet operation is on s implex, so
+the repeater offset on your transceiver should be disabled.
+If you know there is packet in your area, but do not know the
+frequency, you should try some of the following frequencies:
+2 meter (144 MHz) band:
+145.01 MHz, 145.03 MHz, 145.05 MHz,
+144.99 MHz, 144.97 MHz, 144.95 MHz,
+1—1/4 meter (220 MHz) band:
+223.40 MHz, 223.42 MHz, 223.44 MHz,
+70 cm (440 MHz) band:
+145.07 MHz,
+144.93 MHz,
+223.46 MHz,
+145.09 MHz
+144.91 MHz
+223.48 MHz
+5.
+7/92
+440.975 MHz, 441.000 MHz, 441.050 MHz, 441.025 MHz, 441.075 MHz
+You know you •ve found a packet channel when you hear the
+characteristic "Braaaaaap" sound of packet transmissions.
+Once you 've found an active packet channel, you must make sure
+you have enough receive audio (volume) from your transceiver to
+light the DCD LED on the DSP—2232 when a packet is beinq
+rece i ved .
+If the DCD LED does not light when packets are
+received, you must increase the audio level from your
+transceiver. The DCD LED must light for the DSP—2232 to be able
+to receive packets.
+You must also make sure that the DCD LED goes out when no packet
+signals are present on the channel.
+If the DCD LEP does not go
+out when the channel is clear, make sure the Squelch control on
+If
+your transceiver is set high enough to silence the speaker.
+the DCD LED stays on when the packet channel is quiet, your
+DSP—2232 will never send packets to other stations.
+4—5

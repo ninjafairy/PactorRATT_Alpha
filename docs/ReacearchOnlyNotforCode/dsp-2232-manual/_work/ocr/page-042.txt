@@ -1,0 +1,62 @@
+DSP—2232 OPERATING MANUAL
+RADIO INSTALLATION
+8.
+10.
+11.
+12.
+13.
+14.
+7/92
+Refer to the figure below of the DSP—2232's side panel and locate
+the AFSK level potentiometer adjustment for the port you are
+cal ibrating .
+DO NOT ADJUST THE AGC CONTROLS, THEY ARE FACTORY SET.
+Port 2
+AGC Level
+Port 1
+o
+o
+o
+o
+o
+O
+o
+o
+o
+O
+o
+o
+o
+o
+Port 2
+AFSK Level
+Port 1
+AFSK Level
+Figure 3—7 DSP—2232 S ide Panel Controls
+With the DSP—2232 keying the transmitter and sending the higher
+of the two tones, adjust the transmit audio level for the port
+you are calibrating as follows:
+o
+o
+Ty pe
+Ty pe
+Listen to the monitor receiver; turn the DSP—2232's g ide—
+panel AFSK Output Level adjustment screw clockwise (CW)
+until you hear no increase in output level in the monitoring
+receiver.
+Rotate the AFSK Output Level adjustment screw
+counterclockwise (CCW) until the audio signal on the
+monitoring receiver is slightly but noticeably reduced from
+the maximum level.
+"K" to return to receive mode.
+"Q" to "Quit" (exit) the calibration routine.
+You 've now set your FM transmitter's deviation to an approximate
+level which will be adequate for initial operation.
+With your radio in the receive mode, open the squelch control go
+that a steady hiss or noise ig heard on a speaker.
+Set the receiver's volume control so the DCD LED on your
+DSP—2232 just lights with the receiver unsquelched. Thig ig the
+approximate proper level for best receive performance from your
+DSP—2232's modem.
+Reset your receiver's squelch control for normal operation.
+3-1 c
