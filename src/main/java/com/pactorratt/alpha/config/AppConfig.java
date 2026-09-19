@@ -7,12 +7,17 @@ public final class AppConfig {
 
     public static final String SUPPORT_EMAIL = "KJ7RBS@gmail.com";
 
+    public static final int DEFAULT_BAUD_RATE = 9600;
+    public static final int DEFAULT_DATA_BITS = 8;
+    public static final int DEFAULT_STOP_BITS = 1;
+    public static final String DEFAULT_PARITY = "NONE";
+
     private String callsign = "";
     private String comPort = "";
-    private int baudRate = 1200;
-    private int dataBits = 7;
-    private int stopBits = 1; // 1 stop bit
-    private String parity = "NONE"; // NONE, EVEN, ODD
+    private int baudRate = DEFAULT_BAUD_RATE;
+    private int dataBits = DEFAULT_DATA_BITS;
+    private int stopBits = DEFAULT_STOP_BITS;
+    private String parity = DEFAULT_PARITY; // NONE, EVEN, ODD
     private String flowControl = "NONE"; // NONE, RTS_CTS, XON_XOFF
 
     private CommitMode commitMode = CommitMode.LINE;
@@ -37,11 +42,6 @@ public final class AppConfig {
     private boolean fec200 = false;
     /** PTSend {@code x}: unproto repeats, 1–5. */
     private int fecRetries = 1;
-    /**
-     * Host {@code OP} (OPMODE) polls per second while an ARQ window is linked and not dead.
-     * {@code 0} disables polling. Range 0–10.
-     */
-    private int opPoll = 0;
 
     private boolean buddiesExpanded = true;
     private boolean heardExpanded = true;
@@ -218,21 +218,6 @@ public final class AppConfig {
             this.fecRetries = 5;
         } else {
             this.fecRetries = fecRetries;
-        }
-    }
-
-    public int getOpPoll() {
-        return opPoll;
-    }
-
-    /** Clamps to 0–10 (OPMODE polls per second; 0 = off). */
-    public void setOpPoll(int opPoll) {
-        if (opPoll < 0) {
-            this.opPoll = 0;
-        } else if (opPoll > 10) {
-            this.opPoll = 10;
-        } else {
-            this.opPoll = opPoll;
         }
     }
 

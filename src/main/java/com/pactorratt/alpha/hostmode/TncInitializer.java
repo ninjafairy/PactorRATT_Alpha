@@ -6,8 +6,10 @@ import com.pactorratt.alpha.serial.SerialByteListener;
 import com.pactorratt.alpha.util.DebugLog;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -54,16 +56,19 @@ public final class TncInitializer {
     private final SerialByteListener serialTap;
     private final StartupMessageUi startupUi;
     private final CompatInfoUi compatInfoUi;
+    private final CompatNotifyUi compatNotifyUi;
     private final InitWarningUi initWarningUi;
     private final HostCommandIni hostCommandIni;
 
     public TncInitializer(DebugLog debugLog, SerialByteListener serialTap,
                           StartupMessageUi startupUi, CompatInfoUi compatInfoUi,
-                          InitWarningUi initWarningUi, Path configDir) {
+                          CompatNotifyUi compatNotifyUi, InitWarningUi initWarningUi,
+                          Path configDir) {
         this.debugLog = Objects.requireNonNull(debugLog);
         this.serialTap = serialTap;
         this.startupUi = startupUi;
         this.compatInfoUi = compatInfoUi;
+        this.compatNotifyUi = compatNotifyUi;
         this.initWarningUi = initWarningUi;
         this.hostCommandIni = new HostCommandIni(Objects.requireNonNull(configDir, "configDir"));
     }
@@ -104,6 +109,14 @@ public final class TncInitializer {
                             compat.label());
                 }
                 case SUPPORTED -> {
+                    runCodedInit(session, config);
+                    return new InitResult(
+                            Outcome.SUCCESS, compat, compat.message(), session, compat.label());
+                }
+                case NOTIFY -> {
+                    if (compatNotifyUi != null) {
+                        compatNotifyUi.showInTestingNotify(compat.label());
+                    }
                     runCodedInit(session, config);
                     return new InitResult(
                             Outcome.SUCCESS, compat, compat.message(), session, compat.label());
@@ -210,6 +223,7 @@ public final class TncInitializer {
 
         sendRequiredCommand(session, "AA" + config.getWrapColumns());
         sendRequiredCommand(session, "Pt");
+        enableUbit10(session);
         debugLog.info("Coded TNC init completed");
         runUserInit(session);
     }
@@ -269,6 +283,64 @@ public final class TncInitializer {
         if (initWarningUi != null) {
             initWarningUi.showInitWarning(title, message);
         }
+    }
+
+    /**
+     * UBIT 10 ON is required for {@code $50 n} *w* pushes. Do not leave this to
+     * {@code [INIT]} alone — a second portable folder can omit the line and stay OFF.
+     * Verbose ON replies are not ACK {@code $00}; treat parsed ON as success.
+     */
+    private void enableUbit10(HostSession session) throws IOException, InterruptedException {
+        checkInterrupted();
+        HostSession.CommandResponse response = session.sendCommand("UB10 ON", COMMAND_TIMEOUT_MS);
+        Boolean parsed = parseUbitEnabled(ubitQueryValue(response));
+        boolean ok = response.ok() || Boolean.TRUE.equals(parsed);
+        if (!ok) {
+            throw new IOException("Host command failed: UB10 ON (status=0x"
+                    + Integer.toHexString(response.statusCode) + ")");
+        }
+        debugLog.info("Coded init UB10 ON");
+    }
+
+    private static String ubitQueryValue(HostSession.CommandResponse response) {
+        if (response == null || response.frame == null || response.frame.payload == null) {
+            return "";
+        }
+        byte[] payload = response.frame.payload;
+        if (payload.length < 3) {
+            return "";
+        }
+        int start = 2;
+        if (payload[start] == 0x00) {
+            start++;
+        }
+        if (start >= payload.length) {
+            return "";
+        }
+        return new String(payload, start, payload.length - start, StandardCharsets.US_ASCII)
+                .replace("\r", "")
+                .replace("\n", "")
+                .trim();
+    }
+
+    private static Boolean parseUbitEnabled(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String v = raw.trim().toUpperCase(Locale.ROOT);
+        if (v.startsWith("UBIT")) {
+            v = v.substring(4).trim();
+        }
+        if (v.startsWith("10")) {
+            v = v.substring(2).trim();
+        }
+        if (v.equals("Y") || v.equals("ON") || v.equals("YES")) {
+            return Boolean.TRUE;
+        }
+        if (v.equals("N") || v.equals("OFF") || v.equals("NO")) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     private void sendRequiredCommand(HostSession session, String mnemonicAndArgs)

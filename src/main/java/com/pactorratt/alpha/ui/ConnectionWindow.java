@@ -125,7 +125,7 @@ public final class ConnectionWindow extends JFrame {
      * Apply OPMODE {@code w} (link phase), optional {@code x} (ISS/IRS), and optional
      * Pactor {@code u} baud (100/200) for the ARQ status-bar speed slot.
      * {@code x} uses the same S=Tx/ISS R=Rx/IRS table for every mode that includes *x*.
-     * IRS→ISS flushes App TX buffer the same as {@link #flushIss}.
+     * IRS→ISS drains App TX to Host ({@link #flushIss}).
      */
     public void applyOpmodeLink(String wLabel, Boolean transmit, Integer pactorBaud) {
         if (wLabel != null && !wLabel.isBlank()) {
@@ -437,9 +437,6 @@ public final class ConnectionWindow extends JFrame {
             addControl(p, "Disc. with text",
                     "Canned disconnect text + CTRL-D $04 in the same ch0 block",
                     () -> app.arqDiscWithText(this));
-            addControl(p, "Flush ISS",
-                    "Flush App TX buffer to TNC (Host data ch0); mark local ISS",
-                    this::flushIss);
             handoverButtons.add(hoNow);
             handoverButtons.add(hoAfter);
             handoverButtons.add(hoText);
@@ -567,8 +564,8 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * ARQ: become ISS — drain App TX buffer to transcript (grey) and Host ch0 data.
-     * Empty buffer still flips IRS→ISS so later commits go outbound.
+     * OPMODE IRS→ISS: drain App TX to grey transcript and Host ch0.
+     * Empty buffer still marks ISS so later commits go outbound.
      */
     private void flushIss() {
         if (!sessionActive || kind != Kind.ARQ) {
@@ -576,7 +573,6 @@ public final class ConnectionWindow extends JFrame {
         }
         String pending = drainAppTxBufferToTranscript();
         if (pending.isBlank()) {
-            showNotice("Now ISS. New commits go to TNC (grey in transcript).");
             return;
         }
         app.sendOutboundChat(this, pending);

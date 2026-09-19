@@ -228,7 +228,7 @@ All of the files below are under `{jarDir}/config/` (see §3). Do not reintroduc
 
 | Settings submenu | Alpha |
 |---|---|
-| **COM Port** | Port selector; default **1200 7N1**; speed/bits/parity/stop/flow popup |
+| **COM Port** | Port selector; default **9600 8N1**; speed/bits/parity/stop/flow popup |
 | **Program** | Line/Message commit, listen-on-start, debug log on/off, canned with-text strings, canned CQ + CQ repeat, FEC 200/Retries, OPPOLL |
 | **TNC** | Stub / later growth for large param editor; Alpha uses coded init + hand-edited `[INIT]` |
 

@@ -1,6 +1,6 @@
 # Alpha TNC Init Sequence
 
-Ordered steps used by `TncInitializer` after **TNC → Connect**. COM framing is whatever the user set under Settings → COM Port (default 1200 7N1).
+Ordered steps used by `TncInitializer` after **TNC → Connect**. COM framing is whatever the user set under Settings → COM Port (default 9600 8N1).
 
 ## 1. Open serial
 

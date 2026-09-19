@@ -57,10 +57,6 @@ public final class ProgramSettingsDialog extends JDialog {
         cqRepeat.setToolTipText("Listen CQ button: how many copies of canned CQ text to send. 0 = nothing.");
         JPanel cqRepeatRow = labeled("CQ repeat", cqRepeat);
 
-        JSpinner opPoll = new JSpinner(new SpinnerNumberModel(config.getOpPoll(), 0, 10, 1));
-        opPoll.setToolTipText("OPMODE polls per second while an ARQ window is linked (not dead). 0 = off.");
-        JPanel opPollRow = labeled("OPPOLL", opPoll);
-
         JPanel form = new JPanel(new GridLayout(0, 1, 4, 4));
         form.setBorder(new EmptyBorder(10, 10, 10, 10));
         form.add(labeled("Local callsign", callsign));
@@ -75,7 +71,6 @@ public final class ProgramSettingsDialog extends JDialog {
         form.add(cqRepeatRow);
         form.add(labeled("Wrap columns", wrap));
         form.add(fecRow);
-        form.add(opPollRow);
 
         JButton save = new JButton("Save");
         save.addActionListener(e -> {
@@ -95,7 +90,6 @@ public final class ProgramSettingsDialog extends JDialog {
             }
             config.setFec200(fec200.isSelected());
             config.setFecRetries((Integer) fecRetries.getValue());
-            config.setOpPoll((Integer) opPoll.getValue());
             app.saveConfig();
             dispose();
         });

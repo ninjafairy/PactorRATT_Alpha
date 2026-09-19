@@ -13,6 +13,7 @@ import com.pactorratt.alpha.hostmode.LinkMessageParser;
 import com.pactorratt.alpha.hostmode.OpmodeParser;
 import com.pactorratt.alpha.hostmode.TncInitializer;
 import com.pactorratt.alpha.serial.SerialByteListener;
+import com.pactorratt.alpha.ui.CompatNotifyDialog;
 import com.pactorratt.alpha.ui.CompatWarningDialog;
 import com.pactorratt.alpha.ui.ConnectionWindow;
 import com.pactorratt.alpha.ui.DebugMonitorWindow;
@@ -43,10 +44,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -67,8 +64,6 @@ public final class AppController {
     private static final byte RECEIVE_CHAR_CTRL_D = 0x04;
     /** Default PTOver character (CTRL-Z) — ARQ ISS→IRS changeover. */
     private static final byte PTOVER_CHAR_CTRL_Z = 0x1A;
-    /** OP poll period while HO buttons are locked and program OPPOLL is 0. */
-    private static final long HANDOVER_WATCH_POLL_MS = 500;
     /** OP poll while waiting for PTSend ({@code PD}) to leave the air. */
     private static final long FEC_WATCH_POLL_MS = 500;
     /** Wait this long for the first {@code PD} OPMODE after PTSend. */
@@ -137,10 +132,15 @@ public final class AppController {
     /** Last connect-frame tokens (oldest first), cap {@link CallsignLineParser#CONNECT_WINDOW}. */
     private final List<String> connectFrameRecent = new ArrayList<>();
 
-    private final Object opPollLock = new Object();
-    private final AtomicBoolean opPollInFlight = new AtomicBoolean(false);
-    private ScheduledExecutorService opPollExecutor;
-    private ScheduledFuture<?> opPollFuture;
+    /** Serializes UBIT 10–triggered {@code OP}; extra {@code $50 n} queues one follow-up. */
+    private final AtomicBoolean ubit10OpInFlight = new AtomicBoolean(false);
+    private final AtomicBoolean ubit10OpFollowup = new AtomicBoolean(false);
+    /**
+     * UBIT 10 is *w* only. Idle IRS→ISS keeps {@code $33}, so the pickup side never
+     * gets {@code $50 n}. While the ARQ window is IRS, solicit {@code OP} for *x*.
+     */
+    private static final int IRS_ROLE_WATCH_MS = 1000;
+    private Timer irsRoleWatchTimer;
 
     public AppController(Path portableRoot) {
         this.portableRoot = Objects.requireNonNull(portableRoot);
@@ -150,7 +150,7 @@ public final class AppController {
         this.debugLog.setEnabled(config.isDebugLogEnabled());
         this.tncInitializer = new TncInitializer(
                 debugLog, serialTapFanout, this::showStartupMessageOnEdt, this::showCompatInfoOnEdt,
-                this::showInitWarningOnEdt, configStore.configDir());
+                this::showCompatNotifyOnEdt, this::showInitWarningOnEdt, configStore.configDir());
         this.tncConnected = false;
         loadMonitorLists();
         try {
@@ -430,6 +430,14 @@ public final class AppController {
     private boolean isDisplayMonitorOpen() {
         DisplayMonitorWindow w = displayMonitorWindow;
         return w != null && w.isDisplayable();
+    }
+
+    /** LED faceplate peek only while TNC → Dev Tools → Display is open. */
+    private void refreshDisplayMonitorFromUbit10() {
+        DisplayMonitorWindow w = displayMonitorWindow;
+        if (w != null && w.isDisplayable()) {
+            w.refreshFromHost();
+        }
     }
 
     private boolean isAnyMonitorOpen() {
@@ -731,14 +739,11 @@ public final class AppController {
             noticeWindow(window, "Clear TX and Handover — handover already pending.");
             return;
         }
-        syncOpPollScheduler();
         runArqHostAction(window, "Clear TX and Handover", session -> {
             sendHostOk(session, "TC");
             sendCh0Control(session, PTOVER_CHAR_CTRL_Z);
-        }, () -> {
-            window.unlockHandoverControls();
-            syncOpPollScheduler();
-        }, "Clear TX and Handover — sent TC then CTRL-Z ($1A); HO buttons locked until ISS again.");
+        }, window::unlockHandoverControls,
+                "Clear TX and Handover — sent TC then CTRL-Z ($1A); HO buttons locked until ISS again.");
     }
 
     /**
@@ -758,17 +763,13 @@ public final class AppController {
             return;
         }
         String pending = window.drainAppTxBufferToTranscript();
-        syncOpPollScheduler();
         byte[] payload = hostDataWithControl(pending, PTOVER_CHAR_CTRL_Z);
         String notice = pending.isBlank()
                 ? "HO after TX clear — sent CTRL-Z; HO buttons locked until ISS again."
                 : "HO after TX clear — flushed App TX + CTRL-Z; HO buttons locked until ISS again.";
         runArqHostAction(window, "HO after TX clear",
                 session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
-                () -> {
-                    window.unlockHandoverControls();
-                    syncOpPollScheduler();
-                },
+                window::unlockHandoverControls,
                 notice);
     }
 
@@ -1217,14 +1218,10 @@ public final class AppController {
             noticeWindow(window, actionName + " — handover already pending.");
             return;
         }
-        syncOpPollScheduler();
         byte[] payload = hostDataWithControl(canned, control);
         runArqHostAction(window, actionName,
                 session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
-                () -> {
-                    window.unlockHandoverControls();
-                    syncOpPollScheduler();
-                },
+                window::unlockHandoverControls,
                 actionName + " — sent CTRL-Z; HO buttons locked until ISS again.");
     }
 
@@ -1264,6 +1261,11 @@ public final class AppController {
         }
         if (event.type() == HostEvent.Type.LINK_MESSAGE) {
             HostFrameCodec.Frame linkFrame = event.frame();
+            if (LinkMessageParser.isUbit10StatusChange(linkFrame)) {
+                requestOpFromUbit10();
+                runOnEdt(this::refreshDisplayMonitorFromUbit10);
+                return;
+            }
             String connected = LinkMessageParser.connectedPeer(linkFrame);
             if (connected != null) {
                 runOnEdt(() -> onArqLinkConnected(connected));
@@ -1315,6 +1317,7 @@ public final class AppController {
         ConnectionWindow arq = activeArqWindow;
         if (arq == null || !arq.isSessionActive()) {
             applyMainModeFromOpmode(decoded);
+            stopIrsRoleWatch();
             return;
         }
         if (decoded.standby) {
@@ -1324,15 +1327,55 @@ public final class AppController {
                 markArqDead(arq);
                 noticeArq(arq, "ARQ ended — OPMODE " + w + " (no $50 DISCONNECTED).");
             }
+            syncIrsRoleWatch();
             return;
         }
         arq.markOpmodeLive();
-        boolean hoLocked = arq.isHandoverLocked();
         arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null,
                 decoded.pactorBaud);
-        if (hoLocked && !arq.isHandoverLocked()) {
-            syncOpPollScheduler();
+        syncIrsRoleWatch();
+    }
+
+    /**
+     * While linked IRS, poll {@code OP} so an Idle *w* pickup still sees *x*=S.
+     * Stop as soon as OPMODE reports ISS or the ARQ window dies.
+     */
+    private void syncIrsRoleWatch() {
+        ConnectionWindow arq = activeArqWindow;
+        boolean need = arq != null && arq.isSessionActive() && arq.isLocalIrs();
+        if (need) {
+            startIrsRoleWatch();
+        } else {
+            stopIrsRoleWatch();
         }
+    }
+
+    private void startIrsRoleWatch() {
+        runOnEdt(() -> {
+            if (irsRoleWatchTimer != null && irsRoleWatchTimer.isRunning()) {
+                return;
+            }
+            if (irsRoleWatchTimer == null) {
+                irsRoleWatchTimer = new Timer(IRS_ROLE_WATCH_MS, e -> {
+                    ConnectionWindow arq = activeArqWindow;
+                    if (arq == null || !arq.isSessionActive() || !arq.isLocalIrs()) {
+                        stopIrsRoleWatch();
+                        return;
+                    }
+                    requestOpFromUbit10();
+                });
+                irsRoleWatchTimer.setRepeats(true);
+            }
+            irsRoleWatchTimer.start();
+        });
+    }
+
+    private void stopIrsRoleWatch() {
+        runOnEdt(() -> {
+            if (irsRoleWatchTimer != null && irsRoleWatchTimer.isRunning()) {
+                irsRoleWatchTimer.stop();
+            }
+        });
     }
 
     /** Map a Pactor OPMODE reply onto the main-window Mode label when no ARQ window is live. */
@@ -1356,83 +1399,48 @@ public final class AppController {
     }
 
     /**
-     * Poll Host {@code OP} at {@code OPPOLL} Hz while TNC is connected and an ARQ window is linked.
-     * {@code OPPOLL=0} disables, except while HO buttons are locked (then 2 Hz) so ISS/IRS can
-     * release the lock. Safe to call from EDT or the poller thread.
+     * UBIT 10 {@code SOH $50 n ETB} is only *w*. Send {@code OP} for ISS/IRS / baud / mode tag.
+     * Overlapping frames queue one follow-up {@code OP} after the in-flight round-trip.
      */
-    private void syncOpPollScheduler() {
-        synchronized (opPollLock) {
-            int hz = config.getOpPoll();
-            HostSession session = hostSession;
-            boolean handoverWatch = isHandoverWatchActive();
-            boolean shouldRun = tncConnected
-                    && hasActiveArq()
-                    && (hz > 0 || handoverWatch)
-                    && session != null
-                    && session.isOpen();
-            if (opPollFuture != null) {
-                opPollFuture.cancel(false);
-                opPollFuture = null;
-            }
-            if (!shouldRun) {
-                return;
-            }
-            if (opPollExecutor == null || opPollExecutor.isShutdown()) {
-                opPollExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-                    Thread t = new Thread(r, "opmode-poll");
-                    t.setDaemon(true);
-                    return t;
-                });
-            }
-            long periodMs = hz > 0 ? Math.max(1L, 1000L / hz) : HANDOVER_WATCH_POLL_MS;
-            opPollFuture = opPollExecutor.scheduleAtFixedRate(
-                    this::pollOpmodeOnce, 0, periodMs, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    private boolean isHandoverWatchActive() {
-        ConnectionWindow arq = activeArqWindow;
-        return arq != null && arq.isSessionActive() && arq.isHandoverLocked();
-    }
-
-    private void stopOpPollScheduler() {
-        synchronized (opPollLock) {
-            if (opPollFuture != null) {
-                opPollFuture.cancel(false);
-                opPollFuture = null;
-            }
-            if (opPollExecutor != null) {
-                opPollExecutor.shutdownNow();
-                opPollExecutor = null;
-            }
-        }
-    }
-
-    private void pollOpmodeOnce() {
-        if (!tncConnected || !hasActiveArq() || (config.getOpPoll() <= 0 && !isHandoverWatchActive())) {
-            syncOpPollScheduler();
-            return;
-        }
+    private void requestOpFromUbit10() {
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
-            syncOpPollScheduler();
             return;
         }
-        if (!opPollInFlight.compareAndSet(false, true)) {
+        ubit10OpFollowup.set(true);
+        boolean started = ubit10OpInFlight.compareAndSet(false, true);
+        if (!started) {
             return;
         }
-        try {
-            // OPMODE replies are not ACK $00; do not use sendHostOk.
-            session.sendCommand("OP", ARQ_HOST_TIMEOUT_MS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            debugLog.info("OPMODE poll interrupted");
-        } catch (IOException e) {
-            String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-            debugLog.info("OPMODE poll failed: " + msg);
-        } finally {
-            opPollInFlight.set(false);
-        }
+        Thread worker = new Thread(() -> {
+            try {
+                while (ubit10OpFollowup.compareAndSet(true, false)) {
+                    HostSession s = hostSession;
+                    if (s == null || !s.isOpen()) {
+                        break;
+                    }
+                    try {
+                        // OPMODE replies are not ACK $00; do not use sendHostOk.
+                        s.sendCommand("OP", ARQ_HOST_TIMEOUT_MS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        debugLog.info("UBIT 10 OP interrupted");
+                        break;
+                    } catch (IOException e) {
+                        String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                        debugLog.info("UBIT 10 OP failed: " + msg);
+                        break;
+                    }
+                }
+            } finally {
+                ubit10OpInFlight.set(false);
+                if (ubit10OpFollowup.get()) {
+                    requestOpFromUbit10();
+                }
+            }
+        }, "ubit10-op");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     /** ARQ active wins; else active Listen window. */
@@ -1600,7 +1608,6 @@ public final class AppController {
                     setTncConnected(true);
                     String label = result.firmwareLabel == null ? "" : result.firmwareLabel;
                     debugLog.info("TNC connected" + (label.isEmpty() ? "" : " (" + label + ")"));
-                    syncOpPollScheduler();
                     if (ubit10MonitorWindow != null && ubit10MonitorWindow.isDisplayable()) {
                         ubit10MonitorWindow.refreshUbit10FromTnc();
                     }
@@ -1663,7 +1670,7 @@ public final class AppController {
         setTncConnected(false);
         tncBusy.set(false);
         stopCallingUi();
-        syncOpPollScheduler();
+        stopIrsRoleWatch();
         if (mainWindow != null) {
             mainWindow.refreshConnectionState();
         }
@@ -1745,6 +1752,14 @@ public final class AppController {
             return;
         }
         SwingUtilities.invokeLater(() -> showCompatInfoDialog(message));
+    }
+
+    private void showCompatNotifyOnEdt(String starredLabel) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            CompatNotifyDialog.show(mainWindow, starredLabel);
+            return;
+        }
+        SwingUtilities.invokeLater(() -> CompatNotifyDialog.show(mainWindow, starredLabel));
     }
 
     private void showCompatInfoDialog(String message) {
@@ -1932,7 +1947,6 @@ public final class AppController {
             configStore.save(config);
             debugLog.setEnabled(config.isDebugLogEnabled());
             debugLog.info("Config saved");
-            syncOpPollScheduler();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(mainWindow,
                     "Could not save settings:\n" + e.getMessage(),
@@ -2378,7 +2392,7 @@ public final class AppController {
             SwingUtilities.invokeLater(mainWindow::hideCallingDialog);
         }
         debugLog.info("ARQ window opened for " + call);
-        syncOpPollScheduler();
+        syncIrsRoleWatch();
     }
 
     private void showConnectError(String message) {
@@ -2407,6 +2421,11 @@ public final class AppController {
         deadArqWindows.add(preview);
     }
 
+    /** Dev Tools: same non-blocking *in testing* notify used on Connect for {@code 93 03 05 E3}. */
+    public void previewInTestingNotify() {
+        runOnEdt(() -> CompatNotifyDialog.show(mainWindow, CompatNotifyDialog.PREVIEW_STARRED_LABEL));
+    }
+
     public void onConnectionWindowClosed(ConnectionWindow window) {
         if (window == listenWindow) {
             listenWindow = null;
@@ -2432,7 +2451,6 @@ public final class AppController {
             if (mainWindow != null) {
                 mainWindow.refreshModeLabel();
             }
-            syncOpPollScheduler();
             return;
         }
         deadArqWindows.remove(window);
@@ -2457,12 +2475,11 @@ public final class AppController {
             if (mainWindow != null) {
                 mainWindow.refreshModeLabel();
             }
-            syncOpPollScheduler();
+            stopIrsRoleWatch();
         }
     }
 
     public void shutdown() {
-        stopOpPollScheduler();
         disconnectTnc(true);
         if (debugMonitorWindow != null) {
             debugMonitorWindow.dispose();

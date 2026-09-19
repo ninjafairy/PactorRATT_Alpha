@@ -54,6 +54,8 @@ public final class DisplayMonitorWindow extends JFrame {
     private final FaceplatePanel faceplate = new FaceplatePanel();
     private final Lamp[] demoLamps = DigitalLedState.overlayWalkOrder();
     private boolean peekInFlight;
+    /** Extra {@code $50 n} / Auto ticks while a peek is in flight: one follow-up after it returns. */
+    private boolean peekFollowup;
     private int demoIndex;
     private boolean demoTurningOff;
 
@@ -155,12 +157,25 @@ public final class DisplayMonitorWindow extends JFrame {
         }
     }
 
+    /**
+     * Silent peek for UBIT 10 {@code $50 n}. EDT. No-op if this window is gone.
+     * Overlapping peeks queue one follow-up.
+     */
+    public void refreshFromHost() {
+        if (!isDisplayable()) {
+            return;
+        }
+        requestPeek(false);
+    }
+
     private void requestPeek(boolean manual) {
         stopLampDemo();
         if (peekInFlight) {
+            peekFollowup = true;
             return;
         }
         peekInFlight = true;
+        peekFollowup = false;
         readButton.setEnabled(false);
         app.peekDigitalLeds(result -> {
             peekInFlight = false;
@@ -170,10 +185,12 @@ public final class DisplayMonitorWindow extends JFrame {
                     JOptionPane.showMessageDialog(this, result.error, "TNC Display",
                             JOptionPane.ERROR_MESSAGE);
                 }
-                return;
-            }
-            if (result.state != null) {
+            } else if (result.state != null) {
                 faceplate.applyState(result.state);
+            }
+            if (peekFollowup) {
+                peekFollowup = false;
+                requestPeek(false);
             }
         });
     }

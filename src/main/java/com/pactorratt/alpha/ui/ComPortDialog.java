@@ -73,7 +73,7 @@ public final class ComPortDialog extends JDialog {
         form.add(flow);
 
         JLabel summary = new JLabel(portEnumFailure == null
-                ? "Default first-run: 1200 7N1"
+                ? "Default first-run: 9600 8N1"
                 : "Could not list serial ports. You can still type a port name (e.g. COM3).");
         if (portEnumFailure != null) {
             summary.setForeground(new Color(0xB00020));

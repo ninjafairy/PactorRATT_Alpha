@@ -232,7 +232,6 @@ public final class ConfigStore {
         append(sb, "fec200", c.isFec200());
         append(sb, "fecRetries", c.getFecRetries());
         append(sb, "cqRepeat", c.getCqRepeat());
-        append(sb, "opPoll", c.getOpPoll());
         append(sb, "buddiesExpanded", c.isBuddiesExpanded());
         append(sb, "heardExpanded", c.isHeardExpanded());
         append(sb, "mentionedExpanded", c.isMentionedExpanded(), false);
@@ -276,13 +275,13 @@ public final class ConfigStore {
             config.setComPort(map.get("comPort"));
         }
         if (map.containsKey("baudRate")) {
-            config.setBaudRate(parseInt(map.get("baudRate"), 1200));
+            config.setBaudRate(parseInt(map.get("baudRate"), AppConfig.DEFAULT_BAUD_RATE));
         }
         if (map.containsKey("dataBits")) {
-            config.setDataBits(parseInt(map.get("dataBits"), 7));
+            config.setDataBits(parseInt(map.get("dataBits"), AppConfig.DEFAULT_DATA_BITS));
         }
         if (map.containsKey("stopBits")) {
-            config.setStopBits(parseInt(map.get("stopBits"), 1));
+            config.setStopBits(parseInt(map.get("stopBits"), AppConfig.DEFAULT_STOP_BITS));
         }
         if (map.containsKey("parity")) {
             config.setParity(map.get("parity"));
@@ -328,9 +327,6 @@ public final class ConfigStore {
         }
         if (map.containsKey("cqRepeat")) {
             config.setCqRepeat(parseInt(map.get("cqRepeat"), 1));
-        }
-        if (map.containsKey("opPoll")) {
-            config.setOpPoll(parseInt(map.get("opPoll"), 0));
         }
         if (map.containsKey("buddiesExpanded")) {
             config.setBuddiesExpanded(Boolean.parseBoolean(map.get("buddiesExpanded")));

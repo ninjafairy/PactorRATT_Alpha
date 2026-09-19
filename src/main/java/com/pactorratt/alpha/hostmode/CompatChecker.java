@@ -28,6 +28,11 @@ public final class CompatChecker {
             "98 08 10 C2", "supported v7.2"
     );
 
+    /** Starred label from Compat_Memory_Map (*in testing …*). */
+    private static final Map<String, String> IN_TESTING = linkedMap(
+            "93 03 05 E3", "in testing PK-900"
+    );
+
     private static final Map<String, String> WARN_HK = linkedMap(
             "87 06 25 69", "unsupported HK-232",
             "88 02 23 69", "unsupported HK-232",
@@ -62,6 +67,15 @@ public final class CompatChecker {
                     supportedLabel,
                     fp,
                     "Compatible firmware detected: " + supportedLabel + " (" + hex + ").");
+        }
+
+        String testingLabel = IN_TESTING.get(hex);
+        if (testingLabel != null) {
+            return new CompatResult(
+                    CompatResult.Disposition.NOTIFY,
+                    testingLabel,
+                    fp,
+                    testingLabel + CompatResult.NOTIFY_BUGS_SUFFIX);
         }
 
         String hkLabel = WARN_HK.get(hex);

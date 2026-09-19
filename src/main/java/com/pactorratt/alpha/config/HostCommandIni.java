@@ -37,12 +37,15 @@ public final class HostCommandIni {
             # OP, MM, and AE are skipped (they are not simple ACK commands).
             # A bad Host ACK aborts TNC Connect.
             #
+            # UB 10 Y → sent as UB10 Y (UBIT 10 ON; TNC pushes SOH $50 n ETB on *w* changes).
+            #
             # Examples (uncomment a line under [INIT] to send it):
             # HP N
             # EA N
             # Pt
 
             [INIT]
+            UB 10 Y
             """;
 
     private final Path file;

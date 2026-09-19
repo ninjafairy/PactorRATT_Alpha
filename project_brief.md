@@ -95,7 +95,7 @@ Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds
 | Listen ON UI | Open the Listen window **immediately**, then query `OP` / send `PN` on a worker. If OPMODE is not `Pt`/`PN`, close the window, uncheck Listen, warn. |
 | Main-window Connect UI | Show **Calling \<call\>…** + Cancel on the main window (no ARQ window yet). Worker sends `PG`+callsign (`!` if **LP:** checked and not already typed). ARQ window opens on **`$50` CONNECTED** (same path as inbound). `PG` fail → error dialog, no window. **`$50 Timeout` while Calling** (no `DISCONNECTED:`) shows **`<call> no answer`** (Cancel hidden; TNC not aborted). 60 s local timer is fallback if that frame is missed. Cancel = Abort Host (`PN` if Listen on, else `Pt`), then `OP`. New Connect while calling sends another `PG` (TNC switches target). Connect stays enabled. |
 | Incoming ARQ | `$50` `CONNECTED to ` + peer text (hardware: `… KJ5XF via LONGPATH`). Open ARQ window; Listen inactive, checkbox stays. Packet `Connect request:` ignored. End: `$50` `DISCONNECTED: CALL` (clean) or `$50` `Timeout` then `DISCONNECTED: CALL` (link timeout). OPMODE `Pt` is fallback only. |
-| COM default | **1200 7N1** (user-selectable; no forced 8N1 on open) |
+| COM default | **9600 8N1** (user-selectable) |
 | Compat | Supported v7.x continue; listed pre-v7 **hard refuse**; HK/UDC/unknown **warn + email + continue** |
 | UI Connect | **TNC → Connect/Disconnect** = serial/Host session; main-window **Connect** = ARQ `PG` only |
 | TNC status | After a successful TNC Connect, query Host `ML` (not ACK `$00`) and show **mycall: \<value\>** after **TNC: connected**. Hidden while offline / connecting. Query fail does not fail Connect. |

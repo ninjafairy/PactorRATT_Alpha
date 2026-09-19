@@ -562,12 +562,12 @@ Unused bits are don’t-care. A match occurs if **either**:
 Popup to select and apply:
 
 - Port name
-- Baud / framing **defaults: 1200 baud, 7 data bits, no parity, 1 stop bit (1200 7N1)**
+- Baud / framing **defaults: 9600 baud, 8 data bits, no parity, 1 stop bit (9600 8N1)**
 - Flow control (hardware/software as applicable)
 
 Persist last successful settings.
 
-Note: Host Mode entry (later phase) may require switching the TNC/`AWLEN` path to 8-bit; the portable default for first-run COM settings remains **1200 7N1** unless the user changes them.
+Note: Host Mode still sends `AWLEN 8` / `PARITY 0` on the TNC during Connect. First-run COM settings are **9600 8N1** unless the user changes them.
 
 ### 12.2 Settings → Program
 

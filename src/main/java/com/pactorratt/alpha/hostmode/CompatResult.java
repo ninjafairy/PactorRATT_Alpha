@@ -10,8 +10,13 @@ public final class CompatResult {
     public enum Disposition {
         SUPPORTED,
         HARD_REFUSE,
-        WARN_CONTINUE
+        WARN_CONTINUE,
+        /** Known *in testing* fingerprint — notify, then continue Connect. */
+        NOTIFY
     }
+
+    /** Trailing text after the starred Compat_Memory_Map label on NOTIFY. */
+    public static final String NOTIFY_BUGS_SUFFIX = "  Bugs may be present";
 
     private final Disposition disposition;
     private final String label;
@@ -39,6 +44,11 @@ public final class CompatResult {
 
     public String message() {
         return message;
+    }
+
+    /** Non-blocking notify body: starred Compat_Memory_Map text plus {@link #NOTIFY_BUGS_SUFFIX}. */
+    public String notifyText() {
+        return label + NOTIFY_BUGS_SUFFIX;
     }
 
     /**

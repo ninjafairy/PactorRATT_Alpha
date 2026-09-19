@@ -51,4 +51,4 @@ From the Maven output (config then appears next to `target/`):
 java --enable-native-access=ALL-UNNAMED -jar target/PactorRATT_Alpha.jar
 ```
 
-COM settings default to **1200 7N1**. Use **Listen** or **Connect** to exercise windows; TNC actions need **TNC → Connect**.
+COM settings default to **9600 8N1**. Use **Listen** or **Connect** to exercise windows; TNC actions need **TNC → Connect**.

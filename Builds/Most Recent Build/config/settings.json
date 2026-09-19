@@ -1,8 +1,8 @@
 {
   "callsign": "",
-  "comPort": "",
-  "baudRate": 1200,
-  "dataBits": 7,
+  "comPort": "COM13",
+  "baudRate": 9600,
+  "dataBits": 8,
   "stopBits": 1,
   "parity": "NONE",
   "flowControl": "NONE",
@@ -17,7 +17,6 @@
   "fec200": false,
   "fecRetries": 1,
   "cqRepeat": 1,
-  "opPoll": 0,
   "buddiesExpanded": true,
   "heardExpanded": false,
   "mentionedExpanded": false

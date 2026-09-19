@@ -1,8 +1,8 @@
 {
   "callsign": "",
   "comPort": "",
-  "baudRate": 1200,
-  "dataBits": 7,
+  "baudRate": 9600,
+  "dataBits": 8,
   "stopBits": 1,
   "parity": "NONE",
   "flowControl": "NONE",

@@ -50,6 +50,22 @@ public final class LinkMessageParser {
     }
 
     /**
+     * UBIT 10 status-change: payload is a single *w* byte {@code $30}–{@code $36}.
+     * Not {@code CONNECTED}/{@code DISCONNECTED}/{@code Timeout} text.
+     */
+    public static boolean isUbit10StatusChange(HostFrameCodec.Frame frame) {
+        if (frame == null || (frame.ctl & 0xFF) != 0x50) {
+            return false;
+        }
+        byte[] payload = frame.payload;
+        if (payload == null || payload.length != 1) {
+            return false;
+        }
+        int n = payload[0] & 0xFF;
+        return n >= 0x30 && n <= 0x36;
+    }
+
+    /**
      * Human-readable CTL {@code $50} payload: UBIT 10 one-byte *w* status, or link text.
      * {@code null} if the frame is not channel-0 {@code $50}.
      */

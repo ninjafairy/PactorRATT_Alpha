@@ -49,11 +49,15 @@ The last one is the Product Type Code
 
 *supported v7.2* 98 08 10 C2
 
+*in testing PK-900* 93 03 05 E3
+
 *unsupported HK-232* 87 06 25 69
 
 *unsupported HK-232* 88 02 23 69
 
 *unsupported HK-232* 89 10 31 69
 
+
+*in testing …* fingerprints: non-blocking notify (starred text + "  Bugs may be present"), then Connect continues.
 
 all other unknown fingerprints should cause a popup error with unknown and the 4 byte fingerprint and instructions to email it to KJ7RBS@gmail.com

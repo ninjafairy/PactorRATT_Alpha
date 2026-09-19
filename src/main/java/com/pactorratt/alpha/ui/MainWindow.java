@@ -369,6 +369,9 @@ public final class MainWindow extends JFrame {
         JMenuItem previewFec = new JMenuItem("Preview FEC window");
         previewFec.addActionListener(e -> app.openPreviewFecWindow());
         devTools.add(previewFec);
+        JMenuItem previewNotify = new JMenuItem("Preview in-testing notify");
+        previewNotify.addActionListener(e -> app.previewInTestingNotify());
+        devTools.add(previewNotify);
         tncMenu.add(devTools);
         openSubmenuOnHover(bar, tncMenu, devTools);
 
