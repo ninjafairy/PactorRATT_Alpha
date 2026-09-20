@@ -4,6 +4,8 @@ import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.config.CommitMode;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -18,6 +20,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.WindowConstants;
@@ -28,6 +31,7 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -57,6 +61,11 @@ public final class ConnectionWindow extends JFrame {
     }
 
     private static final char BACKSPACE = 0x08;
+    private static final Color MAILBOX_RED = Color.RED;
+    private static final Color MAILBOX_RED_DIM = new Color(0x8B0000);
+    private static final Color MAILBOX_PURPLE = new Color(0xD8, 0xB4, 0xFE);
+    private static final int MAILBOX_FLASH_MS = 500;
+    private static final int MAILBOX_HIDE_MS = 3000;
 
     private final AppController app;
     private final Kind kind;
@@ -71,6 +80,12 @@ public final class ConnectionWindow extends JFrame {
     private final TxChip txChip = new TxChip();
     private final JLabel noticeLabel = new JLabel(" ");
     private final JButton sendButton = new JButton("Send");
+    /** ARQ only: TMail warning under Send. Null on Listen windows. */
+    private JButton mailboxButton;
+    private Timer mailboxFlashTimer;
+    private Timer mailboxHideTimer;
+    private boolean mailboxFlashLit;
+    private boolean mailboxUiClosed;
     private final List<JButton> controlButtons = new ArrayList<>();
     private final List<JButton> handoverButtons = new ArrayList<>();
 
@@ -114,11 +129,16 @@ public final class ConnectionWindow extends JFrame {
 
             @Override
             public void windowClosed(WindowEvent e) {
+                mailboxUiClosed = true;
+                stopMailboxUi();
                 stopArqTxPreview();
             }
         });
         setSize(640, 520);
         setLocationByPlatform(true);
+        if (kind == Kind.ARQ) {
+            beginTmailMailboxCheck();
+        }
     }
 
     /**
@@ -371,9 +391,23 @@ public final class ConnectionWindow extends JFrame {
         JPanel composeRow = new JPanel(new BorderLayout(4, 4));
         composeRow.setBackground(UiColors.PANEL_BG);
         composeRow.add(composeScroll, BorderLayout.CENTER);
+        JPanel sendCol = new JPanel();
+        sendCol.setLayout(new BoxLayout(sendCol, BoxLayout.Y_AXIS));
+        sendCol.setOpaque(false);
+        sendButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        sendCol.add(sendButton);
+        if (kind == Kind.ARQ) {
+            mailboxButton = new MailboxAlertButton();
+            mailboxButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+            mailboxButton.setFont(sendButton.getFont().deriveFont(Font.BOLD));
+            mailboxButton.setVisible(false);
+            mailboxButton.addActionListener(e -> disableTmailMailbox());
+            sendCol.add(Box.createVerticalStrut(4));
+            sendCol.add(mailboxButton);
+        }
         JPanel sendPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         sendPanel.setBackground(UiColors.PANEL_BG);
-        sendPanel.add(sendButton);
+        sendPanel.add(sendCol);
         composeRow.add(sendPanel, BorderLayout.EAST);
 
         JPanel southCenter = new JPanel(new BorderLayout(4, 4));
@@ -761,6 +795,131 @@ public final class ConnectionWindow extends JFrame {
         }
     }
 
+    /**
+     * Host {@code TL} query after every ARQ window create. TMail ON → flashing disable
+     * button; query fail → purple unknown; OFF → no button.
+     */
+    private void beginTmailMailboxCheck() {
+        if (mailboxButton == null) {
+            return;
+        }
+        app.queryTmail(enabled -> {
+            if (mailboxUiClosed || mailboxButton == null) {
+                return;
+            }
+            if (enabled == null) {
+                showMailboxUnknown();
+            } else if (enabled) {
+                showMailboxDisableWarn();
+            }
+        });
+    }
+
+    private void showMailboxDisableWarn() {
+        stopMailboxTimers();
+        applyMailboxHtml("disable", "mailbox");
+        mailboxButton.setEnabled(true);
+        mailboxFlashLit = true;
+        applyMailboxFlashPaint();
+        mailboxButton.setVisible(true);
+        mailboxFlashTimer = new Timer(MAILBOX_FLASH_MS, e -> {
+            mailboxFlashLit = !mailboxFlashLit;
+            applyMailboxFlashPaint();
+        });
+        mailboxFlashTimer.start();
+        syncMailboxButtonWidth();
+    }
+
+    private void showMailboxUnknown() {
+        stopMailboxTimers();
+        applyMailboxHtml("mailbox", "unknown");
+        mailboxButton.setBackground(MAILBOX_PURPLE);
+        mailboxButton.setEnabled(true);
+        mailboxButton.setVisible(true);
+        syncMailboxButtonWidth();
+    }
+
+    private void showMailboxDisabledSolid() {
+        stopMailboxTimers();
+        applyMailboxHtml("mailbox", "disabled");
+        mailboxButton.setBackground(sendButton.getBackground());
+        mailboxButton.setEnabled(false);
+        mailboxButton.setVisible(true);
+        mailboxButton.repaint();
+        syncMailboxButtonWidth();
+    }
+
+    private void startMailboxHideTimer() {
+        if (mailboxHideTimer != null) {
+            mailboxHideTimer.stop();
+        }
+        mailboxHideTimer = new Timer(MAILBOX_HIDE_MS, e -> {
+            if (mailboxButton != null) {
+                mailboxButton.setVisible(false);
+                revalidate();
+            }
+        });
+        mailboxHideTimer.setRepeats(false);
+        mailboxHideTimer.start();
+    }
+
+    private void disableTmailMailbox() {
+        if (mailboxButton == null || !mailboxButton.isEnabled()) {
+            return;
+        }
+        showMailboxDisabledSolid();
+        app.disableTmail(error -> {
+            if (mailboxUiClosed || mailboxButton == null) {
+                return;
+            }
+            if (error == null) {
+                startMailboxHideTimer();
+            } else {
+                showMailboxUnknown();
+            }
+        });
+    }
+
+    private void applyMailboxHtml(String line1, String line2) {
+        mailboxButton.setText("<html><center><b>" + line1 + "<br>" + line2 + "</b></center></html>");
+        mailboxButton.setForeground(Color.BLACK);
+        mailboxButton.setFont(sendButton.getFont().deriveFont(Font.BOLD));
+    }
+
+    private void applyMailboxFlashPaint() {
+        mailboxButton.setBackground(mailboxFlashLit ? MAILBOX_RED : MAILBOX_RED_DIM);
+        mailboxButton.repaint();
+    }
+
+    private void syncMailboxButtonWidth() {
+        if (mailboxButton == null) {
+            return;
+        }
+        int w = Math.max(sendButton.getPreferredSize().width, mailboxButton.getPreferredSize().width);
+        int sendH = sendButton.getPreferredSize().height;
+        int mbH = Math.max(mailboxButton.getPreferredSize().height, sendH * 2);
+        sendButton.setPreferredSize(new Dimension(w, sendH));
+        sendButton.setMaximumSize(new Dimension(w, sendH));
+        mailboxButton.setPreferredSize(new Dimension(w, mbH));
+        mailboxButton.setMaximumSize(new Dimension(w, mbH));
+        revalidate();
+    }
+
+    private void stopMailboxUi() {
+        stopMailboxTimers();
+    }
+
+    private void stopMailboxTimers() {
+        if (mailboxFlashTimer != null) {
+            mailboxFlashTimer.stop();
+            mailboxFlashTimer = null;
+        }
+        if (mailboxHideTimer != null) {
+            mailboxHideTimer.stop();
+            mailboxHideTimer = null;
+        }
+    }
+
     private void attemptClose() {
         if (kind == Kind.ARQ && sessionActive) {
             Object[] options = {"Abort", "Disconnect", "Cancel"};
@@ -784,6 +943,27 @@ public final class ConnectionWindow extends JFrame {
         }
         app.onConnectionWindowClosed(this);
         dispose();
+    }
+
+    /**
+     * Fills its own background so red/purple show under Windows system L&F.
+     */
+    private static final class MailboxAlertButton extends JButton {
+        MailboxAlertButton() {
+            setContentAreaFilled(false);
+            setOpaque(false);
+            setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            setFocusPainted(false);
+            setForeground(Color.BLACK);
+            setHorizontalAlignment(SwingConstants.CENTER);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            g.setColor(getBackground());
+            g.fillRect(0, 0, getWidth(), getHeight());
+            super.paintComponent(g);
+        }
     }
 
     /**

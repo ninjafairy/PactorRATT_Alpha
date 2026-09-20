@@ -38,6 +38,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.BorderLayout;
+import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -48,6 +49,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 public final class MainWindow extends JFrame {
@@ -60,6 +62,7 @@ public final class MainWindow extends JFrame {
     private static final String LISTEN_LABEL = "FEC/Monitor";
     private static final String LISTEN_TIP = "Opens window for sending and monitoring FEC";
     private static final String CONNECT_TNC_FIRST_TIP = "Connect to TNC first";
+    private static final int EXIT_DISC_TIMEOUT_SEC = 30;
 
     private final AppController app;
 
@@ -706,16 +709,7 @@ public final class MainWindow extends JFrame {
 
     private void attemptExit() {
         if (app.hasActiveArq()) {
-            Object[] options = {"Abort", "Disconnect", "Cancel"};
-            int choice = JOptionPane.showOptionDialog(this,
-                    "An ARQ link is active. Abort, disconnect, or cancel exit?",
-                    "Exit PactorRATT_Alpha",
-                    JOptionPane.YES_NO_CANCEL_OPTION,
-                    JOptionPane.WARNING_MESSAGE,
-                    null,
-                    options,
-                    options[2]);
-            if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) {
+            if (!confirmExitWhileArq()) {
                 return;
             }
         }
@@ -725,6 +719,130 @@ public final class MainWindow extends JFrame {
         app.shutdown();
         dispose();
         System.exit(0);
+    }
+
+    /**
+     * Modal Abort / Disconnect / Cancel. Disconnect waits for the link to die (30 s,
+     * then Abort {@code PN}/{@code Pt}) before returning true to continue exit.
+     */
+    private boolean confirmExitWhileArq() {
+        ConnectionWindow arq = app.activeArqWindow();
+        if (arq == null || !arq.isSessionActive()) {
+            return true;
+        }
+
+        AtomicBoolean proceed = new AtomicBoolean(false);
+        AtomicBoolean finished = new AtomicBoolean(false);
+        JDialog dialog = new JDialog(this, "Exit PactorRATT_Alpha", Dialog.ModalityType.APPLICATION_MODAL);
+        dialog.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+
+        JLabel message = new JLabel("An ARQ link is active. Abort, disconnect, or cancel exit?");
+        JButton abort = new JButton("Abort");
+        JButton disconnect = new JButton("Disconnect");
+        JButton cancel = new JButton("Cancel");
+
+        Timer[] countdown = new Timer[1];
+        Timer[] poll = new Timer[1];
+        int[] secondsLeft = {EXIT_DISC_TIMEOUT_SEC};
+
+        Runnable stopWaitTimers = () -> {
+            if (countdown[0] != null) {
+                countdown[0].stop();
+                countdown[0] = null;
+            }
+            if (poll[0] != null) {
+                poll[0].stop();
+                poll[0] = null;
+            }
+        };
+
+        Runnable closeProceed = () -> {
+            if (!finished.compareAndSet(false, true)) {
+                return;
+            }
+            stopWaitTimers.run();
+            proceed.set(true);
+            dialog.setVisible(false);
+        };
+
+        Runnable closeCancel = () -> {
+            if (!finished.compareAndSet(false, true)) {
+                return;
+            }
+            stopWaitTimers.run();
+            dialog.setVisible(false);
+        };
+
+        abort.addActionListener(e -> {
+            abort.setEnabled(false);
+            disconnect.setEnabled(false);
+            cancel.setEnabled(false);
+            stopWaitTimers.run();
+            app.arqAbort(arq, closeProceed);
+        });
+
+        disconnect.addActionListener(e -> {
+            abort.setEnabled(true);
+            disconnect.setEnabled(false);
+            cancel.setEnabled(false);
+            secondsLeft[0] = EXIT_DISC_TIMEOUT_SEC;
+            disconnect.setText("Disconnecting... " + secondsLeft[0]);
+            app.beginExitGracefulDisconnect(arq);
+
+            poll[0] = new Timer(200, ev -> {
+                if (!app.hasActiveArq()) {
+                    closeProceed.run();
+                }
+            });
+            poll[0].start();
+
+            countdown[0] = new Timer(1000, ev -> {
+                secondsLeft[0]--;
+                if (secondsLeft[0] > 0) {
+                    disconnect.setText("Disconnecting... " + secondsLeft[0]);
+                    return;
+                }
+                disconnect.setText("Disconnecting... 0");
+                stopWaitTimers.run();
+                abort.setEnabled(false);
+                app.arqAbort(arq, closeProceed);
+            });
+            countdown[0].start();
+        });
+
+        cancel.addActionListener(e -> closeCancel.run());
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (cancel.isEnabled()) {
+                    closeCancel.run();
+                }
+            }
+        });
+
+        JPanel text = new JPanel(new BorderLayout());
+        text.setOpaque(false);
+        text.setBorder(BorderFactory.createEmptyBorder(16, 24, 8, 24));
+        text.add(message, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        buttons.setOpaque(false);
+        buttons.setBorder(BorderFactory.createEmptyBorder(4, 16, 12, 16));
+        buttons.add(abort);
+        buttons.add(disconnect);
+        buttons.add(cancel);
+
+        dialog.getContentPane().setBackground(UiColors.PANEL_BG);
+        dialog.setLayout(new BorderLayout());
+        dialog.add(text, BorderLayout.CENTER);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        dialog.setResizable(false);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+        stopWaitTimers.run();
+        dialog.dispose();
+        return proceed.get();
     }
 
     private String beginArqTip() {

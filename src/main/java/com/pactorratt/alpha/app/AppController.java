@@ -673,6 +673,73 @@ public final class AppController {
     }
 
     /**
+     * Query Host {@code TL} (TMail). {@code callback} runs on the EDT with {@code true}/
+     * {@code false}, or {@code null} if the TNC is offline or the reply could not be parsed.
+     */
+    public void queryTmail(Consumer<Boolean> callback) {
+        Objects.requireNonNull(callback, "callback");
+        HostSession session = openHostSessionOrNull();
+        if (session == null) {
+            runOnEdt(() -> callback.accept(null));
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            Boolean enabled = null;
+            try {
+                HostSession.CommandResponse response = session.sendCommand("TL", ARQ_HOST_TIMEOUT_MS);
+                enabled = parseTmailEnabled(hostQueryValue(response));
+                debugLog.info("TMail query: " + (enabled == null ? "(unknown)" : enabled));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("TMail query interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "failed" : e.getMessage();
+                debugLog.info("TMail query failed: " + msg);
+            }
+            Boolean result = enabled;
+            runOnEdt(() -> callback.accept(result));
+        }, "tmail-query");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Disable TMail via Host {@code TLN}. {@code onDone} runs on the EDT with {@code null}
+     * on success, or an error string.
+     */
+    public void disableTmail(Consumer<String> onDone) {
+        Objects.requireNonNull(onDone, "onDone");
+        HostSession session = openHostSessionOrNull();
+        if (session == null) {
+            runOnEdt(() -> onDone.accept("No open TNC serial session."));
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            String error = null;
+            try {
+                HostSession.CommandResponse response = session.sendCommand("TLN", ARQ_HOST_TIMEOUT_MS);
+                Boolean parsed = parseTmailEnabled(hostQueryValue(response));
+                if (!response.ok() && parsed == null) {
+                    error = "TLN failed, status=0x" + Integer.toHexString(response.statusCode);
+                } else if (parsed != null && parsed) {
+                    error = "TNC TMail is still ON after TLN.";
+                } else {
+                    debugLog.info("TMail disabled (TLN)");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                error = "TMail disable interrupted.";
+            } catch (IOException e) {
+                error = e.getMessage() == null ? "Host I/O failed." : e.getMessage();
+            }
+            String result = error;
+            runOnEdt(() -> onDone.accept(result));
+        }, "tmail-disable");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
      * Host query value after {@code UB}: {@code Y}/{@code ON} or {@code N}/{@code OFF},
      * optionally prefixed by the bit number ({@code 10 ON}).
      */
@@ -686,6 +753,27 @@ public final class AppController {
         }
         if (v.startsWith("10")) {
             v = v.substring(2).trim();
+        }
+        if (v.equals("Y") || v.equals("ON") || v.equals("YES")) {
+            return Boolean.TRUE;
+        }
+        if (v.equals("N") || v.equals("OFF") || v.equals("NO")) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    /**
+     * Host {@code TL} / {@code TLN} value: {@code Y}/{@code ON} or {@code N}/{@code OFF},
+     * optionally prefixed by verbose {@code TMail}.
+     */
+    static Boolean parseTmailEnabled(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String v = raw.trim().toUpperCase(Locale.ROOT);
+        if (v.startsWith("TMAIL")) {
+            v = v.substring(5).trim();
         }
         if (v.equals("Y") || v.equals("ON") || v.equals("YES")) {
             return Boolean.TRUE;
@@ -782,24 +870,45 @@ public final class AppController {
      * Abort — Listen checkbox on → {@code PN}, else {@code Pt}; then {@link #markArqDead}.
      */
     public void arqAbort(ConnectionWindow window) {
+        arqAbort(window, null);
+    }
+
+    /**
+     * Same as {@link #arqAbort(ConnectionWindow)}; {@code onDone} runs on the EDT after
+     * the window is marked dead (or immediately if there is nothing to abort).
+     */
+    public void arqAbort(ConnectionWindow window, Runnable onDone) {
+        Runnable finished = () -> {
+            if (onDone != null) {
+                onDone.run();
+            }
+        };
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ) {
+            runOnEdt(finished);
             return;
         }
         if (!window.isSessionActive()) {
+            runOnEdt(finished);
             return;
         }
         boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
         String mnemonic = listenOn ? "PN" : "Pt";
 
         if (!tncConnected) {
-            noticeArq(window, "Abort — TNC not connected; closing ARQ window.");
-            markArqDead(window);
+            runOnEdt(() -> {
+                noticeArq(window, "Abort — TNC not connected; closing ARQ window.");
+                markArqDead(window);
+                finished.run();
+            });
             return;
         }
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
-            noticeArq(window, "Abort — no open Host session; closing ARQ window.");
-            markArqDead(window);
+            runOnEdt(() -> {
+                noticeArq(window, "Abort — no open Host session; closing ARQ window.");
+                markArqDead(window);
+                finished.run();
+            });
             return;
         }
 
@@ -822,8 +931,44 @@ public final class AppController {
             runOnEdt(() -> {
                 markArqDead(window);
                 noticeArq(window, notice);
+                finished.run();
             });
         }, "arq-abort");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Exit-path graceful disconnect: {@code TC}, {@code AG} if IRS, then ch0 {@code $04}.
+     * Does not mark the window dead — wait for {@code DISCONNECTED} or abort.
+     */
+    public void beginExitGracefulDisconnect(ConnectionWindow window) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
+            return;
+        }
+        boolean seize = window.isLocalIrs();
+        HostSession session = hostSession;
+        if (!tncConnected || session == null || !session.isOpen()) {
+            debugLog.info("Exit disconnect — no Host session");
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                sendHostOk(session, "TC");
+                if (seize) {
+                    sendHostOk(session, "AG");
+                }
+                sendCh0Control(session, RECEIVE_CHAR_CTRL_D);
+                debugLog.info("Exit disconnect — TC"
+                        + (seize ? " AG" : "") + " CTRL-D ($04)");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("Exit disconnect interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Exit disconnect failed: " + msg);
+            }
+        }, "arq-exit-disc");
         worker.setDaemon(true);
         worker.start();
     }
@@ -1026,6 +1171,17 @@ public final class AppController {
 
     private void applyPostFecListenCompat(HostSession session, OpmodeParser.Decoded decoded)
             throws IOException, InterruptedException {
+        applyListenCompatFromOpmode(session, decoded, "FEC ended");
+    }
+
+    /**
+     * After FEC or ARQ, align TNC {@code Pt}/{@code PN} with the Listen checkbox.
+     * {@code Pt} + Listen on → {@code PN}. Already {@code PN} + Listen on → nothing.
+     * {@code PN} + Listen off → {@code Pt}. Ignores other OPMODE tags.
+     */
+    private void applyListenCompatFromOpmode(HostSession session, OpmodeParser.Decoded decoded,
+                                            String reason)
+            throws IOException, InterruptedException {
         if (session == null || decoded == null || hasActiveArq()) {
             return;
         }
@@ -1033,22 +1189,47 @@ public final class AppController {
         if (decoded.isPactorStandby()) {
             if (listenOn) {
                 sendHostOk(session, "PN");
-                debugLog.info("FEC ended — Pt; sent PN (Listen still on)");
+                debugLog.info(reason + " — Pt; sent PN (Listen still on)");
                 queryOpmode(session);
             } else {
-                debugLog.info("FEC ended — Pt; Listen off, left standby");
+                debugLog.info(reason + " — Pt; Listen off, left standby");
             }
             return;
         }
         if (decoded.isPactorListen()) {
             if (listenOn) {
-                debugLog.info("FEC ended — already PN; no Host change");
+                debugLog.info(reason + " — already PN; no Host change");
             } else {
                 sendHostOk(session, "Pt");
-                debugLog.info("FEC ended — PN but Listen off; sent Pt");
+                debugLog.info(reason + " — PN but Listen off; sent Pt");
                 queryOpmode(session);
             }
         }
+    }
+
+    /**
+     * ARQ is dead: {@code OP}, then the same Listen {@code Pt}/{@code PN} rule as FEC.
+     * Starts a worker; safe from the EDT.
+     */
+    private void restoreListenAfterArq() {
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen() || hasActiveArq()) {
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                OpmodeParser.Decoded decoded = queryOpmode(session);
+                applyListenCompatFromOpmode(session, decoded, "ARQ ended");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("ARQ Listen restore interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("ARQ Listen restore failed: " + msg);
+            }
+        }, "arq-listen-compat");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void sendCh0Control(HostSession session, byte control)
@@ -1677,14 +1858,14 @@ public final class AppController {
         debugLog.info("TNC disconnect requested");
 
         Thread closer = new Thread(() -> {
-            tncInitializer.abort(session);
-            tncInitializer.abort(pending);
+            tncInitializer.abort(session, waitForClose);
+            tncInitializer.abort(pending, waitForClose);
         }, "tnc-disconnect");
         closer.setDaemon(!waitForClose);
         closer.start();
         if (waitForClose) {
             try {
-                closer.join(4000);
+                closer.join(6000);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -2285,7 +2466,6 @@ public final class AppController {
         markArqDead(arq);
         noticeArq(arq, notice);
         debugLog.info(notice);
-        pollOpmodeAfterCalling();
     }
 
     private int beginCalling(String call) {
@@ -2460,6 +2640,10 @@ public final class AppController {
         return activeArqWindow != null && activeArqWindow.isSessionActive();
     }
 
+    public ConnectionWindow activeArqWindow() {
+        return activeArqWindow;
+    }
+
     public void markArqDead(ConnectionWindow window) {
         if (window == activeArqWindow) {
             pendingArqLinkTimeout = false;
@@ -2476,6 +2660,7 @@ public final class AppController {
                 mainWindow.refreshModeLabel();
             }
             stopIrsRoleWatch();
+            restoreListenAfterArq();
         }
     }
 

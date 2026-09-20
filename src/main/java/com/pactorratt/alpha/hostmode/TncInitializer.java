@@ -158,10 +158,21 @@ public final class TncInitializer {
 
     /** Close the session if still open (user cancel, error cleanup, or app exit). Leaves Host first. */
     public void abort(HostSession session) {
+        abort(session, false);
+    }
+
+    /**
+     * @param clearUbit10 if true, Host {@code UB10 N} before {@code HON} so exit does not
+     *                    leave UBIT 10 pushing {@code $50 n}.
+     */
+    public void abort(HostSession session, boolean clearUbit10) {
         if (session == null) {
             return;
         }
         try {
+            if (clearUbit10) {
+                disableUbit10Quiet(session);
+            }
             session.leaveHostMode(LEAVE_HOST_TIMEOUT_MS);
         } finally {
             if (session.isOpen()) {
@@ -300,6 +311,29 @@ public final class TncInitializer {
                     + Integer.toHexString(response.statusCode) + ")");
         }
         debugLog.info("Coded init UB10 ON");
+    }
+
+    /** Best-effort; must not prevent {@code HON}. */
+    private void disableUbit10Quiet(HostSession session) {
+        if (!session.isOpen()) {
+            return;
+        }
+        try {
+            HostSession.CommandResponse response = session.sendCommand("UB10 N", LEAVE_HOST_TIMEOUT_MS);
+            Boolean parsed = parseUbitEnabled(ubitQueryValue(response));
+            boolean ok = response.ok() || Boolean.FALSE.equals(parsed);
+            if (ok) {
+                debugLog.info("Exit UB10 N");
+            } else {
+                debugLog.info("Exit UB10 N status=0x" + Integer.toHexString(response.statusCode));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            debugLog.info("Exit UB10 N interrupted");
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+            debugLog.info("Exit UB10 N failed: " + msg);
+        }
     }
 
     private static String ubitQueryValue(HostSession.CommandResponse response) {
