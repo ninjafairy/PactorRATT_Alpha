@@ -14,8 +14,12 @@ public final class UiColors {
     public static final Color TNC_CONNECTED = new Color(0x00, 0xA0, 0x00);
     public static final Color TNC_OFFLINE = Color.RED;
     public static final Color TNC_OFFLINE_DIM = new Color(0x66, 0x00, 0x00);
-    public static final Color TX_OFF_LIVE_BG = new Color(0x22, 0xB0, 0x22);
-    public static final Color TX_ON_LIVE_BG = new Color(0xFF, 0x6B, 0x6B);
+    public static final Color LINK_PHASING = new Color(0x4F, 0xC3, 0xF7);
+    public static final Color LINK_CHO = new Color(0xFF, 0xEE, 0x58);
+    public static final Color LINK_IDLE = new Color(0x8E, 0xCA, 0xE6);
+    public static final Color LINK_TRAFFIC = new Color(0x66, 0xBB, 0x6A);
+    public static final Color LINK_ERROR = new Color(0xFF, 0x6B, 0x6B);
+    public static final Color LINK_RQ = new Color(0xFF, 0xA7, 0x26);
 
     private UiColors() {
     }

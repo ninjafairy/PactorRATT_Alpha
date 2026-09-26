@@ -224,6 +224,27 @@ public final class OpmodeParser {
         };
     }
 
+    /**
+     * Inverse of {@link #wLabel(int)} for {@code $30}–{@code $37}. {@code null} if {@code label}
+     * is not one of those words.
+     */
+    public static Integer wByte(String label) {
+        if (label == null) {
+            return null;
+        }
+        return switch (label) {
+            case "Standby" -> 0x30;
+            case "Phasing" -> 0x31;
+            case "Change-over" -> 0x32;
+            case "Idle" -> 0x33;
+            case "Traffic" -> 0x34;
+            case "Error" -> 0x35;
+            case "RQ" -> 0x36;
+            case "Sync" -> 0x37;
+            default -> null;
+        };
+    }
+
     /** Last four payload bytes (immediately before ETB). */
     static String mysteryBeforeEtb(byte[] payload) {
         if (payload == null || payload.length < 4) {

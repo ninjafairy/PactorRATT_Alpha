@@ -3,6 +3,7 @@ package com.pactorratt.alpha.app;
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.ConfigStore;
 import com.pactorratt.alpha.config.HostCommandIni;
+import com.pactorratt.alpha.config.MacroFile;
 import com.pactorratt.alpha.hostmode.CallsignLineParser;
 import com.pactorratt.alpha.hostmode.CompatResult;
 import com.pactorratt.alpha.hostmode.DigitalLedState;
@@ -43,9 +44,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
@@ -102,6 +105,9 @@ public final class AppController {
     private final AtomicBoolean fecBusy = new AtomicBoolean(false);
     /** Guards overlapping Listen ON/OFF Host {@code OP}/{@code PN}/{@code Pt} round-trips. */
     private final AtomicBoolean listenHostBusy = new AtomicBoolean(false);
+    /** One user macro at a time; Host commands and ISS sends share the single Host session. */
+    private final AtomicBoolean macroBusy = new AtomicBoolean(false);
+    private final MacroFile macroFile;
     private volatile Thread connectThread;
     private final AtomicBoolean connectCancelled = new AtomicBoolean(false);
     private volatile HostSession pendingSession;
@@ -132,6 +138,8 @@ public final class AppController {
     /** Last connect-frame tokens (oldest first), cap {@link CallsignLineParser#CONNECT_WINDOW}. */
     private final List<String> connectFrameRecent = new ArrayList<>();
 
+    /** Last UBIT 10 / seed-OP *w* byte ({@code $30}–{@code $37}), or null until one arrives. */
+    private Integer lastLinkStatusN;
     /** Serializes UBIT 10–triggered {@code OP}; extra {@code $50 n} queues one follow-up. */
     private final AtomicBoolean ubit10OpInFlight = new AtomicBoolean(false);
     private final AtomicBoolean ubit10OpFollowup = new AtomicBoolean(false);
@@ -145,6 +153,7 @@ public final class AppController {
     public AppController(Path portableRoot) {
         this.portableRoot = Objects.requireNonNull(portableRoot);
         this.configStore = new ConfigStore(portableRoot);
+        this.macroFile = new MacroFile(configStore.configDir());
         this.config = configStore.load();
         this.debugLog = new DebugLog(portableRoot);
         this.debugLog.setEnabled(config.isDebugLogEnabled());
@@ -157,6 +166,11 @@ public final class AppController {
             new HostCommandIni(configStore.configDir()).ensureFile();
         } catch (IOException e) {
             debugLog.info("Could not create config.ini: " + e.getMessage());
+        }
+        try {
+            macroFile.ensureFile();
+        } catch (IOException e) {
+            debugLog.info("Could not create macros.ini: " + e.getMessage());
         }
     }
 
@@ -980,12 +994,14 @@ public final class AppController {
 
     /** Disc. with text — canned disconnect + {@code $04} in the same ch0 block. */
     public void arqDiscWithText(ConnectionWindow window) {
+        String canned = config.getCannedDisconnectText();
         runArqHostAction(window, "Disc. with text",
                 session -> session.sendData(0,
-                        hostDataWithControl(config.getCannedDisconnectText(), RECEIVE_CHAR_CTRL_D),
+                        hostDataWithControl(canned, RECEIVE_CHAR_CTRL_D),
                         ARQ_HOST_TIMEOUT_MS),
                 null,
-                "Disc. with text — sent canned text + CTRL-D ($04).");
+                "Disc. with text — sent canned text + CTRL-D ($04).",
+                () -> paintCannedIfPresent(window, canned));
     }
 
     /**
@@ -1030,6 +1046,222 @@ public final class AppController {
         }, "iss-outbound");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    public List<MacroFile.Macro> loadMacros() {
+        try {
+            return macroFile.load();
+        } catch (IOException e) {
+            debugLog.info("Could not read macros.ini: " + e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * @param originalName null when creating; the existing group name when editing
+     * @return an error message, or null after the file is written and open bars are reloaded
+     */
+    public String saveMacro(String originalName, String newName, String body) {
+        try {
+            List<MacroFile.Macro> existing = macroFile.load();
+            String nameErr = MacroFile.nameError(newName, existing, originalName);
+            if (nameErr != null) {
+                return nameErr;
+            }
+            String bodyErr = MacroFile.bodyError(body);
+            if (bodyErr != null) {
+                return bodyErr;
+            }
+            String name = newName.trim();
+            List<String> lines = MacroFile.linesFromEditor(body);
+            if (originalName == null) {
+                macroFile.add(name, lines);
+            } else {
+                macroFile.replace(originalName, name, lines);
+            }
+            refreshMacroBars();
+            return null;
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "Could not save macros." : e.getMessage();
+            debugLog.info("Could not save macros.ini: " + msg);
+            return msg;
+        }
+    }
+
+    /** @return an error message, or null after the group is removed and open bars are reloaded */
+    public String deleteMacro(String name) {
+        try {
+            macroFile.delete(name);
+            refreshMacroBars();
+            return null;
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "Could not delete macro." : e.getMessage();
+            debugLog.info("Could not delete macro: " + msg);
+            return msg;
+        }
+    }
+
+    private void refreshMacroBars() {
+        runOnEdt(() -> {
+            if (listenWindow != null && listenWindow.isDisplayable()) {
+                listenWindow.reloadMacros();
+            }
+            if (activeArqWindow != null && activeArqWindow.isDisplayable()) {
+                activeArqWindow.reloadMacros();
+            }
+            for (ConnectionWindow w : new ArrayList<>(deadArqWindows)) {
+                if (w != null && w.isDisplayable()) {
+                    w.reloadMacros();
+                }
+            }
+        });
+    }
+
+    /**
+     * Run one macro top to bottom on a background thread. Compose edits hop to the UI thread.
+     * A send that actually transmits, and every Host command, finishes before the next line.
+     * A bad mnemonic, a banned mnemonic, a missing TNC, or a failed ACK stops the rest.
+     */
+    public void runMacro(ConnectionWindow window, MacroFile.Macro macro) {
+        if (window == null || macro == null) {
+            return;
+        }
+        String name = macro.name();
+        if (!window.isSessionActive()) {
+            window.showNotice(name + " — session is not active.");
+            return;
+        }
+        if (tncBusy.get()) {
+            window.showNotice(name + " — TNC connect in progress.");
+            return;
+        }
+        if (fecBusy.get()) {
+            window.showNotice(name + " — FEC send in progress.");
+            return;
+        }
+        if (!macroBusy.compareAndSet(false, true)) {
+            window.showNotice(name + " — already running.");
+            return;
+        }
+        List<String> lines = macro.lines();
+        String threadName = "macro-" + name.replaceAll("[^A-Za-z0-9._-]+", "-");
+        if (threadName.length() > 48) {
+            threadName = threadName.substring(0, 48);
+        }
+        Thread worker = new Thread(() -> {
+            try {
+                runMacroLines(window, name, lines);
+            } finally {
+                macroBusy.set(false);
+            }
+        }, threadName);
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void runMacroLines(ConnectionWindow window, String name, List<String> lines) {
+        try {
+            for (String line : lines) {
+                if (!window.isSessionActive()) {
+                    noticeWindowLater(window, name + " — session is not active.");
+                    return;
+                }
+                if (line.startsWith(">>") || line.startsWith("\\\\")) {
+                    if (!appendMacroLine(window, line.substring(1))) {
+                        noticeWindowLater(window, name + " — session is not active.");
+                        return;
+                    }
+                } else if (line.startsWith(">")) {
+                    ConnectionWindow.MacroSendStage staged = stageMacroSend(window, line.substring(1));
+                    if (staged.inactive()) {
+                        noticeWindowLater(window, name + " — session is not active.");
+                        return;
+                    }
+                    if (staged.transmit() != null) {
+                        sendMacroOutbound(staged.transmit());
+                    }
+                } else if (line.startsWith("\\")) {
+                    sendMacroHost(line.substring(1).trim());
+                } else if (!appendMacroLine(window, line)) {
+                    noticeWindowLater(window, name + " — session is not active.");
+                    return;
+                }
+            }
+            noticeWindowLater(window, name + " — done.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            debugLog.info("Macro " + name + " interrupted");
+            noticeWindowLater(window, name + " — interrupted.");
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "failed" : e.getMessage();
+            debugLog.info("Macro " + name + " failed: " + msg);
+            noticeWindowLater(window, name + " — " + msg);
+        }
+    }
+
+    private boolean appendMacroLine(ConnectionWindow window, String text)
+            throws InterruptedException, IOException {
+        AtomicBoolean ok = new AtomicBoolean();
+        onEdt(() -> ok.set(window.appendMacroComposeLine(text)));
+        return ok.get();
+    }
+
+    private ConnectionWindow.MacroSendStage stageMacroSend(ConnectionWindow window, String text)
+            throws InterruptedException, IOException {
+        AtomicReference<ConnectionWindow.MacroSendStage> staged = new AtomicReference<>();
+        onEdt(() -> staged.set(window.stageMacroSendLine(text)));
+        return staged.get();
+    }
+
+    private void onEdt(Runnable action) throws InterruptedException, IOException {
+        try {
+            SwingUtilities.invokeAndWait(action);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            String msg = cause.getMessage() == null ? "Macro UI update failed." : cause.getMessage();
+            throw new IOException(msg, cause);
+        }
+    }
+
+    private void sendMacroOutbound(String text) throws IOException, InterruptedException {
+        if (!tncConnected) {
+            throw new IOException("TNC not connected.");
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            throw new IOException("no open Host session.");
+        }
+        byte[] bytes = toHostDataBytes(text);
+        if (bytes.length == 0) {
+            return;
+        }
+        session.sendData(0, bytes, ARQ_HOST_TIMEOUT_MS);
+        debugLog.info("Macro outbound sent " + bytes.length + " char(s).");
+    }
+
+    private void sendMacroHost(String command) throws IOException, InterruptedException {
+        HostCommandIni.InitLine parsed = HostCommandIni.parseCommandLine(command);
+        if (parsed == null || parsed.invalid()) {
+            throw new IOException("Host command needs a 2-character mnemonic.");
+        }
+        if (parsed.banned()) {
+            throw new IOException(parsed.mnemonic() + " is not allowed.");
+        }
+        if (parsed.extraSpaces()) {
+            debugLog.info("Macro host command had extra spaces: " + command);
+        }
+        if (!tncConnected) {
+            throw new IOException("TNC not connected.");
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            throw new IOException("no open Host session.");
+        }
+        sendHostOk(session, parsed.wire());
+    }
+
+    private void noticeWindowLater(ConnectionWindow window, String text) {
+        runOnEdt(() -> noticeWindow(window, text));
     }
 
     /**
@@ -1335,11 +1567,16 @@ public final class AppController {
     }
 
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work) {
-        runArqHostAction(window, actionName, work, null, actionName + " — sent.");
+        runArqHostAction(window, actionName, work, null, actionName + " — sent.", null);
     }
 
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
             Runnable onFailure, String successNotice) {
+        runArqHostAction(window, actionName, work, onFailure, successNotice, null);
+    }
+
+    private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
+            Runnable onFailure, String successNotice, Runnable onDispatch) {
         if (!tncConnected) {
             noticeWindow(window, actionName + " — TNC not connected.");
             if (onFailure != null) {
@@ -1354,6 +1591,9 @@ public final class AppController {
                 onFailure.run();
             }
             return;
+        }
+        if (onDispatch != null) {
+            onDispatch.run();
         }
         Thread worker = new Thread(() -> {
             try {
@@ -1403,7 +1643,15 @@ public final class AppController {
         runArqHostAction(window, actionName,
                 session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
                 window::unlockHandoverControls,
-                actionName + " — sent CTRL-Z; HO buttons locked until ISS again.");
+                actionName + " — sent CTRL-Z; HO buttons locked until ISS again.",
+                () -> paintCannedIfPresent(window, canned));
+    }
+
+    /** Grey transcript paint for canned HO / Disc text. No-op when there is no text. */
+    private static void paintCannedIfPresent(ConnectionWindow window, String canned) {
+        if (window != null) {
+            window.paintCannedLocalOutbound(canned);
+        }
     }
 
     private void noticeArq(ConnectionWindow window, String text) {
@@ -1443,6 +1691,9 @@ public final class AppController {
         if (event.type() == HostEvent.Type.LINK_MESSAGE) {
             HostFrameCodec.Frame linkFrame = event.frame();
             if (LinkMessageParser.isUbit10StatusChange(linkFrame)) {
+                int n = LinkMessageParser.ubit10StatusByte(linkFrame);
+                lastLinkStatusN = n;
+                runOnEdt(() -> paintActiveLinkStatus(n));
                 requestOpFromUbit10();
                 runOnEdt(this::refreshDisplayMonitorFromUbit10);
                 return;
@@ -1503,7 +1754,7 @@ public final class AppController {
         }
         if (decoded.standby) {
             String w = decoded.wLabel != null ? decoded.wLabel : "Standby";
-            arq.applyOpmodeLink(w, decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
+            arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
             if (arq.hasSeenLiveOpmode()) {
                 markArqDead(arq);
                 noticeArq(arq, "ARQ ended — OPMODE " + w + " (no $50 DISCONNECTED).");
@@ -1512,8 +1763,7 @@ public final class AppController {
             return;
         }
         arq.markOpmodeLive();
-        arq.applyOpmodeLink(decoded.wLabel, decoded.hasDirection() ? decoded.transmit : null,
-                decoded.pactorBaud);
+        arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
         syncIrsRoleWatch();
     }
 
@@ -2295,6 +2545,87 @@ public final class AppController {
         worker.start();
     }
 
+    /**
+     * One {@code OP} when a connection window is created. Paints *w* only if that window
+     * is still the active link window when the reply arrives. Later {@code OP} replies
+     * do not move the chip.
+     */
+    private void seedLinkStatus(ConnectionWindow window) {
+        if (window == null || !tncConnected) {
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+        Integer atStart = lastLinkStatusN;
+        Thread worker = new Thread(() -> {
+            try {
+                OpmodeParser.Decoded decoded = queryOpmode(session);
+                Integer n = OpmodeParser.wByte(decoded == null ? null : decoded.wLabel);
+                if (n == null) {
+                    return;
+                }
+                runOnEdt(() -> {
+                    if (lastLinkStatusN != atStart) {
+                        return;
+                    }
+                    if (!isActiveLinkWindow(window) || window.isLinkStatusFrozen()) {
+                        return;
+                    }
+                    lastLinkStatusN = n;
+                    window.showLinkByte(n);
+                });
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                debugLog.info("Link-status seed interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Link-status seed failed: " + msg);
+            }
+        }, "link-status-seed");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /** UBIT 10 *n* paints only the active window. EDT. */
+    private void paintActiveLinkStatus(int n) {
+        ConnectionWindow target = activeLinkWindow();
+        if (target != null) {
+            target.showLinkByte(n);
+        }
+    }
+
+    private void applyRememberedLinkStatus(ConnectionWindow window) {
+        if (window == null) {
+            return;
+        }
+        if (lastLinkStatusN != null) {
+            window.showLinkByte(lastLinkStatusN);
+        } else {
+            window.showStandby();
+        }
+    }
+
+    /**
+     * Live ARQ window, otherwise the session-active Listen window.
+     */
+    private ConnectionWindow activeLinkWindow() {
+        if (activeArqWindow != null && activeArqWindow.isSessionActive()
+                && !activeArqWindow.isLinkStatusFrozen()) {
+            return activeArqWindow;
+        }
+        if (listenWindow != null && listenWindow.isSessionActive()
+                && !listenWindow.isLinkStatusFrozen()) {
+            return listenWindow;
+        }
+        return null;
+    }
+
+    private boolean isActiveLinkWindow(ConnectionWindow window) {
+        return window != null && window == activeLinkWindow();
+    }
+
     /** OPMODE query — replies are not ACK {@code $00}; do not use {@link #sendHostOk}. */
     private OpmodeParser.Decoded queryOpmode(HostSession session)
             throws IOException, InterruptedException {
@@ -2303,12 +2634,22 @@ public final class AppController {
     }
 
     private void ensureListenWindow(boolean active) {
-        if (listenWindow == null) {
+        boolean created = listenWindow == null;
+        if (created) {
             listenWindow = new ConnectionWindow(this, ConnectionWindow.Kind.LISTEN, "Listen");
             listenWindow.setInboundLineListener(this::onListenInboundLine);
             listenWindow.setVisible(true);
         }
-        listenWindow.setSessionActive(active && mode != AppMode.ARQ);
+        boolean live = active && mode != AppMode.ARQ;
+        listenWindow.setSessionActive(live);
+        if (!live) {
+            listenWindow.showInactive();
+        } else {
+            applyRememberedLinkStatus(listenWindow);
+            if (created) {
+                seedLinkStatus(listenWindow);
+            }
+        }
         if (!tncConnected) {
             listenWindow.showNotice("Offline preview — TNC not connected. Layout only.");
         }
@@ -2562,10 +2903,12 @@ public final class AppController {
         mode = AppMode.ARQ;
         if (listenWindow != null) {
             listenWindow.setSessionActive(false);
+            listenWindow.showInactive();
         }
         activeArqWindow = new ConnectionWindow(this, ConnectionWindow.Kind.ARQ, call);
         activeArqWindow.setSessionActive(true);
         activeArqWindow.setVisible(true);
+        seedLinkStatus(activeArqWindow);
         if (mainWindow != null) {
             mainWindow.hideCallingDialog();
             mainWindow.refreshModeLabel();
@@ -2646,6 +2989,7 @@ public final class AppController {
 
     public void markArqDead(ConnectionWindow window) {
         if (window == activeArqWindow) {
+            window.showDead();
             pendingArqLinkTimeout = false;
             activeArqWindow = null;
             deadArqWindows.add(window);

@@ -104,7 +104,7 @@ public final class HostCommandIni {
     /**
      * Two-letter mnemonic; optional payload after spaces. {@code HPN} (already joined) is allowed.
      */
-    static InitLine parseCommandLine(String trimmed) {
+    public static InitLine parseCommandLine(String trimmed) {
         if (trimmed == null || trimmed.isEmpty()) {
             return null;
         }

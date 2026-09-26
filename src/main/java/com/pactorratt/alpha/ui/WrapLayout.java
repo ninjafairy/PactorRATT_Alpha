@@ -6,6 +6,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
 
+import javax.swing.JViewport;
+
 /**
  * FlowLayout that wraps components onto additional rows when the container is narrow.
  */
@@ -35,7 +37,7 @@ public final class WrapLayout extends FlowLayout {
     public void layoutContainer(Container target) {
         synchronized (target.getTreeLock()) {
             Insets insets = target.getInsets();
-            int maxWidth = target.getWidth() - (insets.left + insets.right + getHgap() * 2);
+            int maxWidth = availableWidth(target) - (insets.left + insets.right + getHgap() * 2);
             if (maxWidth <= 0) {
                 maxWidth = Integer.MAX_VALUE;
             }
@@ -67,14 +69,7 @@ public final class WrapLayout extends FlowLayout {
     private Dimension layoutSize(Container target, boolean preferred) {
         Dimension dim;
         synchronized (target.getTreeLock()) {
-            int targetWidth = target.getWidth();
-            Container parent = target.getParent();
-            if (targetWidth <= 0 && parent instanceof javax.swing.JViewport viewport) {
-                targetWidth = viewport.getWidth();
-            }
-            if (targetWidth <= 0) {
-                targetWidth = Integer.MAX_VALUE;
-            }
+            int targetWidth = availableWidth(target);
 
             int hgap = getHgap();
             int vgap = getVgap();
@@ -109,7 +104,25 @@ public final class WrapLayout extends FlowLayout {
             dim.height += rowHeight;
             dim.width += insets.left + insets.right + hgap * 2;
             dim.height += insets.top + insets.bottom + vgap * 2;
+            if (target.getParent() instanceof JViewport viewport && viewport.getWidth() > 0) {
+                dim.width = viewport.getWidth();
+            }
         }
         return dim;
+    }
+
+    /**
+     * Width the buttons must fit. Inside a scroll pane this is the viewport, so
+     * narrowing the window wraps instead of keeping the panel as wide as one row.
+     */
+    private static int availableWidth(Container target) {
+        Container parent = target.getParent();
+        if (parent instanceof JViewport viewport && viewport.getWidth() > 0) {
+            return viewport.getWidth();
+        }
+        if (target.getWidth() > 0) {
+            return target.getWidth();
+        }
+        return Integer.MAX_VALUE;
     }
 }

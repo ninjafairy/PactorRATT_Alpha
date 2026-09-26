@@ -10,8 +10,8 @@ import java.nio.charset.StandardCharsets;
  *   <li>{@code SOH $50 "DISCONNECTED: KJ5XF\\r\\n" ETB} (clean disconnect)</li>
  *   <li>{@code SOH $50 "Timeout\\r\\n" ETB} then {@code "DISCONNECTED: KA4UPI\\r\\n"} (link timeout)</li>
  *   <li>{@code SOH $50 "Timeout\\r\\n" ETB} alone while calling (no {@code DISCONNECTED:}) — call no-answer</li>
- *   <li>{@code SOH $50 n ETB} — UBIT 10 status-change; {@code n} is OPMODE *w* {@code $30}–{@code $36}
- *       (hardware-proven on Pactor; printed UBIT 10 list omitted it)</li>
+     *   <li>{@code SOH $50 n ETB} — UBIT 10 status-change; {@code n} is OPMODE *w* {@code $30}–{@code $37}
+     *       (hardware-proven on Pactor; printed UBIT 10 list omitted it)</li>
  * </ul>
  */
 public final class LinkMessageParser {
@@ -50,19 +50,27 @@ public final class LinkMessageParser {
     }
 
     /**
-     * UBIT 10 status-change: payload is a single *w* byte {@code $30}–{@code $36}.
+     * UBIT 10 status-change: payload is a single *w* byte {@code $30}–{@code $37}.
      * Not {@code CONNECTED}/{@code DISCONNECTED}/{@code Timeout} text.
      */
     public static boolean isUbit10StatusChange(HostFrameCodec.Frame frame) {
+        return ubit10StatusByte(frame) >= 0;
+    }
+
+    /**
+     * UBIT 10 *w* byte, or {@code -1} if this frame is not {@code SOH $50 n ETB}
+     * with {@code n} in {@code $30}–{@code $37}.
+     */
+    public static int ubit10StatusByte(HostFrameCodec.Frame frame) {
         if (frame == null || (frame.ctl & 0xFF) != 0x50) {
-            return false;
+            return -1;
         }
         byte[] payload = frame.payload;
         if (payload == null || payload.length != 1) {
-            return false;
+            return -1;
         }
         int n = payload[0] & 0xFF;
-        return n >= 0x30 && n <= 0x36;
+        return n >= 0x30 && n <= 0x37 ? n : -1;
     }
 
     /**

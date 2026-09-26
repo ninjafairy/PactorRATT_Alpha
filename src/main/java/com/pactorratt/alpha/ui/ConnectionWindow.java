@@ -2,6 +2,7 @@ package com.pactorratt.alpha.ui;
 
 import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.config.CommitMode;
+import com.pactorratt.alpha.config.MacroFile;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -19,6 +20,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
+import javax.swing.Scrollable;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -29,6 +31,8 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import java.awt.AlphaComposite;
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -36,11 +40,15 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.Rectangle;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -88,12 +96,15 @@ public final class ConnectionWindow extends JFrame {
     private boolean mailboxUiClosed;
     private final List<JButton> controlButtons = new ArrayList<>();
     private final List<JButton> handoverButtons = new ArrayList<>();
+    private JPanel macroPanel;
+    private JSplitPane contentSplit;
+    private JPanel bottomPane;
+    /** After the first fit, later layouts only grow the button area so a user-dragged divider is kept. */
+    private boolean buttonAreasFitted;
 
     private volatile boolean sessionActive = true;
     /** Phase 1 offline default: hold commits in App TX buffer (IRS). */
     private boolean localIsIrs = true;
-    /** Last OPMODE {@code w} word (Idle/Traffic/Standby/…); null until a decoded reply. */
-    private String opmodeWLabel;
     /** Last Pactor OPMODE {@code u} baud (100 or 200); null until a decoded reply. */
     private Integer opmodeBaud;
     /** True after a non-Standby OPMODE so later Standby can mark the link dead. */
@@ -110,9 +121,12 @@ public final class ConnectionWindow extends JFrame {
     /** Current inbound line (after {@code $08}); Listen newline scan for Heard/Mentioned/Connect. */
     private final StringBuilder inboundLine = new StringBuilder();
     private Consumer<String> inboundLineListener;
-    /** ARQ preview-only: 0 dead TX OFF, 1 live TX OFF, 2 live TX ON. */
+    /** Demo ARQ window: cycles every link-status chip state. Ignores live updates. */
     private Timer txPreviewTimer;
     private int txPreviewStep;
+    private boolean statusPreview;
+    /** Dead ARQ chip stays DEAD and ignores later status bytes. */
+    private boolean linkStatusFrozen;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
         super(kind == Kind.LISTEN ? "PtR FEC" : "PtR ARQ — " + titleCall);
@@ -122,6 +136,11 @@ public final class ConnectionWindow extends JFrame {
         buildUi();
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                scheduleFitButtonAreas();
+            }
+
             @Override
             public void windowClosing(WindowEvent e) {
                 attemptClose();
@@ -142,15 +161,12 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * Apply OPMODE {@code w} (link phase), optional {@code x} (ISS/IRS), and optional
-     * Pactor {@code u} baud (100/200) for the ARQ status-bar speed slot.
+     * Apply optional OPMODE {@code x} (ISS/IRS) and optional Pactor {@code u} baud
+     * (100/200) for the ARQ status-bar speed slot.
      * {@code x} uses the same S=Tx/ISS R=Rx/IRS table for every mode that includes *x*.
      * IRS→ISS drains App TX to Host ({@link #flushIss}).
      */
-    public void applyOpmodeLink(String wLabel, Boolean transmit, Integer pactorBaud) {
-        if (wLabel != null && !wLabel.isBlank()) {
-            this.opmodeWLabel = wLabel;
-        }
+    public void applyOpmodeLink(Boolean transmit, Integer pactorBaud) {
         if (pactorBaud != null && (pactorBaud == 100 || pactorBaud == 200)) {
             this.opmodeBaud = pactorBaud;
         }
@@ -431,22 +447,64 @@ public final class ConnectionWindow extends JFrame {
         statusRow.add(statusPrefix);
         statusRow.add(txChip);
         statusRow.add(statusSuffix);
-        bottom.add(noticeLabel, BorderLayout.NORTH);
-        bottom.add(buildControlsScroll(), BorderLayout.CENTER);
-        bottom.add(statusRow, BorderLayout.SOUTH);
-        bottom.setMinimumSize(new Dimension(120, 90));
+        JScrollPane controlsScroll = buildControlsScroll();
+        JScrollPane macrosScroll = buildMacrosScroll();
+        JPanel pinnedBars = new JPanel(new BorderLayout(0, 2));
+        pinnedBars.setOpaque(false);
+        pinnedBars.add(controlsScroll, BorderLayout.NORTH);
+        pinnedBars.add(macrosScroll, BorderLayout.SOUTH);
 
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chatPane, bottom);
-        split.setResizeWeight(0.75);
-        split.setOneTouchExpandable(true);
-        split.setContinuousLayout(true);
-        add(split, BorderLayout.CENTER);
-        SwingUtilities.invokeLater(() -> split.setDividerLocation(0.75));
+        JPanel statusBlock = new JPanel(new BorderLayout());
+        statusBlock.setOpaque(false);
+        statusBlock.add(pinnedBars, BorderLayout.NORTH);
+        statusBlock.add(statusRow, BorderLayout.SOUTH);
+
+        JPanel filler = new JPanel();
+        filler.setOpaque(false);
+        bottom.add(noticeLabel, BorderLayout.NORTH);
+        bottom.add(filler, BorderLayout.CENTER);
+        bottom.add(statusBlock, BorderLayout.SOUTH);
+        bottom.setMinimumSize(new Dimension(120, 140));
+        bottomPane = bottom;
+
+        contentSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, chatPane, bottom);
+        contentSplit.setResizeWeight(1.0);
+        contentSplit.setOneTouchExpandable(true);
+        contentSplit.setContinuousLayout(true);
+        add(contentSplit, BorderLayout.CENTER);
+        scheduleFitButtonAreas();
         refreshStatus();
     }
 
+    /**
+     * Give the bottom pane its preferred height so both button bars show without a scrollbar.
+     * Extra space stays in the chat. After the first fit, only grow the bars when wrapping or
+     * new macros need more room.
+     */
+    private void scheduleFitButtonAreas() {
+        SwingUtilities.invokeLater(this::ensureButtonAreasFit);
+    }
+
+    private void ensureButtonAreasFit() {
+        if (contentSplit == null || bottomPane == null || contentSplit.getHeight() <= 0) {
+            return;
+        }
+        bottomPane.invalidate();
+        int pref = bottomPane.getPreferredSize().height;
+        int current = contentSplit.getHeight() - contentSplit.getDividerLocation() - contentSplit.getDividerSize();
+        if (buttonAreasFitted && current >= pref - 1) {
+            return;
+        }
+        int loc = contentSplit.getHeight() - contentSplit.getDividerSize() - pref;
+        if (loc < 80) {
+            loc = 80;
+        }
+        contentSplit.setDividerLocation(loc);
+        buttonAreasFitted = true;
+    }
+
     private JScrollPane buildControlsScroll() {
-        JPanel p = new JPanel(new WrapLayout(FlowLayout.LEFT, 4, 2));
+        JPanel p = new ControlsPanel();
         p.setBackground(UiColors.PANEL_BG);
         p.setBorder(BorderFactory.createTitledBorder("Controls"));
 
@@ -495,8 +553,44 @@ public final class ConnectionWindow extends JFrame {
         scroll.getViewport().addChangeListener(e -> {
             p.invalidate();
             p.revalidate();
+            scheduleFitButtonAreas();
         });
         return scroll;
+    }
+
+    /**
+     * Control buttons wrap to the viewport width. Extra rows scroll vertically
+     * instead of being clipped when the window is narrowed.
+     */
+    private static final class ControlsPanel extends JPanel implements Scrollable {
+        ControlsPanel() {
+            super(new WrapLayout(FlowLayout.LEFT, 4, 2));
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(visibleRect.height - 16, 16);
+        }
     }
 
     private JButton addControl(JPanel p, String label, String tooltip, Runnable action) {
@@ -506,6 +600,131 @@ public final class ConnectionWindow extends JFrame {
         controlButtons.add(b);
         p.add(b);
         return b;
+    }
+
+    private JScrollPane buildMacrosScroll() {
+        macroPanel = new ControlsPanel();
+        macroPanel.setBackground(UiColors.PANEL_BG);
+        macroPanel.setBorder(BorderFactory.createTitledBorder("Macros"));
+        reloadMacros();
+        JScrollPane scroll = new JScrollPane(macroPanel,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.setMinimumSize(new Dimension(80, 48));
+        scroll.getViewport().addChangeListener(e -> {
+            macroPanel.invalidate();
+            macroPanel.revalidate();
+            scheduleFitButtonAreas();
+        });
+        return scroll;
+    }
+
+    /** Rebuild macro buttons from {@code config/macros.ini}. EDT. */
+    public void reloadMacros() {
+        if (macroPanel == null) {
+            return;
+        }
+        macroPanel.removeAll();
+        for (MacroFile.Macro macro : app.loadMacros()) {
+            JButton b = new JButton(macro.name());
+            b.addActionListener(e -> {
+                if (!sessionActive) {
+                    showNotice(macro.name() + " — session is not active.");
+                    return;
+                }
+                app.runMacro(this, macro);
+            });
+            b.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    if (e.isPopupTrigger()) {
+                        MacroEditDialog.open(ConnectionWindow.this, app, macro);
+                    }
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    if (e.isPopupTrigger()) {
+                        MacroEditDialog.open(ConnectionWindow.this, app, macro);
+                    }
+                }
+            });
+            macroPanel.add(b);
+        }
+        JButton add = new JButton("+new");
+        add.setToolTipText("Create a macro");
+        add.addActionListener(e -> MacroEditDialog.openNew(this, app));
+        macroPanel.add(add);
+        macroPanel.revalidate();
+        macroPanel.repaint();
+        scheduleFitButtonAreas();
+    }
+
+    /**
+     * Append one macro line to Compose. An empty line becomes a blank line.
+     * Does not send. EDT.
+     *
+     * @return false when the session is not active
+     */
+    public boolean appendMacroComposeLine(String line) {
+        if (!sessionActive) {
+            return false;
+        }
+        String existing = compose.getText();
+        if (existing == null) {
+            existing = "";
+        }
+        if (!existing.isEmpty() && !existing.endsWith("\n")) {
+            compose.append("\n");
+        }
+        if (line == null || line.isEmpty()) {
+            compose.append("\n");
+        } else {
+            compose.append(line);
+        }
+        compose.setCaretPosition(compose.getDocument().getLength());
+        return true;
+    }
+
+    /**
+     * Stage one {@code >} macro line the same way as Send, without starting a Host send.
+     * Listen and IRS queue the line in App TX. ARQ ISS paints the transcript and returns
+     * the text the caller must transmit. EDT.
+     */
+    public MacroSendStage stageMacroSendLine(String line) {
+        if (!sessionActive) {
+            return MacroSendStage.stopped();
+        }
+        if (line == null || line.isEmpty()) {
+            return MacroSendStage.held();
+        }
+        if (localIsIrs || kind != Kind.ARQ) {
+            if (!appTxBuffer.getText().isEmpty()) {
+                appTxBuffer.append("\n");
+            }
+            appTxBuffer.append(line);
+            return MacroSendStage.held();
+        }
+        ensureTranscriptNewline();
+        appendTranscript(line.endsWith("\n") ? line : line + "\n", UiColors.LOCAL_PENDING);
+        return MacroSendStage.sending(line);
+    }
+
+    /** Outcome of staging one send-prefix macro line. */
+    public record MacroSendStage(boolean inactive, String transmit) {
+        static MacroSendStage stopped() {
+            return new MacroSendStage(true, null);
+        }
+
+        static MacroSendStage held() {
+            return new MacroSendStage(false, null);
+        }
+
+        static MacroSendStage sending(String line) {
+            return new MacroSendStage(false, line);
+        }
     }
 
     private void stubAction(String name) {
@@ -610,6 +829,23 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         app.sendOutboundChat(this, pending);
+    }
+
+    /**
+     * Paint canned HO / Disc text on the transcript once, as grey local outbound.
+     * Does not touch Compose, the App TX buffer, or Host send. EDT.
+     */
+    public void paintCannedLocalOutbound(String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        if (normalized.isEmpty()) {
+            return;
+        }
+        ensureTranscriptNewline();
+        String forTranscript = normalized.endsWith("\n") ? normalized : normalized + "\n";
+        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
     }
 
     /**
@@ -727,21 +963,69 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * Preview ARQ window: cycle dead TX OFF / live TX OFF / live TX ON at 1 Hz.
-     * Visual only — does not enable the session.
+     * Show OPMODE *w* on the link-status chip. No-op while this window is the demo cycle,
+     * frozen dead, or {@code n} is not {@code $30}–{@code $37}. EDT.
+     */
+    public void showLinkByte(int n) {
+        if (statusPreview || linkStatusFrozen) {
+            return;
+        }
+        TxChip.State state = TxChip.stateForByte(n);
+        if (state != null) {
+            txChip.setState(state);
+        }
+    }
+
+    /** Listen window while a live ARQ link owns the indicator. EDT. */
+    public void showInactive() {
+        if (statusPreview || linkStatusFrozen) {
+            return;
+        }
+        txChip.setState(TxChip.State.INACTIVE);
+    }
+
+    /** Plain STANDBY, no background. EDT. */
+    public void showStandby() {
+        if (statusPreview || linkStatusFrozen) {
+            return;
+        }
+        txChip.setState(TxChip.State.STANDBY);
+    }
+
+    /**
+     * Dead ARQ chip. Later {@link #showLinkByte} and {@link #showInactive} calls do nothing.
+     * EDT.
+     */
+    public void showDead() {
+        if (statusPreview) {
+            return;
+        }
+        linkStatusFrozen = true;
+        txChip.setState(TxChip.State.DEAD);
+    }
+
+    public boolean isLinkStatusFrozen() {
+        return linkStatusFrozen;
+    }
+
+    /**
+     * Demo ARQ window: cycle every chip state at 0.5 Hz.
+     * Visual only — does not enable the session or send Host commands.
      */
     public void startArqTxPreview() {
         if (kind != Kind.ARQ) {
             return;
         }
         stopArqTxPreview();
+        statusPreview = true;
+        linkStatusFrozen = false;
         txPreviewStep = 0;
-        txPreviewTimer = new Timer(1000, e -> {
-            txPreviewStep = (txPreviewStep + 1) % 3;
-            refreshStatus();
+        txChip.setState(TxChip.PREVIEW_STATES[0]);
+        txPreviewTimer = new Timer(2000, e -> {
+            txPreviewStep = (txPreviewStep + 1) % TxChip.PREVIEW_STATES.length;
+            txChip.setState(TxChip.PREVIEW_STATES[txPreviewStep]);
         });
         txPreviewTimer.start();
-        refreshStatus();
     }
 
     private void stopArqTxPreview() {
@@ -749,50 +1033,18 @@ public final class ConnectionWindow extends JFrame {
             txPreviewTimer.stop();
             txPreviewTimer = null;
         }
-    }
-
-    private boolean isTxPreviewRunning() {
-        return txPreviewTimer != null && txPreviewTimer.isRunning();
+        statusPreview = false;
+        txChip.stopMotion();
     }
 
     private void refreshStatus() {
-        boolean preview = kind == Kind.ARQ && isTxPreviewRunning();
-        boolean live = preview ? txPreviewStep != 0 : sessionActive;
-        boolean txOn = preview ? txPreviewStep == 2 : (sessionActive && !localIsIrs);
-
         String role = localIsIrs ? "IRS" : "ISS";
-        if (preview && txPreviewStep == 2) {
-            role = "ISS";
-        } else if (preview && txPreviewStep == 1) {
-            role = "IRS";
-        }
-        String link;
-        if (preview) {
-            link = live ? "ARQ" : "DEAD";
-        } else if (opmodeWLabel != null && !opmodeWLabel.isBlank()) {
-            link = opmodeWLabel;
-        } else if (sessionActive) {
-            link = kind == Kind.LISTEN ? "LISTEN" : "ARQ";
-        } else {
-            link = "DEAD";
-        }
         String speed = opmodeBaud != null ? String.valueOf(opmodeBaud) : "--";
         String tnc = app.isTncConnected() ? "connected" : "offline";
-        statusPrefix.setText(String.format(" %s | %s | ", role, link));
+        statusPrefix.setText(String.format(" %s | ", role));
         statusSuffix.setText(String.format(
                 " | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
                 speed, titleCall, tnc));
-        if (kind == Kind.ARQ) {
-            if (!live) {
-                txChip.setMode(TxChip.Mode.DEAD_OFF);
-            } else if (txOn) {
-                txChip.setMode(TxChip.Mode.LIVE_ON);
-            } else {
-                txChip.setMode(TxChip.Mode.LIVE_OFF);
-            }
-        } else {
-            txChip.setMode(TxChip.Mode.DEAD_OFF);
-        }
     }
 
     /**
@@ -967,57 +1219,151 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * TX indicator chip. Dead TX OFF is plain black; live TX OFF is bold on green;
-     * live TX ON is bold on red.
+     * Link-status chip. Width fits the widest label in the font that label uses.
+     * Words are centered. Phasing sweeps a bright band once a second.
+     * CHO pulses a bright edge once a second. Idle fades toward white once a second.
      */
     private static final class TxChip extends JComponent {
-        enum Mode { DEAD_OFF, LIVE_OFF, LIVE_ON }
+        enum State {
+            STANDBY, PHASING, CHO, IDLE, TRAFFIC, ERROR, RQ, SYNC, INACTIVE, DEAD
+        }
 
-        private static final Font DEAD_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
-        private static final Font LIVE_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+        static final State[] PREVIEW_STATES = {
+                State.STANDBY, State.PHASING, State.CHO, State.IDLE, State.TRAFFIC,
+                State.ERROR, State.RQ, State.SYNC, State.INACTIVE, State.DEAD
+        };
 
-        private Mode mode = Mode.DEAD_OFF;
+        private static final Font PLAIN = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+        private static final Font BOLD = new Font(Font.SANS_SERIF, Font.BOLD, 12);
+        private static final int PAD_X = 12;
+        private static final int PAD_Y = 4;
+
+        private State state = State.STANDBY;
+        private Timer motion;
+        private Dimension fixedSize;
 
         TxChip() {
             setOpaque(false);
-            setFont(DEAD_FONT);
+            setFont(PLAIN);
         }
 
-        void setMode(Mode mode) {
-            this.mode = mode == null ? Mode.DEAD_OFF : mode;
-            setFont(this.mode == Mode.DEAD_OFF ? DEAD_FONT : LIVE_FONT);
-            revalidate();
+        static State stateForByte(int n) {
+            return switch (n) {
+                case 0x30 -> State.STANDBY;
+                case 0x31 -> State.PHASING;
+                case 0x32 -> State.CHO;
+                case 0x33 -> State.IDLE;
+                case 0x34 -> State.TRAFFIC;
+                case 0x35 -> State.ERROR;
+                case 0x36 -> State.RQ;
+                case 0x37 -> State.SYNC;
+                default -> null;
+            };
+        }
+
+        void setState(State state) {
+            this.state = state == null ? State.STANDBY : state;
+            setFont(bold(this.state) ? BOLD : PLAIN);
+            syncMotion();
             repaint();
         }
 
+        void stopMotion() {
+            if (motion != null) {
+                motion.stop();
+                motion = null;
+            }
+        }
+
+        private void syncMotion() {
+            boolean animate = state == State.PHASING || state == State.CHO || state == State.IDLE;
+            if (!animate) {
+                stopMotion();
+                return;
+            }
+            if (motion == null) {
+                motion = new Timer(40, e -> repaint());
+                motion.start();
+            }
+        }
+
+        private static boolean bold(State state) {
+            return switch (state) {
+                case PHASING, CHO, IDLE, TRAFFIC, ERROR, RQ -> true;
+                default -> false;
+            };
+        }
+
         private String label() {
-            return mode == Mode.LIVE_ON ? "TX ON" : "TX OFF";
+            return switch (state) {
+                case STANDBY -> "STANDBY";
+                case PHASING -> "PHASING";
+                case CHO -> "CHO";
+                case IDLE -> "IDLE";
+                case TRAFFIC -> "TRAFFIC";
+                case ERROR -> "ERROR";
+                case RQ -> "RQ";
+                case SYNC -> "SYNC";
+                case INACTIVE -> "INACTIVE";
+                case DEAD -> "DEAD";
+            };
         }
 
         private Color fill() {
-            return switch (mode) {
-                case LIVE_OFF -> UiColors.TX_OFF_LIVE_BG;
-                case LIVE_ON -> UiColors.TX_ON_LIVE_BG;
+            return switch (state) {
+                case PHASING -> UiColors.LINK_PHASING;
+                case CHO -> UiColors.LINK_CHO;
+                case IDLE -> throb(UiColors.LINK_IDLE);
+                case TRAFFIC -> UiColors.LINK_TRAFFIC;
+                case ERROR -> UiColors.LINK_ERROR;
+                case RQ -> UiColors.LINK_RQ;
                 default -> null;
+            };
+        }
+
+        private Dimension fixedSize() {
+            if (fixedSize == null) {
+                int w = 0;
+                int h = 0;
+                for (State candidate : State.values()) {
+                    Font font = bold(candidate) ? BOLD : PLAIN;
+                    FontMetrics fm = getFontMetrics(font);
+                    w = Math.max(w, fm.stringWidth(labelFor(candidate)));
+                    h = Math.max(h, fm.getHeight());
+                }
+                fixedSize = new Dimension(w + PAD_X, Math.max(h + PAD_Y, 16));
+            }
+            return fixedSize;
+        }
+
+        private static String labelFor(State candidate) {
+            return switch (candidate) {
+                case STANDBY -> "STANDBY";
+                case PHASING -> "PHASING";
+                case CHO -> "CHO";
+                case IDLE -> "IDLE";
+                case TRAFFIC -> "TRAFFIC";
+                case ERROR -> "ERROR";
+                case RQ -> "RQ";
+                case SYNC -> "SYNC";
+                case INACTIVE -> "INACTIVE";
+                case DEAD -> "DEAD";
             };
         }
 
         @Override
         public Dimension getPreferredSize() {
-            FontMetrics fm = getFontMetrics(LIVE_FONT);
-            int w = fm.stringWidth("TX OFF") + 12;
-            int h = Math.max(fm.getHeight() + 4, 16);
-            return new Dimension(w, h);
+            return fixedSize();
         }
 
         @Override
         public Dimension getMinimumSize() {
-            return getPreferredSize();
+            return fixedSize();
         }
 
         @Override
         public Dimension getMaximumSize() {
-            return getPreferredSize();
+            return fixedSize();
         }
 
         @Override
@@ -1025,19 +1371,68 @@ public final class ConnectionWindow extends JFrame {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setFont(getFont());
-            FontMetrics fm = g2.getFontMetrics();
-            String text = label();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            int width = getWidth();
+            int height = getHeight();
+            g2.setClip(new RoundRectangle2D.Float(0, 0, width, height, 4, 4));
             Color fill = fill();
             if (fill != null) {
                 g2.setColor(fill);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 4, 4);
+                g2.fillRect(0, 0, width, height);
+                if (state == State.PHASING) {
+                    paintGlint(g2, width, height);
+                } else if (state == State.CHO) {
+                    paintEdgePulse(g2, width, height);
+                }
             }
-            int x = (getWidth() - fm.stringWidth(text)) / 2;
-            int y = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+            g2.setComposite(AlphaComposite.SrcOver);
+            g2.setFont(getFont());
+            FontMetrics fm = g2.getFontMetrics();
+            String text = label();
+            int x = (width - fm.stringWidth(text)) / 2;
+            int y = (height + fm.getAscent() - fm.getDescent()) / 2;
             g2.setColor(Color.BLACK);
             g2.drawString(text, x, y);
             g2.dispose();
+        }
+
+        /** Border brightens toward white and back once per second. Fill stays put. */
+        private static void paintEdgePulse(Graphics2D g2, int width, int height) {
+            float t = (float) (0.5 - 0.5 * Math.cos(2 * Math.PI * cyclePhase()));
+            float inset = 1.5f;
+            g2.setStroke(new BasicStroke(3f));
+            g2.setColor(blend(UiColors.LINK_CHO, Color.WHITE, t));
+            g2.draw(new RoundRectangle2D.Float(
+                    inset, inset, width - inset * 2, height - inset * 2, 4, 4));
+        }
+
+        /** Bright band sweeps left to right once per second. */
+        private static void paintGlint(Graphics2D g2, int width, int height) {
+            int band = Math.max(10, width / 3);
+            int x = Math.round((width + band) * cyclePhase()) - band;
+            g2.setComposite(AlphaComposite.SrcOver.derive(0.55f));
+            g2.setColor(Color.WHITE);
+            g2.fillRect(x, 0, band, height);
+        }
+
+        /** Fade between {@code base} and white once per second. */
+        private static Color throb(Color base) {
+            float t = (float) (0.5 - 0.5 * Math.cos(2 * Math.PI * cyclePhase()));
+            return blend(base, Color.WHITE, t);
+        }
+
+        private static float cyclePhase() {
+            long period = 1_000_000_000L;
+            return (System.nanoTime() % period) / (float) period;
+        }
+
+        private static Color blend(Color from, Color to, float t) {
+            float u = 1f - t;
+            return new Color(
+                    Math.round(from.getRed() * u + to.getRed() * t),
+                    Math.round(from.getGreen() * u + to.getGreen() * t),
+                    Math.round(from.getBlue() * u + to.getBlue() * t));
         }
     }
 }
