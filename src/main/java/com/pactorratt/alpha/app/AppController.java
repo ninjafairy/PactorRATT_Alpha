@@ -20,6 +20,7 @@ import com.pactorratt.alpha.ui.ConnectionWindow;
 import com.pactorratt.alpha.ui.DebugMonitorWindow;
 import com.pactorratt.alpha.ui.DisplayMonitorWindow;
 import com.pactorratt.alpha.ui.MainWindow;
+import com.pactorratt.alpha.ui.PdBugCheckWindow;
 import com.pactorratt.alpha.ui.StatusMonitorWindow;
 import com.pactorratt.alpha.ui.Ubit10MonitorWindow;
 import com.pactorratt.alpha.ui.UiColors;
@@ -35,6 +36,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -46,6 +48,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -73,6 +76,15 @@ public final class AppController {
     private static final long FEC_WAIT_ENTER_MS = 10_000;
     /** After seeing {@code PD}, wait this long for end (Idle then {@code Pt} or {@code PN}). */
     private static final long FEC_WAIT_LEAVE_MS = 300_000;
+    /** Host PTSend used only by the PD bug check (100 baud, 3 repeats). */
+    private static final String PD_BUG_COMMAND = "PD1,3";
+    private static final int PD_BUG_PAYLOAD_LEN = 32;
+    /** Inclusive Traffic-to-Idle dwell that means the repeat count was ignored. */
+    private static final long PD_BUG_BUG_MIN_MS = 3_500;
+    private static final long PD_BUG_BUG_MAX_MS = 4_500;
+    /** Inclusive dwell for three 100-baud passes of 32 bytes. */
+    private static final long PD_BUG_OK_MIN_MS = 11_000;
+    private static final long PD_BUG_OK_MAX_MS = 13_000;
 
     private final Path portableRoot;
     private final ConfigStore configStore;
@@ -96,12 +108,13 @@ public final class AppController {
     private DebugMonitorWindow debugMonitorWindow;
     private StatusMonitorWindow statusMonitorWindow;
     private Ubit10MonitorWindow ubit10MonitorWindow;
+    private PdBugCheckWindow pdBugCheckWindow;
     private DisplayMonitorWindow displayMonitorWindow;
     private final List<ConnectionWindow> deadArqWindows = new ArrayList<>();
 
     private volatile HostSession hostSession;
     private final AtomicBoolean tncBusy = new AtomicBoolean(false);
-    /** Guards overlapping Listen FEC / End TX ({@code PD} + data + CTRL-D) attempts. */
+    /** Guards overlapping Listen FEC / End TX. */
     private final AtomicBoolean fecBusy = new AtomicBoolean(false);
     /** Guards overlapping Listen ON/OFF Host {@code OP}/{@code PN}/{@code Pt} round-trips. */
     private final AtomicBoolean listenHostBusy = new AtomicBoolean(false);
@@ -140,6 +153,19 @@ public final class AppController {
 
     /** Last UBIT 10 / seed-OP *w* byte ({@code $30}–{@code $37}), or null until one arrives. */
     private Integer lastLinkStatusN;
+    /**
+     * PD bug check is in flight (sending, or armed and waiting for Traffic then Idle).
+     * Closing the window does not clear this; a second run waits until Idle or session close.
+     */
+    private final AtomicBoolean pdBugCheckBusy = new AtomicBoolean(false);
+    private final Object pdBugLock = new Object();
+    /** Set after the channel-0 data ACK. UBIT samples before this are ignored. */
+    private boolean pdBugArmed;
+    /** First {@code $34} after arm. Later Traffic pushes do not restart the clock. */
+    private boolean pdBugSawTraffic;
+    private long pdBugTrafficNanos;
+    /** Window was closed; do not paint this run's dwell on a later window. */
+    private boolean pdBugDropped;
     /** Serializes UBIT 10–triggered {@code OP}; extra {@code $50 n} queues one follow-up. */
     private final AtomicBoolean ubit10OpInFlight = new AtomicBoolean(false);
     private final AtomicBoolean ubit10OpFollowup = new AtomicBoolean(false);
@@ -404,6 +430,91 @@ public final class AppController {
         if (!tncConnected && !isAnyMonitorOpen()) {
             closeRetainedDebugSession();
         }
+    }
+
+    public void openPdBugCheck() {
+        runOnEdt(() -> {
+            if (pdBugCheckWindow == null || !pdBugCheckWindow.isDisplayable()) {
+                pdBugCheckWindow = new PdBugCheckWindow(this);
+                String progress = pdBugProgressStatus();
+                if (progress != null) {
+                    pdBugCheckWindow.holdForInProgress(progress);
+                }
+                pdBugCheckWindow.setVisible(true);
+            } else {
+                pdBugCheckWindow.toFront();
+            }
+        });
+    }
+
+    /**
+     * Closing the window does not abort the transmission. The in-flight watch stays busy
+     * until Idle or the Host session closes, and its dwell is not painted on a new window.
+     */
+    public void onPdBugCheckClosed(PdBugCheckWindow window) {
+        if (pdBugCheckWindow == window) {
+            pdBugCheckWindow = null;
+        }
+        synchronized (pdBugLock) {
+            if (pdBugCheckBusy.get()) {
+                pdBugDropped = true;
+            }
+        }
+    }
+
+    /**
+     * Checkbox-gated PD bug check. Requires an open Host session. Does not refuse an
+     * active ARQ or Listen FEC, and does not send {@code PN} or {@code Pt} afterward.
+     */
+    public void startPdBugCheck() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            runOnEdt(this::startPdBugCheck);
+            return;
+        }
+        if (!pdBugCheckBusy.compareAndSet(false, true)) {
+            return;
+        }
+        PdBugCheckWindow window = pdBugCheckWindow;
+        HostSession session = hostSession;
+        if (window == null || !tncConnected || session == null || !session.isOpen()) {
+            pdBugCheckBusy.set(false);
+            if (window != null) {
+                window.noteNotConnected();
+            }
+            return;
+        }
+        synchronized (pdBugLock) {
+            pdBugArmed = false;
+            pdBugSawTraffic = false;
+            pdBugDropped = false;
+        }
+        byte[] body = new byte[PD_BUG_PAYLOAD_LEN];
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        for (int i = 0; i < body.length; i++) {
+            body[i] = (byte) random.nextInt(0x20, 0x7F);
+        }
+        byte[] withEnd = new byte[body.length + 1];
+        System.arraycopy(body, 0, withEnd, 0, body.length);
+        withEnd[body.length] = RECEIVE_CHAR_CTRL_D;
+        window.beginRun(new String(body, StandardCharsets.US_ASCII));
+
+        Thread worker = new Thread(() -> {
+            try {
+                sendHostOk(session, PD_BUG_COMMAND);
+                session.sendData(0, withEnd, ARQ_HOST_TIMEOUT_MS);
+                debugLog.info("PD bug check sent " + PD_BUG_COMMAND + " + "
+                        + PD_BUG_PAYLOAD_LEN + " chars + CTRL-D");
+                armPdBugWatch();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                failPdBug("PD bug check interrupted.");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                failPdBug(msg);
+            }
+        }, "pd-bug-check");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     public void openDisplayMonitor() {
@@ -1272,11 +1383,16 @@ public final class AppController {
      * Caller paints grey transcript first. FEC / End TX also clears App TX; CQ does not.
      */
     public void listenFecEndTx(ConnectionWindow window, String text) {
-        listenFecEndTx(window, text, "FEC / End TX");
+        listenFecEndTx(window, text, "FEC / End TX", "PD");
     }
 
-    public void listenFecEndTx(ConnectionWindow window, String text, String actionName) {
+    /**
+     * @param pdCommand Host PTSend spelling captured when FEC / End TX or CQ was clicked
+     *                  ({@code PD}, {@code PD1,1}, or {@code PD2,2})
+     */
+    public void listenFecEndTx(ConnectionWindow window, String text, String actionName, String pdCommand) {
         String action = actionName == null || actionName.isBlank() ? "FEC / End TX" : actionName;
+        final String pdCmd = pdCommand == null || pdCommand.isBlank() ? "PD" : pdCommand;
         if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
             return;
         }
@@ -1309,7 +1425,6 @@ public final class AppController {
                         mainWindow.refreshModeLabel();
                     }
                 });
-                String pdCmd = config.ptSendHostCommand();
                 sendHostOk(session, pdCmd);
                 byte[] body = toHostDataBytes(payloadText);
                 byte[] withEnd = new byte[body.length + 1];
@@ -1692,7 +1807,9 @@ public final class AppController {
             HostFrameCodec.Frame linkFrame = event.frame();
             if (LinkMessageParser.isUbit10StatusChange(linkFrame)) {
                 int n = LinkMessageParser.ubit10StatusByte(linkFrame);
+                long stampNanos = System.nanoTime();
                 lastLinkStatusN = n;
+                notePdBugUbit(n, stampNanos);
                 runOnEdt(() -> paintActiveLinkStatus(n));
                 requestOpFromUbit10();
                 runOnEdt(this::refreshDisplayMonitorFromUbit10);
@@ -1890,6 +2007,7 @@ public final class AppController {
         this.tncConnected = connected;
         if (!connected) {
             tncMycall = "";
+            failPdBug("Host session closed.");
         }
         runOnEdt(() -> {
             if (mainWindow != null) {
@@ -3030,6 +3148,156 @@ public final class AppController {
             w.dispose();
         }
         deadArqWindows.clear();
+    }
+
+    /** Status while a check is busy, or null when idle. */
+    private String pdBugProgressStatus() {
+        synchronized (pdBugLock) {
+            if (!pdBugCheckBusy.get()) {
+                return null;
+            }
+            if (pdBugSawTraffic) {
+                return "Traffic";
+            }
+            if (pdBugArmed) {
+                return "Waiting for Traffic";
+            }
+            return "Sending PD1,3…";
+        }
+    }
+
+    /** Accept UBIT 10 samples only after the channel-0 data ACK. */
+    private void armPdBugWatch() {
+        boolean waiting;
+        synchronized (pdBugLock) {
+            if (!pdBugCheckBusy.get()) {
+                return;
+            }
+            pdBugArmed = true;
+            waiting = !pdBugSawTraffic && !pdBugDropped;
+        }
+        if (!waiting) {
+            return;
+        }
+        runOnEdt(() -> {
+            boolean stillWaiting;
+            synchronized (pdBugLock) {
+                stillWaiting = pdBugCheckBusy.get() && pdBugArmed && !pdBugSawTraffic && !pdBugDropped;
+            }
+            if (!stillWaiting) {
+                return;
+            }
+            PdBugCheckWindow window = pdBugCheckWindow;
+            if (window != null) {
+                window.setStatus("Waiting for Traffic");
+            }
+        });
+    }
+
+    /**
+     * Traffic ({@code $34}) starts the clock. The next Idle ({@code $33}) stops it.
+     * Samples before arm, and Idle before Traffic, are ignored.
+     */
+    private void notePdBugUbit(int n, long stampNanos) {
+        if (n != 0x33 && n != 0x34) {
+            return;
+        }
+        boolean showTraffic = false;
+        boolean finished = false;
+        boolean dropped = false;
+        long dwellMs = 0;
+        synchronized (pdBugLock) {
+            if (pdBugCheckBusy.get() && pdBugArmed) {
+                if (n == 0x34 && !pdBugSawTraffic) {
+                    pdBugSawTraffic = true;
+                    pdBugTrafficNanos = stampNanos;
+                    showTraffic = !pdBugDropped;
+                } else if (n == 0x33 && pdBugSawTraffic) {
+                    dwellMs = Math.round((stampNanos - pdBugTrafficNanos) / 1_000_000.0);
+                    dropped = pdBugDropped;
+                    pdBugDropped = false;
+                    pdBugArmed = false;
+                    pdBugSawTraffic = false;
+                    pdBugCheckBusy.set(false);
+                    finished = true;
+                }
+            }
+        }
+        if (showTraffic) {
+            runOnEdt(() -> {
+                if (!pdBugCheckBusy.get()) {
+                    return;
+                }
+                PdBugCheckWindow window = pdBugCheckWindow;
+                if (window != null) {
+                    window.setStatus("Traffic");
+                }
+            });
+        }
+        if (finished) {
+            long ms = dwellMs;
+            boolean wasDropped = dropped;
+            runOnEdt(() -> deliverPdBugDwell(ms, wasDropped));
+        }
+    }
+
+    private void deliverPdBugDwell(long dwellMs, boolean dropped) {
+        String verdict = pdBugVerdictText(dwellMs);
+        debugLog.info("PD bug check " + verdict + " " + dwellMs + " ms"
+                + (dropped ? " (window closed)" : ""));
+        PdBugCheckWindow window = pdBugCheckWindow;
+        if (window == null) {
+            return;
+        }
+        if (dropped) {
+            window.releaseAfterDroppedWatch();
+            return;
+        }
+        window.showVerdict(verdict, pdBugVerdictColor(dwellMs), dwellMs);
+    }
+
+    private void failPdBug(String status) {
+        boolean ended;
+        synchronized (pdBugLock) {
+            ended = pdBugCheckBusy.get();
+            if (ended) {
+                pdBugCheckBusy.set(false);
+                pdBugArmed = false;
+                pdBugSawTraffic = false;
+                pdBugDropped = false;
+            }
+        }
+        if (!ended) {
+            return;
+        }
+        String text = status == null || status.isBlank() ? "Host I/O failed" : status;
+        debugLog.info("PD bug check failed: " + text);
+        runOnEdt(() -> {
+            PdBugCheckWindow window = pdBugCheckWindow;
+            if (window != null) {
+                window.showFailure(text);
+            }
+        });
+    }
+
+    private static String pdBugVerdictText(long dwellMs) {
+        if (dwellMs >= PD_BUG_BUG_MIN_MS && dwellMs <= PD_BUG_BUG_MAX_MS) {
+            return "BUG PRESENT";
+        }
+        if (dwellMs >= PD_BUG_OK_MIN_MS && dwellMs <= PD_BUG_OK_MAX_MS) {
+            return "PD OK";
+        }
+        return "Unexpected Runtime";
+    }
+
+    private static Color pdBugVerdictColor(long dwellMs) {
+        if (dwellMs >= PD_BUG_BUG_MIN_MS && dwellMs <= PD_BUG_BUG_MAX_MS) {
+            return PdBugCheckWindow.bugColor();
+        }
+        if (dwellMs >= PD_BUG_OK_MIN_MS && dwellMs <= PD_BUG_OK_MAX_MS) {
+            return PdBugCheckWindow.okColor();
+        }
+        return PdBugCheckWindow.unexpectedColor();
     }
 
     public void runOnEdt(Runnable r) {

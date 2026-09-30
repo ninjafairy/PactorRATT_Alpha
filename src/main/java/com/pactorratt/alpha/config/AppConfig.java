@@ -38,10 +38,6 @@ public final class AppConfig {
      */
     private int cqRepeat = 1;
     private int wrapColumns = 80;
-    /** PTSend {@code n}: false → 1 (100 baud), true → 2 (200 baud). */
-    private boolean fec200 = false;
-    /** PTSend {@code x}: unproto repeats, 1–5. */
-    private int fecRetries = 1;
 
     private boolean buddiesExpanded = true;
     private boolean heardExpanded = true;
@@ -196,38 +192,6 @@ public final class AppConfig {
 
     public void setWrapColumns(int wrapColumns) {
         this.wrapColumns = wrapColumns;
-    }
-
-    public boolean isFec200() {
-        return fec200;
-    }
-
-    public void setFec200(boolean fec200) {
-        this.fec200 = fec200;
-    }
-
-    public int getFecRetries() {
-        return fecRetries;
-    }
-
-    /** Clamps to 1–5 (PTSend repeat count). */
-    public void setFecRetries(int fecRetries) {
-        if (fecRetries < 1) {
-            this.fecRetries = 1;
-        } else if (fecRetries > 5) {
-            this.fecRetries = 5;
-        } else {
-            this.fecRetries = fecRetries;
-        }
-    }
-
-    /**
-     * Host PTSend command: {@code PD} + {@code n,x} with no space (e.g. {@code PD1,1}, {@code PD2,3}).
-     * {@code n} = 2 if {@link #isFec200()}, else 1; {@code x} = {@link #getFecRetries()}.
-     */
-    public String ptSendHostCommand() {
-        int n = fec200 ? 2 : 1;
-        return "PD" + n + "," + fecRetries;
     }
 
     public boolean isBuddiesExpanded() {

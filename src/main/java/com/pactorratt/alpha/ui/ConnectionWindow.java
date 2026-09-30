@@ -6,6 +6,7 @@ import com.pactorratt.alpha.config.MacroFile;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.ButtonGroup;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -16,6 +17,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
@@ -95,6 +97,10 @@ public final class ConnectionWindow extends JFrame {
     private boolean mailboxFlashLit;
     private boolean mailboxUiClosed;
     private final List<JButton> controlButtons = new ArrayList<>();
+    /** Listen only. Chosen on the window; not saved. */
+    private JRadioButton fecFast;
+    private JRadioButton fecNormal;
+    private JRadioButton fecBaud200;
     private final List<JButton> handoverButtons = new ArrayList<>();
     private JPanel macroPanel;
     private JSplitPane contentSplit;
@@ -533,9 +539,10 @@ public final class ConnectionWindow extends JFrame {
             handoverButtons.add(hoAfter);
             handoverButtons.add(hoText);
         } else {
-            addControl(p, "FEC / End TX", "PTSend from Program settings (FEC 200 / Retries) → buffer → CTRL-D end",
+            p.add(fecModeBox());
+            addControl(p, "FEC / End TX", "FEC mode command → buffer → CTRL-D end",
                     this::fecEndTx);
-            addControl(p, "CQ", "Canned CQ text × CQ repeat (Program settings) → PTSend + CTRL-D",
+            addControl(p, "CQ", "Canned CQ text × CQ repeat (Program settings) → FEC mode command + CTRL-D",
                     this::sendCq);
         }
 
@@ -591,6 +598,41 @@ public final class ConnectionWindow extends JFrame {
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
             return Math.max(visibleRect.height - 16, 16);
         }
+    }
+
+    /** Fast {@code PD1,1}, Normal {@code PD} (default), 200 baud {@code PD2,2}. */
+    private JPanel fecModeBox() {
+        JPanel box = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        box.setOpaque(false);
+        box.setBorder(BorderFactory.createTitledBorder("FEC mode"));
+        fecFast = new JRadioButton("Fast");
+        fecNormal = new JRadioButton("Normal", true);
+        fecBaud200 = new JRadioButton("200 baud");
+        fecFast.setToolTipText("Host PD1,1");
+        fecNormal.setToolTipText("Host PD");
+        fecBaud200.setToolTipText("Host PD2,2");
+        fecFast.setOpaque(false);
+        fecNormal.setOpaque(false);
+        fecBaud200.setOpaque(false);
+        ButtonGroup group = new ButtonGroup();
+        group.add(fecFast);
+        group.add(fecNormal);
+        group.add(fecBaud200);
+        box.add(fecFast);
+        box.add(fecNormal);
+        box.add(fecBaud200);
+        return box;
+    }
+
+    /** Command for the radio selected now. Normal ({@code PD}) when the box was not built. */
+    private String selectedFecCommand() {
+        if (fecFast != null && fecFast.isSelected()) {
+            return "PD1,1";
+        }
+        if (fecBaud200 != null && fecBaud200.isSelected()) {
+            return "PD2,2";
+        }
+        return "PD";
     }
 
     private JButton addControl(JPanel p, String label, String tooltip, Runnable action) {
@@ -901,7 +943,7 @@ public final class ConnectionWindow extends JFrame {
         ensureTranscriptNewline();
         appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
         refreshStatus();
-        app.listenFecEndTx(this, pending, actionName);
+        app.listenFecEndTx(this, pending, actionName, selectedFecCommand());
     }
 
     private void editAppTxBuffer() {

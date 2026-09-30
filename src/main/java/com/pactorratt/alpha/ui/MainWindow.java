@@ -362,6 +362,9 @@ public final class MainWindow extends JFrame {
         JMenuItem ubit10Monitor = new JMenuItem("UBIT 10…");
         ubit10Monitor.addActionListener(e -> app.openUbit10Monitor());
         devTools.add(ubit10Monitor);
+        JMenuItem pdBugCheck = new JMenuItem("PD bug check…");
+        pdBugCheck.addActionListener(e -> app.openPdBugCheck());
+        devTools.add(pdBugCheck);
         JMenuItem displayMonitor = new JMenuItem("Display…");
         displayMonitor.addActionListener(e -> app.openDisplayMonitor());
         devTools.add(displayMonitor);

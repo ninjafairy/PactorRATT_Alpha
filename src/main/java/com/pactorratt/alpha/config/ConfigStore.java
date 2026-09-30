@@ -229,8 +229,6 @@ public final class ConfigStore {
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
         append(sb, "cannedCqText", c.getCannedCqText(), true);
         append(sb, "wrapColumns", c.getWrapColumns());
-        append(sb, "fec200", c.isFec200());
-        append(sb, "fecRetries", c.getFecRetries());
         append(sb, "cqRepeat", c.getCqRepeat());
         append(sb, "buddiesExpanded", c.isBuddiesExpanded());
         append(sb, "heardExpanded", c.isHeardExpanded());
@@ -318,12 +316,6 @@ public final class ConfigStore {
         }
         if (map.containsKey("wrapColumns")) {
             config.setWrapColumns(parseInt(map.get("wrapColumns"), 80));
-        }
-        if (map.containsKey("fec200")) {
-            config.setFec200(Boolean.parseBoolean(map.get("fec200")));
-        }
-        if (map.containsKey("fecRetries")) {
-            config.setFecRetries(parseInt(map.get("fecRetries"), 1));
         }
         if (map.containsKey("cqRepeat")) {
             config.setCqRepeat(parseInt(map.get("cqRepeat"), 1));
