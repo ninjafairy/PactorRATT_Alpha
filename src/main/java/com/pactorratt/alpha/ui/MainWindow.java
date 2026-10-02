@@ -43,6 +43,8 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Point;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -131,8 +133,8 @@ public final class MainWindow extends JFrame {
                 hideHoverTips();
             }
         });
-        setSize(640, 560);
-        setLocationByPlatform(true);
+        WindowPlacement.apply(this, app.config().getWindowMain(),
+                WindowPlacement.MAIN_WIDTH, WindowPlacement.MAIN_HEIGHT);
     }
 
     public boolean isListenSelected() {
@@ -339,8 +341,11 @@ public final class MainWindow extends JFrame {
                         + "Alpha will use a coded init sequence after Host open.",
                 "Settings — TNC",
                 JOptionPane.INFORMATION_MESSAGE));
+        JMenuItem resetWindows = new JMenuItem("Reset window locations");
+        resetWindows.addActionListener(e -> app.resetWindowLocations());
         settings.add(com);
         settings.add(program);
+        settings.add(resetWindows);
         settings.add(tnc);
 
         JMenu tncMenu = new JMenu("TNC");
@@ -509,8 +514,19 @@ public final class MainWindow extends JFrame {
         bottom.setBackground(UiColors.PANEL_BG);
         bottom.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
 
-        JPanel callRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel callRow = new JPanel(new WrapLayout(FlowLayout.LEFT, 5, 4));
         callRow.setBackground(UiColors.PANEL_BG);
+        final int[] callRowWidth = {-1};
+        callRow.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                int width = callRow.getWidth();
+                if (width > 0 && width != callRowWidth[0]) {
+                    callRowWidth[0] = width;
+                    callRow.revalidate();
+                }
+            }
+        });
         callRow.add(new JLabel("Callsign:"));
         callsignField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
         callRow.add(callsignField);
@@ -598,6 +614,13 @@ public final class MainWindow extends JFrame {
             menu.add(clear);
             return menu;
         }
+        if (NODE_BUDDIES.equals(label)) {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem add = new JMenuItem("Add buddy");
+            add.addActionListener(ev -> showAddBuddyDialog());
+            menu.add(add);
+            return menu;
+        }
         Object parent = node.getParent();
         if (!(parent instanceof DefaultMutableTreeNode parentNode) || !node.isLeaf()) {
             return null;
@@ -608,7 +631,7 @@ public final class MainWindow extends JFrame {
         String category = String.valueOf(parentNode.getUserObject());
         if (NODE_HEARD.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
-            JMenuItem addBuddy = new JMenuItem("Add buddy");
+            JMenuItem addBuddy = new JMenuItem("Move to buddies");
             addBuddy.addActionListener(ev -> app.addBuddy(label));
             JMenuItem clear = new JMenuItem("Clear");
             clear.addActionListener(ev -> app.clearHeardCall(label));
@@ -618,7 +641,7 @@ public final class MainWindow extends JFrame {
         }
         if (NODE_MENTIONED.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
-            JMenuItem addBuddy = new JMenuItem("Add buddy");
+            JMenuItem addBuddy = new JMenuItem("Move to buddies");
             addBuddy.addActionListener(ev -> app.addBuddy(label));
             JMenuItem clear = new JMenuItem("Clear");
             clear.addActionListener(ev -> app.clearMentionedCall(label));
@@ -638,15 +661,52 @@ public final class MainWindow extends JFrame {
         }
         if (NODE_BUDDIES.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
+            JMenuItem add = new JMenuItem("Add buddy");
+            add.addActionListener(ev -> showAddBuddyDialog());
             JMenuItem top = new JMenuItem("Move to top");
             top.addActionListener(ev -> app.moveBuddyToTop(label));
             JMenuItem remove = new JMenuItem("Remove");
             remove.addActionListener(ev -> app.removeBuddy(label));
+            menu.add(add);
             menu.add(top);
             menu.add(remove);
             return menu;
         }
         return null;
+    }
+
+    private void showAddBuddyDialog() {
+        JDialog dialog = new JDialog(this, "Add buddy", Dialog.ModalityType.APPLICATION_MODAL);
+        JTextField field = new JTextField(16);
+        JButton ok = new JButton("OK");
+        JButton cancel = new JButton("Cancel");
+        ok.addActionListener(e -> {
+            String text = field.getText();
+            dialog.dispose();
+            if (text != null && !text.isBlank()) {
+                app.addBuddy(text);
+            }
+        });
+        cancel.addActionListener(e -> dialog.dispose());
+        field.addActionListener(e -> ok.doClick());
+
+        JPanel form = new JPanel(new BorderLayout(6, 0));
+        form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
+        form.add(new JLabel("Callsign:"), BorderLayout.WEST);
+        form.add(field, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttons.add(cancel);
+        buttons.add(ok);
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(form, BorderLayout.CENTER);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(ok);
+        dialog.pack();
+        dialog.setResizable(false);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private void fillCallBranch(DefaultMutableTreeNode branch, List<String> calls) {
@@ -717,6 +777,7 @@ public final class MainWindow extends JFrame {
             }
         }
         persistExpandState();
+        app.config().setWindowMain(WindowPlacement.capture(this));
         tncPulseTimer.stop();
         hideHoverTips();
         app.shutdown();

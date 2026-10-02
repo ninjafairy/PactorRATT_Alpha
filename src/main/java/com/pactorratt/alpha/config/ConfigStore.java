@@ -223,6 +223,7 @@ public final class ConfigStore {
         append(sb, "flowControl", c.getFlowControl(), true);
         append(sb, "commitMode", c.getCommitMode().name(), true);
         append(sb, "listenOnStart", c.isListenOnStart());
+        append(sb, "autoConnectTnc", c.isAutoConnectTnc());
         append(sb, "debugLogEnabled", c.isDebugLogEnabled());
         append(sb, "Display Startup", c.isDisplayStartup());
         append(sb, "cannedHandoverText", c.getCannedHandoverText(), true);
@@ -232,7 +233,10 @@ public final class ConfigStore {
         append(sb, "cqRepeat", c.getCqRepeat());
         append(sb, "buddiesExpanded", c.isBuddiesExpanded());
         append(sb, "heardExpanded", c.isHeardExpanded());
-        append(sb, "mentionedExpanded", c.isMentionedExpanded(), false);
+        append(sb, "mentionedExpanded", c.isMentionedExpanded());
+        append(sb, "windowMain", c.getWindowMain(), true);
+        append(sb, "windowArq", c.getWindowArq(), true);
+        append(sb, "windowFec", c.getWindowFec(), false);
         sb.append("}\n");
         return sb.toString();
     }
@@ -297,6 +301,9 @@ public final class ConfigStore {
         if (map.containsKey("listenOnStart")) {
             config.setListenOnStart(Boolean.parseBoolean(map.get("listenOnStart")));
         }
+        if (map.containsKey("autoConnectTnc")) {
+            config.setAutoConnectTnc(Boolean.parseBoolean(map.get("autoConnectTnc")));
+        }
         if (map.containsKey("debugLogEnabled")) {
             config.setDebugLogEnabled(Boolean.parseBoolean(map.get("debugLogEnabled")));
         }
@@ -328,6 +335,15 @@ public final class ConfigStore {
         }
         if (map.containsKey("mentionedExpanded")) {
             config.setMentionedExpanded(Boolean.parseBoolean(map.get("mentionedExpanded")));
+        }
+        if (map.containsKey("windowMain")) {
+            config.setWindowMain(map.get("windowMain"));
+        }
+        if (map.containsKey("windowArq")) {
+            config.setWindowArq(map.get("windowArq"));
+        }
+        if (map.containsKey("windowFec")) {
+            config.setWindowFec(map.get("windowFec"));
         }
     }
 

@@ -73,6 +73,7 @@ public final class ConnectionWindow extends JFrame {
     private static final char BACKSPACE = 0x08;
     private static final Color MAILBOX_RED = Color.RED;
     private static final Color MAILBOX_RED_DIM = new Color(0x8B0000);
+    private static final Color ABORT_FAINT_RED = new Color(255, 220, 220);
     private static final Color MAILBOX_PURPLE = new Color(0xD8, 0xB4, 0xFE);
     private static final int MAILBOX_FLASH_MS = 500;
     private static final int MAILBOX_HIDE_MS = 3000;
@@ -97,6 +98,7 @@ public final class ConnectionWindow extends JFrame {
     private boolean mailboxFlashLit;
     private boolean mailboxUiClosed;
     private final List<JButton> controlButtons = new ArrayList<>();
+    private JButton abortButton;
     /** Listen only. Chosen on the window; not saved. */
     private JRadioButton fecFast;
     private JRadioButton fecNormal;
@@ -159,8 +161,10 @@ public final class ConnectionWindow extends JFrame {
                 stopArqTxPreview();
             }
         });
-        setSize(640, 520);
-        setLocationByPlatform(true);
+        WindowPlacement.apply(this,
+                kind == Kind.LISTEN ? app.config().getWindowFec() : app.config().getWindowArq(),
+                WindowPlacement.CONNECTION_WIDTH,
+                WindowPlacement.CONNECTION_HEIGHT);
         if (kind == Kind.ARQ) {
             beginTmailMailboxCheck();
         }
@@ -265,6 +269,9 @@ public final class ConnectionWindow extends JFrame {
         sendButton.setEnabled(active);
         for (JButton b : controlButtons) {
             b.setEnabled(active);
+        }
+        if (kind == Kind.LISTEN && abortButton != null) {
+            abortButton.setEnabled(true);
         }
         if (active && handoverLocked) {
             setHandoverButtonsEnabled(false);
@@ -376,6 +383,11 @@ public final class ConnectionWindow extends JFrame {
         transcript.setEditable(false);
         transcript.setBackground(UiColors.TRANSCRIPT_BG);
         transcript.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        JPopupMenu transcriptMenu = new JPopupMenu();
+        JMenuItem clearTranscript = new JMenuItem("Clear");
+        clearTranscript.addActionListener(e -> clearTranscript());
+        transcriptMenu.add(clearTranscript);
+        transcript.setComponentPopupMenu(transcriptMenu);
         JScrollPane transcriptScroll = new JScrollPane(transcript);
         transcriptScroll.setBorder(BorderFactory.createTitledBorder("Transcript"));
 
@@ -387,7 +399,10 @@ public final class ConnectionWindow extends JFrame {
         JPopupMenu bufferMenu = new JPopupMenu();
         JMenuItem editItem = new JMenuItem("Edit");
         editItem.addActionListener(e -> editAppTxBuffer());
+        JMenuItem clearBuffer = new JMenuItem("Clear");
+        clearBuffer.addActionListener(e -> appTxBuffer.setText(""));
         bufferMenu.add(editItem);
+        bufferMenu.add(clearBuffer);
         appTxBuffer.setComponentPopupMenu(bufferMenu);
 
         compose.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
@@ -404,6 +419,11 @@ public final class ConnectionWindow extends JFrame {
                 }
             }
         });
+        JPopupMenu composeMenu = new JPopupMenu();
+        JMenuItem clearCompose = new JMenuItem("Clear");
+        clearCompose.addActionListener(e -> compose.setText(""));
+        composeMenu.add(clearCompose);
+        compose.setComponentPopupMenu(composeMenu);
         JScrollPane composeScroll = new JScrollPane(compose);
         composeScroll.setBorder(BorderFactory.createTitledBorder("Compose"));
 
@@ -520,7 +540,7 @@ public final class ConnectionWindow extends JFrame {
                     () -> app.arqDiscAfterTxClear(this));
             addControl(p, "Disconnect now", "TClear (TC) then ch0 CTRL-D $04",
                     () -> app.arqDisconnectNow(this));
-            addControl(p, "Abort", "Abort link (PN if Listen on, else Pt)", this::abortSession);
+            addAbortControl(p, "Abort link (PN if Listen on, else Pt)", this::abortSession);
             JButton hoNow = addControl(p, "Clear TX and Handover",
                     "TClear (TC) then ch0 CTRL-Z $1A",
                     () -> app.arqHandoverNow(this));
@@ -540,6 +560,9 @@ public final class ConnectionWindow extends JFrame {
             handoverButtons.add(hoText);
         } else {
             p.add(fecModeBox());
+            addAbortControl(p,
+                    "Abort FEC transmit (PN if Listen on, else Pt). Window stays open.",
+                    this::abortFec);
             addControl(p, "FEC / End TX", "FEC mode command → buffer → CTRL-D end",
                     this::fecEndTx);
             addControl(p, "CQ", "Canned CQ text × CQ repeat (Program settings) → FEC mode command + CTRL-D",
@@ -640,6 +663,16 @@ public final class ConnectionWindow extends JFrame {
         b.setToolTipText(tooltip);
         b.addActionListener(e -> action.run());
         controlButtons.add(b);
+        p.add(b);
+        return b;
+    }
+
+    private JButton addAbortControl(JPanel p, String tooltip, Runnable action) {
+        JButton b = new FaintAbortButton("Abort");
+        b.setToolTipText(tooltip);
+        b.addActionListener(e -> action.run());
+        controlButtons.add(b);
+        abortButton = b;
         p.add(b);
         return b;
     }
@@ -969,6 +1002,14 @@ public final class ConnectionWindow extends JFrame {
         compose.requestFocusInWindow();
     }
 
+    private void clearTranscript() {
+        StyledDocument doc = transcript.getStyledDocument();
+        try {
+            doc.remove(0, doc.getLength());
+        } catch (BadLocationException ignored) {
+        }
+    }
+
     private void appendTranscript(String text, Color color) {
         StyledDocument doc = transcript.getStyledDocument();
         SimpleAttributeSet attrs = new SimpleAttributeSet();
@@ -986,6 +1027,23 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         app.arqAbort(this);
+    }
+
+    private void abortFec() {
+        if (kind != Kind.LISTEN) {
+            return;
+        }
+        app.fecAbort(this);
+    }
+
+    /** Write this window's bounds into the matching settings slot. Does not save the file. */
+    public void rememberBounds() {
+        String bounds = WindowPlacement.capture(this);
+        if (kind == Kind.LISTEN) {
+            app.config().setWindowFec(bounds);
+        } else {
+            app.config().setWindowArq(bounds);
+        }
     }
 
     private void saveChat() {
@@ -1235,8 +1293,31 @@ public final class ConnectionWindow extends JFrame {
                 app.markArqDead(this);
             }
         }
+        rememberBounds();
+        app.saveConfig();
         app.onConnectionWindowClosed(this);
         dispose();
+    }
+
+    /**
+     * Faint red fill that still shows under Windows system look-and-feel, which ignores
+     * {@link JButton#setBackground}. Keeps the normal button border.
+     */
+    private static final class FaintAbortButton extends JButton {
+        FaintAbortButton(String text) {
+            super(text);
+            setContentAreaFilled(false);
+            setOpaque(false);
+            setBackground(ABORT_FAINT_RED);
+            setForeground(Color.BLACK);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            g.setColor(getBackground());
+            g.fillRect(0, 0, getWidth(), getHeight());
+            super.paintComponent(g);
+        }
     }
 
     /**

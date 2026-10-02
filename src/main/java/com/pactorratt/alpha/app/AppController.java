@@ -24,6 +24,7 @@ import com.pactorratt.alpha.ui.PdBugCheckWindow;
 import com.pactorratt.alpha.ui.StatusMonitorWindow;
 import com.pactorratt.alpha.ui.Ubit10MonitorWindow;
 import com.pactorratt.alpha.ui.UiColors;
+import com.pactorratt.alpha.ui.WindowPlacement;
 import com.pactorratt.alpha.util.DebugLog;
 
 import javax.swing.BorderFactory;
@@ -37,6 +38,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -126,6 +128,8 @@ public final class AppController {
     private volatile HostSession pendingSession;
 
     private volatile boolean tncConnected;
+    /** Listen-on-start for this launch. Consumed by the first successful TNC connect. */
+    private volatile boolean listenOnStartPending;
     /** Last Host {@code ML} query value, shown after TNC status. Cleared when not connected. */
     private volatile String tncMycall = "";
     private AppMode mode = AppMode.IDLE;
@@ -1059,6 +1063,52 @@ public final class AppController {
                 finished.run();
             });
         }, "arq-abort");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * FEC Abort — same Host command as ARQ Abort ({@code PN} if FEC/Monitor is on, else
+     * {@code Pt}). Leaves the FEC window open and does not turn Listen off.
+     * Refuses while an ARQ link is up so the command cannot drop that link.
+     */
+    public void fecAbort(ConnectionWindow window) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
+            return;
+        }
+        if (hasActiveArq()) {
+            runOnEdt(() -> noticeWindow(window, "Abort — unavailable while ARQ is up."));
+            return;
+        }
+        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
+        String mnemonic = listenOn ? "PN" : "Pt";
+        if (!tncConnected) {
+            runOnEdt(() -> noticeWindow(window, "Abort — TNC not connected."));
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            runOnEdt(() -> noticeWindow(window, "Abort — no open Host session."));
+            return;
+        }
+        Thread worker = new Thread(() -> {
+            String resultNotice;
+            try {
+                sendHostOk(session, mnemonic);
+                resultNotice = "Abort — sent " + mnemonic
+                        + (listenOn ? " (Listen on)" : " (Idle)");
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                resultNotice = "Abort — interrupted.";
+                debugLog.info("FEC Abort interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                resultNotice = "Abort — " + msg;
+                debugLog.info("FEC Abort failed: " + msg);
+            }
+            final String notice = resultNotice;
+            runOnEdt(() -> noticeWindow(window, notice));
+        }, "fec-abort");
         worker.setDaemon(true);
         worker.start();
     }
@@ -2160,7 +2210,10 @@ public final class AppController {
                     if (ubit10MonitorWindow != null && ubit10MonitorWindow.isDisplayable()) {
                         ubit10MonitorWindow.refreshUbit10FromTnc();
                     }
-                    if (mainWindow != null && mainWindow.isListenSelected() && !hasActiveArq()) {
+                    boolean fromStart = listenOnStartPending;
+                    listenOnStartPending = false;
+                    boolean checkbox = mainWindow != null && mainWindow.isListenSelected();
+                    if ((fromStart || checkbox) && !hasActiveArq()) {
                         enterListenHostThenUi();
                     }
                 }
@@ -2489,6 +2542,37 @@ public final class AppController {
 
     public MainWindow mainWindow() {
         return mainWindow;
+    }
+
+    /** One-shot: open Listen after the next successful TNC connect, not before. */
+    public void armListenOnStart() {
+        listenOnStartPending = true;
+    }
+
+    /**
+     * Forget saved main, ARQ, and FEC bounds, then stack whatever is open on the main window.
+     */
+    public void resetWindowLocations() {
+        config.setWindowMain("");
+        config.setWindowArq("");
+        config.setWindowFec("");
+        saveConfig();
+        if (mainWindow == null) {
+            return;
+        }
+        ArrayList<Window> stack = new ArrayList<>();
+        if (listenWindow != null && listenWindow.isDisplayable()) {
+            stack.add(listenWindow);
+        }
+        if (activeArqWindow != null && activeArqWindow.isDisplayable()) {
+            stack.add(activeArqWindow);
+        }
+        for (ConnectionWindow w : new ArrayList<>(deadArqWindows)) {
+            if (w != null && w.isDisplayable() && w != activeArqWindow && w != listenWindow) {
+                stack.add(w);
+            }
+        }
+        WindowPlacement.restack(mainWindow, stack);
     }
 
     public void saveConfig() {
@@ -3127,6 +3211,7 @@ public final class AppController {
     }
 
     public void shutdown() {
+        rememberOpenConnectionBounds();
         disconnectTnc(true);
         if (debugMonitorWindow != null) {
             debugMonitorWindow.dispose();
@@ -3148,6 +3233,21 @@ public final class AppController {
             w.dispose();
         }
         deadArqWindows.clear();
+    }
+
+    /** Live FEC and ARQ win over preview windows that share the same saved slot. */
+    private void rememberOpenConnectionBounds() {
+        for (ConnectionWindow w : new ArrayList<>(deadArqWindows)) {
+            if (w != null && w.isDisplayable()) {
+                w.rememberBounds();
+            }
+        }
+        if (activeArqWindow != null && activeArqWindow.isDisplayable()) {
+            activeArqWindow.rememberBounds();
+        }
+        if (listenWindow != null && listenWindow.isDisplayable()) {
+            listenWindow.rememberBounds();
+        }
     }
 
     /** Status while a check is busy, or null when idle. */

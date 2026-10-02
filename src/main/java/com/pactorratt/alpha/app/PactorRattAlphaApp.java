@@ -30,12 +30,14 @@ public final class PactorRattAlphaApp {
             AppController controller = new AppController(portableRoot);
             MainWindow main = new MainWindow(controller);
             controller.setMainWindow(main);
-            if (controller.config().isListenOnStart()) {
-                main.setListenToggleSilently(true);
-                controller.setListenEnabled(true);
-            }
             main.setVisible(true);
             controller.debugLog().info("PactorRATT_Alpha started (portableRoot=" + portableRoot + ")");
+            if (controller.config().isListenOnStart()) {
+                controller.armListenOnStart();
+            }
+            if (controller.config().isAutoConnectTnc()) {
+                controller.connectTnc();
+            }
         });
     }
 

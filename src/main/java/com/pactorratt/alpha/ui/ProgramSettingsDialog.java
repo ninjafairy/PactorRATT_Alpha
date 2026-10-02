@@ -34,6 +34,9 @@ public final class ProgramSettingsDialog extends JDialog {
         commitGroup.add(message);
 
         JCheckBox listenOnStart = new JCheckBox("Listen on start", config.isListenOnStart());
+        listenOnStart.setToolTipText("After the TNC connects, open FEC/Monitor once this launch.");
+        JCheckBox autoConnectTnc = new JCheckBox("Auto connect TNC", config.isAutoConnectTnc());
+        autoConnectTnc.setToolTipText("On startup, run TNC → Connect after the main window opens.");
         JCheckBox debugLog = new JCheckBox("Debug log", config.isDebugLogEnabled());
         JCheckBox displayStartup = new JCheckBox("Display Startup", config.isDisplayStartup());
         displayStartup.setToolTipText("Show PK-232 startup text and TNC firmware/hardware ($0009) windows on connect.");
@@ -53,6 +56,7 @@ public final class ProgramSettingsDialog extends JDialog {
         form.add(line);
         form.add(message);
         form.add(listenOnStart);
+        form.add(autoConnectTnc);
         form.add(debugLog);
         form.add(displayStartup);
         form.add(labeled("Canned handover text", handover));
@@ -66,6 +70,7 @@ public final class ProgramSettingsDialog extends JDialog {
             config.setCallsign(callsign.getText());
             config.setCommitMode(line.isSelected() ? CommitMode.LINE : CommitMode.MESSAGE);
             config.setListenOnStart(listenOnStart.isSelected());
+            config.setAutoConnectTnc(autoConnectTnc.isSelected());
             config.setDebugLogEnabled(debugLog.isSelected());
             config.setDisplayStartup(displayStartup.isSelected());
             config.setCannedHandoverText(handover.getText());

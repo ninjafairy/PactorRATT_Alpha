@@ -22,6 +22,8 @@ public final class AppConfig {
 
     private CommitMode commitMode = CommitMode.LINE;
     private boolean listenOnStart = false;
+    /** When true, startup's last step is TNC → Connect. */
+    private boolean autoConnectTnc = false;
     private boolean debugLogEnabled = false;
     /**
      * When false, skip PK-232 startup-message dialogs and the TNC firmware/hardware
@@ -42,6 +44,11 @@ public final class AppConfig {
     private boolean buddiesExpanded = true;
     private boolean heardExpanded = true;
     private boolean mentionedExpanded = true;
+
+    /** Saved {@code x,y,width,height}, or blank for the platform default. */
+    private String windowMain = "";
+    private String windowArq = "";
+    private String windowFec = "";
 
     public String getCallsign() {
         return callsign;
@@ -113,6 +120,14 @@ public final class AppConfig {
 
     public void setListenOnStart(boolean listenOnStart) {
         this.listenOnStart = listenOnStart;
+    }
+
+    public boolean isAutoConnectTnc() {
+        return autoConnectTnc;
+    }
+
+    public void setAutoConnectTnc(boolean autoConnectTnc) {
+        this.autoConnectTnc = autoConnectTnc;
     }
 
     public boolean isDebugLogEnabled() {
@@ -216,6 +231,30 @@ public final class AppConfig {
 
     public void setMentionedExpanded(boolean mentionedExpanded) {
         this.mentionedExpanded = mentionedExpanded;
+    }
+
+    public String getWindowMain() {
+        return windowMain;
+    }
+
+    public void setWindowMain(String windowMain) {
+        this.windowMain = windowMain == null ? "" : windowMain.trim();
+    }
+
+    public String getWindowArq() {
+        return windowArq;
+    }
+
+    public void setWindowArq(String windowArq) {
+        this.windowArq = windowArq == null ? "" : windowArq.trim();
+    }
+
+    public String getWindowFec() {
+        return windowFec;
+    }
+
+    public void setWindowFec(String windowFec) {
+        this.windowFec = windowFec == null ? "" : windowFec.trim();
     }
 
     public String serialSummary() {
