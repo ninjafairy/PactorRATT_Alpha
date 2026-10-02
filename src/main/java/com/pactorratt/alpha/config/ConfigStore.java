@@ -230,6 +230,9 @@ public final class ConfigStore {
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
         append(sb, "cannedCqText", c.getCannedCqText(), true);
         append(sb, "wrapColumns", c.getWrapColumns());
+        append(sb, "outgoingText", AppConfig.formatColor(c.getOutgoingText()), true);
+        append(sb, "incomingText", AppConfig.formatColor(c.getIncomingText()), true);
+        append(sb, "textSize", c.getTextSize());
         append(sb, "cqRepeat", c.getCqRepeat());
         append(sb, "buddiesExpanded", c.isBuddiesExpanded());
         append(sb, "heardExpanded", c.isHeardExpanded());
@@ -323,6 +326,15 @@ public final class ConfigStore {
         }
         if (map.containsKey("wrapColumns")) {
             config.setWrapColumns(parseInt(map.get("wrapColumns"), 80));
+        }
+        if (map.containsKey("outgoingText")) {
+            config.setOutgoingText(AppConfig.parseColor(map.get("outgoingText"), AppConfig.DEFAULT_OUTGOING_TEXT));
+        }
+        if (map.containsKey("incomingText")) {
+            config.setIncomingText(AppConfig.parseColor(map.get("incomingText"), AppConfig.DEFAULT_INCOMING_TEXT));
+        }
+        if (map.containsKey("textSize")) {
+            config.setTextSize(parseInt(map.get("textSize"), AppConfig.DEFAULT_TEXT_SIZE));
         }
         if (map.containsKey("cqRepeat")) {
             config.setCqRepeat(parseInt(map.get("cqRepeat"), 1));

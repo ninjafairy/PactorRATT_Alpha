@@ -14,6 +14,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
+import javax.swing.MenuSelectionManager;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -30,6 +31,7 @@ import javax.swing.Timer;
 import javax.swing.WindowConstants;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
+import javax.swing.text.Element;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -42,12 +44,13 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.KeyboardFocusManager;
+import java.awt.KeyEventDispatcher;
 import java.awt.Rectangle;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -85,9 +88,19 @@ public final class ConnectionWindow extends JFrame {
     private final JTextPane transcript = new JTextPane();
     private final JTextArea appTxBuffer = new JTextArea();
     private final JTextArea compose = new JTextArea(3, 40);
+    /**
+     * Enter never activates a focused button on this window. Line mode commits Compose.
+     * Message mode and Shift+Enter insert a newline.
+     */
+    private final KeyEventDispatcher enterKeyDispatcher = this::dispatchEnterKey;
     private final JPanel statusRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
     private final JLabel statusPrefix = new JLabel();
     private final JLabel statusSuffix = new JLabel();
+    /** ARQ only: text between the link chip and the callsign pair. */
+    private JLabel statusBeforeCall;
+    private JLabel mycallLabel;
+    private JLabel peerLabel;
+    private DirectionArrow directionArrow;
     private final TxChip txChip = new TxChip();
     private final JLabel noticeLabel = new JLabel(" ");
     private final JButton sendButton = new JButton("Send");
@@ -131,8 +144,11 @@ public final class ConnectionWindow extends JFrame {
     private Consumer<String> inboundLineListener;
     /** Demo ARQ window: cycles every link-status chip state. Ignores live updates. */
     private Timer txPreviewTimer;
+    private Timer arrowSpeedTimer;
     private int txPreviewStep;
     private boolean statusPreview;
+    /** Preview only: chevrons point at Mycall when true, at the connected call when false. */
+    private boolean previewTowardLocal = true;
     /** Dead ARQ chip stays DEAD and ignores later status bytes. */
     private boolean linkStatusFrozen;
 
@@ -142,6 +158,7 @@ public final class ConnectionWindow extends JFrame {
         this.kind = kind;
         this.titleCall = titleCall;
         buildUi();
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(enterKeyDispatcher);
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
@@ -156,9 +173,13 @@ public final class ConnectionWindow extends JFrame {
 
             @Override
             public void windowClosed(WindowEvent e) {
+                KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(enterKeyDispatcher);
                 mailboxUiClosed = true;
                 stopMailboxUi();
                 stopArqTxPreview();
+                if (directionArrow != null) {
+                    directionArrow.stop();
+                }
             }
         });
         WindowPlacement.apply(this,
@@ -333,7 +354,7 @@ public final class ConnectionWindow extends JFrame {
             }
         }
         if (pending.length() > 0) {
-            appendTranscript(pending.toString(), UiColors.REMOTE_TEXT);
+            appendTranscript(pending.toString(), incomingColor());
         }
     }
 
@@ -367,7 +388,7 @@ public final class ConnectionWindow extends JFrame {
             }
             AttributeSet attrs = doc.getCharacterElement(len - 1).getAttributes();
             Color fg = StyleConstants.getForeground(attrs);
-            if (UiColors.LOCAL_PENDING.equals(fg)) {
+            if (sameColor(fg, outgoingColor())) {
                 return;
             }
             doc.remove(len - 1, 1);
@@ -382,7 +403,7 @@ public final class ConnectionWindow extends JFrame {
 
         transcript.setEditable(false);
         transcript.setBackground(UiColors.TRANSCRIPT_BG);
-        transcript.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        transcript.setFont(chatFont());
         JPopupMenu transcriptMenu = new JPopupMenu();
         JMenuItem clearTranscript = new JMenuItem("Clear");
         clearTranscript.addActionListener(e -> clearTranscript());
@@ -392,7 +413,7 @@ public final class ConnectionWindow extends JFrame {
         transcriptScroll.setBorder(BorderFactory.createTitledBorder("Transcript"));
 
         appTxBuffer.setEditable(false);
-        appTxBuffer.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        appTxBuffer.setFont(chatFont());
         appTxBuffer.setRows(4);
         JScrollPane bufferScroll = new JScrollPane(appTxBuffer);
         bufferScroll.setBorder(BorderFactory.createTitledBorder("App TX buffer (IRS hold)"));
@@ -405,20 +426,9 @@ public final class ConnectionWindow extends JFrame {
         bufferMenu.add(clearBuffer);
         appTxBuffer.setComponentPopupMenu(bufferMenu);
 
-        compose.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        compose.setFont(chatFont());
         compose.setLineWrap(true);
         compose.setWrapStyleWord(true);
-        compose.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER
-                        && app.config().getCommitMode() == CommitMode.LINE
-                        && !e.isShiftDown()) {
-                    e.consume();
-                    commitComposeLines(true);
-                }
-            }
-        });
         JPopupMenu composeMenu = new JPopupMenu();
         JMenuItem clearCompose = new JMenuItem("Clear");
         clearCompose.addActionListener(e -> compose.setText(""));
@@ -427,8 +437,7 @@ public final class ConnectionWindow extends JFrame {
         JScrollPane composeScroll = new JScrollPane(compose);
         composeScroll.setBorder(BorderFactory.createTitledBorder("Compose"));
 
-        sendButton.addActionListener(e ->
-                commitComposeLines(app.config().getCommitMode() == CommitMode.LINE));
+        sendButton.addActionListener(e -> commitComposeLines());
 
         JPanel composeRow = new JPanel(new BorderLayout(4, 4));
         composeRow.setBackground(UiColors.PANEL_BG);
@@ -472,6 +481,21 @@ public final class ConnectionWindow extends JFrame {
         statusSuffix.setOpaque(false);
         statusRow.add(statusPrefix);
         statusRow.add(txChip);
+        if (kind == Kind.ARQ) {
+            statusBeforeCall = new JLabel();
+            statusBeforeCall.setOpaque(false);
+            mycallLabel = new JLabel();
+            mycallLabel.setOpaque(false);
+            mycallLabel.setFont(mycallLabel.getFont().deriveFont(Font.BOLD));
+            directionArrow = new DirectionArrow();
+            peerLabel = new JLabel();
+            peerLabel.setOpaque(false);
+            peerLabel.setFont(peerLabel.getFont().deriveFont(Font.BOLD));
+            statusRow.add(statusBeforeCall);
+            statusRow.add(mycallLabel);
+            statusRow.add(directionArrow);
+            statusRow.add(peerLabel);
+        }
         statusRow.add(statusSuffix);
         JScrollPane controlsScroll = buildControlsScroll();
         JScrollPane macrosScroll = buildMacrosScroll();
@@ -704,6 +728,7 @@ public final class ConnectionWindow extends JFrame {
         macroPanel.removeAll();
         for (MacroFile.Macro macro : app.loadMacros()) {
             JButton b = new JButton(macro.name());
+            b.setRequestFocusEnabled(false);
             b.addActionListener(e -> {
                 if (!sessionActive) {
                     showNotice(macro.name() + " — session is not active.");
@@ -729,6 +754,7 @@ public final class ConnectionWindow extends JFrame {
             macroPanel.add(b);
         }
         JButton add = new JButton("+new");
+        add.setRequestFocusEnabled(false);
         add.setToolTipText("Create a macro");
         add.addActionListener(e -> MacroEditDialog.openNew(this, app));
         macroPanel.add(add);
@@ -783,7 +809,7 @@ public final class ConnectionWindow extends JFrame {
             return MacroSendStage.held();
         }
         ensureTranscriptNewline();
-        appendTranscript(line.endsWith("\n") ? line : line + "\n", UiColors.LOCAL_PENDING);
+        appendTranscript(line.endsWith("\n") ? line : line + "\n", outgoingColor());
         return MacroSendStage.sending(line);
     }
 
@@ -808,55 +834,72 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * @param lineMode if true, commit only the current single-line compose contents
-     *                 (Enter in LINE mode). If false, commit all non-empty lines (MESSAGE Send).
+     * Enter on this window. Consumed so a focused button does not run.
+     * Line mode commits Compose. Message mode and Shift+Enter insert a newline.
      */
-    private void commitComposeLines(boolean lineMode) {
+    private boolean dispatchEnterKey(KeyEvent e) {
+        if (e.getKeyCode() != KeyEvent.VK_ENTER && e.getKeyChar() != '\n') {
+            return false;
+        }
+        if (KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow() != this) {
+            return false;
+        }
+        if (MenuSelectionManager.defaultManager().getSelectedPath().length > 0) {
+            return false;
+        }
+        if (e.getID() != KeyEvent.KEY_PRESSED) {
+            return true;
+        }
+        if (e.isShiftDown() || app.config().getCommitMode() != CommitMode.LINE) {
+            insertComposeNewline();
+        } else {
+            commitComposeLines();
+        }
+        return true;
+    }
+
+    private void insertComposeNewline() {
+        if (!compose.isEditable()) {
+            return;
+        }
+        compose.replaceSelection("\n");
+    }
+
+    /**
+     * Commit every Compose line, including blank lines. IRS queues the block in App TX.
+     * ISS paints it and sends it. An empty Compose does nothing.
+     */
+    private void commitComposeLines() {
         if (!sessionActive) {
             return;
         }
         String text = compose.getText();
-        if (text == null) {
+        if (text == null || text.isEmpty()) {
             return;
         }
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        if (lineMode) {
-            while (normalized.endsWith("\n")) {
-                normalized = normalized.substring(0, normalized.length() - 1);
-            }
-            int lastNl = normalized.lastIndexOf('\n');
-            String line = lastNl >= 0 ? normalized.substring(lastNl + 1) : normalized;
-            if (!line.isEmpty()) {
-                enqueueOrFlush(line);
-            }
-            compose.setText("");
-            return;
-        }
-        if (normalized.isBlank()) {
-            return;
-        }
-        for (String line : normalized.split("\n")) {
-            if (!line.isEmpty()) {
-                enqueueOrFlush(line);
-            }
-        }
         compose.setText("");
-    }
-
-    private void enqueueOrFlush(String line) {
         if (localIsIrs) {
-            if (!appTxBuffer.getText().isEmpty()) {
-                appTxBuffer.append("\n");
-            }
-            appTxBuffer.append(line);
+            appendAppTx(normalized);
             return;
         }
         ensureTranscriptNewline();
-        String forTranscript = line.endsWith("\n") ? line : line + "\n";
-        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        String forTranscript = normalized.endsWith("\n") ? normalized : normalized + "\n";
+        appendTranscript(forTranscript, outgoingColor());
         if (kind == Kind.ARQ) {
-            app.sendOutboundChat(this, line);
+            app.sendOutboundChat(this, normalized);
         }
+    }
+
+    /** Append a compose block to App TX. Blank lines inside {@code text} are kept. */
+    private void appendAppTx(String text) {
+        String existing = appTxBuffer.getText();
+        if (existing == null || existing.isEmpty()) {
+            appTxBuffer.setText(text);
+            return;
+        }
+        appTxBuffer.append("\n");
+        appTxBuffer.append(text);
     }
 
 
@@ -880,7 +923,7 @@ public final class ConnectionWindow extends JFrame {
             return "";
         }
         String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
-        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        appendTranscript(forTranscript, outgoingColor());
         appTxBuffer.setText("");
         refreshStatus();
         return pending;
@@ -920,7 +963,7 @@ public final class ConnectionWindow extends JFrame {
         }
         ensureTranscriptNewline();
         String forTranscript = normalized.endsWith("\n") ? normalized : normalized + "\n";
-        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        appendTranscript(forTranscript, outgoingColor());
     }
 
     /**
@@ -933,7 +976,7 @@ public final class ConnectionWindow extends JFrame {
         if (existing == null || existing.isEmpty() || existing.endsWith("\n")) {
             return;
         }
-        appendTranscript("\n", UiColors.LOCAL_PENDING);
+        appendTranscript("\n", outgoingColor());
     }
 
     /**
@@ -974,7 +1017,7 @@ public final class ConnectionWindow extends JFrame {
     private void paintAndSendListenFec(String pending, String actionName) {
         String forTranscript = pending.endsWith("\n") ? pending : pending + "\n";
         ensureTranscriptNewline();
-        appendTranscript(forTranscript, UiColors.LOCAL_PENDING);
+        appendTranscript(forTranscript, outgoingColor());
         refreshStatus();
         app.listenFecEndTx(this, pending, actionName, selectedFecCommand());
     }
@@ -1015,6 +1058,7 @@ public final class ConnectionWindow extends JFrame {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setForeground(attrs, color);
         StyleConstants.setFontFamily(attrs, Font.MONOSPACED);
+        StyleConstants.setFontSize(attrs, app.config().getTextSize());
         try {
             doc.insertString(doc.getLength(), text, attrs);
             transcript.setCaretPosition(doc.getLength());
@@ -1102,6 +1146,9 @@ public final class ConnectionWindow extends JFrame {
         }
         linkStatusFrozen = true;
         txChip.setState(TxChip.State.DEAD);
+        if (directionArrow != null) {
+            directionArrow.setRunning(false);
+        }
     }
 
     public boolean isLinkStatusFrozen() {
@@ -1109,7 +1156,8 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * Demo ARQ window: cycle every chip state at 0.5 Hz.
+     * Demo ARQ window: cycle every chip state at 0.5 Hz. Chevron steps run at
+     * 250 ms for 2 s, then 125 ms for 1 s, then the direction flips and the cycle repeats.
      * Visual only — does not enable the session or send Host commands.
      */
     public void startArqTxPreview() {
@@ -1126,6 +1174,43 @@ public final class ConnectionWindow extends JFrame {
             txChip.setState(TxChip.PREVIEW_STATES[txPreviewStep]);
         });
         txPreviewTimer.start();
+        previewTowardLocal = true;
+        applyPreviewArrow();
+        schedulePreviewArrowSpeed(false);
+    }
+
+    /** Preview chase: lit chevron runs, and the whole row flips end every timer tick. */
+    private void applyPreviewArrow() {
+        if (directionArrow == null) {
+            return;
+        }
+        statusPrefix.setText(previewTowardLocal ? " IRS | " : " ISS | ");
+        directionArrow.setTowardLocal(previewTowardLocal);
+        directionArrow.setRunning(true);
+    }
+
+    /**
+     * Preview only. {@code fast} is 125 ms steps for 1000 ms; otherwise 250 ms steps for 2000 ms.
+     * When the fast phase ends, the chevrons reverse and the slow phase starts again.
+     */
+    private void schedulePreviewArrowSpeed(boolean fast) {
+        if (arrowSpeedTimer != null) {
+            arrowSpeedTimer.stop();
+            arrowSpeedTimer = null;
+        }
+        if (directionArrow == null || !statusPreview) {
+            return;
+        }
+        directionArrow.setStepMillis(fast ? DirectionArrow.STEP_200_MS : DirectionArrow.STEP_100_MS);
+        arrowSpeedTimer = new Timer(fast ? 1000 : 2000, e -> {
+            if (fast) {
+                previewTowardLocal = !previewTowardLocal;
+                applyPreviewArrow();
+            }
+            schedulePreviewArrowSpeed(!fast);
+        });
+        arrowSpeedTimer.setRepeats(false);
+        arrowSpeedTimer.start();
     }
 
     private void stopArqTxPreview() {
@@ -1133,18 +1218,124 @@ public final class ConnectionWindow extends JFrame {
             txPreviewTimer.stop();
             txPreviewTimer = null;
         }
+        if (arrowSpeedTimer != null) {
+            arrowSpeedTimer.stop();
+            arrowSpeedTimer = null;
+        }
         statusPreview = false;
         txChip.stopMotion();
+        if (directionArrow != null) {
+            directionArrow.stop();
+        }
     }
 
     private void refreshStatus() {
         String role = localIsIrs ? "IRS" : "ISS";
         String speed = opmodeBaud != null ? String.valueOf(opmodeBaud) : "--";
         String tnc = app.isTncConnected() ? "connected" : "offline";
-        statusPrefix.setText(String.format(" %s | ", role));
-        statusSuffix.setText(String.format(
-                " | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
-                speed, titleCall, tnc));
+        if (!statusPreview) {
+            statusPrefix.setText(String.format(" %s | ", role));
+        }
+        if (kind == Kind.ARQ && directionArrow != null) {
+            statusBeforeCall.setText(String.format(" | speed %s | quality -- | retries -- | ", speed));
+            mycallLabel.setText(mycallText() + " ");
+            peerLabel.setText(" " + peerText());
+            statusSuffix.setText(String.format(" | ticker: (stub) | TNC %s", tnc));
+            if (!statusPreview) {
+                directionArrow.setStepMillis(DirectionArrow.stepMillisForBaud(opmodeBaud));
+                directionArrow.setTowardLocal(localIsIrs);
+                directionArrow.setRunning(sessionActive && !linkStatusFrozen);
+            }
+        } else {
+            statusSuffix.setText(String.format(
+                    " | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
+                    speed, titleCall, tnc));
+        }
+    }
+
+    private String mycallText() {
+        String tncCall = app.tncMycall();
+        if (tncCall != null && !tncCall.isBlank()) {
+            return tncCall.trim();
+        }
+        String configured = app.config().getCallsign();
+        if (configured != null && !configured.isBlank()) {
+            return configured.trim();
+        }
+        return "----";
+    }
+
+    private String peerText() {
+        if (titleCall == null || titleCall.isBlank()) {
+            return "----";
+        }
+        return titleCall.trim();
+    }
+
+    private Font chatFont() {
+        return new Font(Font.MONOSPACED, Font.PLAIN, app.config().getTextSize());
+    }
+
+    private Color outgoingColor() {
+        return app.config().getOutgoingText();
+    }
+
+    private Color incomingColor() {
+        return app.config().getIncomingText();
+    }
+
+    private static boolean sameColor(Color a, Color b) {
+        return a != null && b != null && a.getRGB() == b.getRGB();
+    }
+
+    /** Apply the program text size to transcript, compose, and App TX. EDT. */
+    public void applyTextSize() {
+        Font font = chatFont();
+        transcript.setFont(font);
+        compose.setFont(font);
+        appTxBuffer.setFont(font);
+        StyledDocument doc = transcript.getStyledDocument();
+        int len = doc.getLength();
+        if (len <= 0) {
+            return;
+        }
+        SimpleAttributeSet attrs = new SimpleAttributeSet();
+        StyleConstants.setFontFamily(attrs, Font.MONOSPACED);
+        StyleConstants.setFontSize(attrs, font.getSize());
+        doc.setCharacterAttributes(0, len, attrs, false);
+    }
+
+    /**
+     * Recolor transcript runs still painted with {@code previousOutgoing} or
+     * {@code previousIncoming}. EDT.
+     */
+    public void applyTranscriptColors(Color previousOutgoing, Color previousIncoming) {
+        Color outgoing = outgoingColor();
+        Color incoming = incomingColor();
+        StyledDocument doc = transcript.getStyledDocument();
+        int len = doc.getLength();
+        int pos = 0;
+        while (pos < len) {
+            Element el = doc.getCharacterElement(pos);
+            int start = el.getStartOffset();
+            int end = Math.min(el.getEndOffset(), len);
+            if (end <= start) {
+                break;
+            }
+            Color fg = StyleConstants.getForeground(el.getAttributes());
+            Color next = null;
+            if (sameColor(fg, previousOutgoing)) {
+                next = outgoing;
+            } else if (sameColor(fg, previousIncoming)) {
+                next = incoming;
+            }
+            if (next != null && !sameColor(fg, next)) {
+                SimpleAttributeSet attrs = new SimpleAttributeSet();
+                StyleConstants.setForeground(attrs, next);
+                doc.setCharacterAttributes(start, end - start, attrs, false);
+            }
+            pos = end;
+        }
     }
 
     /**
@@ -1556,6 +1747,135 @@ public final class ConnectionWindow extends JFrame {
                     Math.round(from.getRed() * u + to.getRed() * t),
                     Math.round(from.getGreen() * u + to.getGreen() * t),
                     Math.round(from.getBlue() * u + to.getBlue() * t));
+        }
+    }
+
+    /**
+     * Four chevrons between the two callsigns. One is lit and steps toward the
+     * receiving station: left when IRS, right when ISS.
+     */
+    private static final class DirectionArrow extends JComponent {
+        private static final int CHEVRONS = 4;
+        static final int STEP_100_MS = 250;
+        static final int STEP_200_MS = 125;
+        private static final Color LIT = new Color(0x20, 0x20, 0x20);
+        private static final Color DIM = new Color(0xC4, 0xBE, 0xB0);
+
+        private boolean towardLocal = true;
+        private boolean running;
+        private int step;
+        private int stepMs = STEP_100_MS;
+        private Timer timer;
+
+        /** 200 baud steps twice as fast. Unknown speed uses the 100-baud interval. */
+        static int stepMillisForBaud(Integer baud) {
+            return baud != null && baud == 200 ? STEP_200_MS : STEP_100_MS;
+        }
+
+        DirectionArrow() {
+            setOpaque(false);
+        }
+
+        void setTowardLocal(boolean towardLocal) {
+            this.towardLocal = towardLocal;
+            repaint();
+        }
+
+        /** Updates a running chase immediately when the link changes between 100 and 200. */
+        void setStepMillis(int stepMs) {
+            if (stepMs <= 0 || this.stepMs == stepMs) {
+                return;
+            }
+            this.stepMs = stepMs;
+            if (timer != null) {
+                timer.setInitialDelay(stepMs);
+                timer.setDelay(stepMs);
+            }
+        }
+
+        /** {@code false} freezes every chevron dim and stops the timer. */
+        void setRunning(boolean running) {
+            if (this.running == running) {
+                repaint();
+                return;
+            }
+            this.running = running;
+            if (running) {
+                if (timer == null) {
+                    timer = new Timer(stepMs, e -> {
+                        step = (step + 1) % CHEVRONS;
+                        repaint();
+                    });
+                    timer.start();
+                }
+            } else {
+                stopTimer();
+            }
+            repaint();
+        }
+
+        void stop() {
+            running = false;
+            stopTimer();
+            repaint();
+        }
+
+        private void stopTimer() {
+            if (timer != null) {
+                timer.stop();
+                timer = null;
+            }
+        }
+
+        /** Lit chevron, or {@code -1} when the link is not animating. */
+        private int litIndex() {
+            if (!running) {
+                return -1;
+            }
+            return towardLocal ? (CHEVRONS - 1 - (step % CHEVRONS)) : (step % CHEVRONS);
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(56, 18);
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            Dimension size = getPreferredSize();
+            return new Dimension(size.width, Integer.MAX_VALUE);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int lit = litIndex();
+            int slot = Math.max(1, getWidth() / CHEVRONS);
+            int midY = getHeight() / 2;
+            for (int i = 0; i < CHEVRONS; i++) {
+                g2.setColor(i == lit ? LIT : DIM);
+                int cx = slot * i + slot / 2;
+                paintChevron(g2, cx, midY, towardLocal);
+            }
+            g2.dispose();
+        }
+
+        /** Triangle pointing left (IRS) or right (ISS). */
+        private static void paintChevron(Graphics2D g2, int cx, int cy, boolean pointLeft) {
+            int reach = 4;
+            int halfH = 5;
+            int dir = pointLeft ? -1 : 1;
+            int tipX = cx + dir * reach;
+            int tailX = cx - dir * reach;
+            int[] xs = {tipX, tailX, tailX};
+            int[] ys = {cy, cy - halfH, cy + halfH};
+            g2.fillPolygon(xs, ys, 3);
         }
     }
 }

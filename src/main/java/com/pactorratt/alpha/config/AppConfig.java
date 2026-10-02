@@ -1,5 +1,7 @@
 package com.pactorratt.alpha.config;
 
+import java.awt.Color;
+
 /**
  * Portable program settings. Defaults match PtRa_specification.
  */
@@ -11,6 +13,14 @@ public final class AppConfig {
     public static final int DEFAULT_DATA_BITS = 8;
     public static final int DEFAULT_STOP_BITS = 1;
     public static final String DEFAULT_PARITY = "NONE";
+
+    /** Transcript local outbound. Matches the previous fixed grey. */
+    public static final Color DEFAULT_OUTGOING_TEXT = Color.GRAY;
+    /** Transcript remote text. Matches the previous fixed black. */
+    public static final Color DEFAULT_INCOMING_TEXT = Color.BLACK;
+    public static final int DEFAULT_TEXT_SIZE = 13;
+    public static final int MIN_TEXT_SIZE = 8;
+    public static final int MAX_TEXT_SIZE = 28;
 
     private String callsign = "";
     private String comPort = "";
@@ -40,6 +50,10 @@ public final class AppConfig {
      */
     private int cqRepeat = 1;
     private int wrapColumns = 80;
+    private Color outgoingText = DEFAULT_OUTGOING_TEXT;
+    private Color incomingText = DEFAULT_INCOMING_TEXT;
+    /** Monospaced size for transcript, compose, and App TX buffer. */
+    private int textSize = DEFAULT_TEXT_SIZE;
 
     private boolean buddiesExpanded = true;
     private boolean heardExpanded = true;
@@ -207,6 +221,62 @@ public final class AppConfig {
 
     public void setWrapColumns(int wrapColumns) {
         this.wrapColumns = wrapColumns;
+    }
+
+    public Color getOutgoingText() {
+        return outgoingText;
+    }
+
+    public void setOutgoingText(Color outgoingText) {
+        this.outgoingText = outgoingText == null ? DEFAULT_OUTGOING_TEXT : outgoingText;
+    }
+
+    public Color getIncomingText() {
+        return incomingText;
+    }
+
+    public void setIncomingText(Color incomingText) {
+        this.incomingText = incomingText == null ? DEFAULT_INCOMING_TEXT : incomingText;
+    }
+
+    public int getTextSize() {
+        return textSize;
+    }
+
+    /** Clamps to {@link #MIN_TEXT_SIZE}–{@link #MAX_TEXT_SIZE}. */
+    public void setTextSize(int textSize) {
+        if (textSize < MIN_TEXT_SIZE) {
+            this.textSize = MIN_TEXT_SIZE;
+        } else if (textSize > MAX_TEXT_SIZE) {
+            this.textSize = MAX_TEXT_SIZE;
+        } else {
+            this.textSize = textSize;
+        }
+    }
+
+    /** {@code #RRGGBB}. Falls back when the string is missing or not six hex digits. */
+    public static Color parseColor(String hex, Color fallback) {
+        if (hex == null) {
+            return fallback;
+        }
+        String s = hex.trim();
+        if (s.startsWith("#")) {
+            s = s.substring(1);
+        }
+        if (s.length() != 6) {
+            return fallback;
+        }
+        try {
+            int rgb = Integer.parseInt(s, 16);
+            return new Color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    public static String formatColor(Color color) {
+        Color c = color == null ? Color.BLACK : color;
+        return String.format("#%02X%02X%02X", c.getRed(), c.getGreen(), c.getBlue());
     }
 
     public boolean isBuddiesExpanded() {

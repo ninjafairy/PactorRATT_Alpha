@@ -1278,6 +1278,43 @@ public final class AppController {
         });
     }
 
+    /** Monospaced chat size on every open Listen and ARQ window. EDT-safe. */
+    public void applyChatFont() {
+        runOnEdt(() -> {
+            if (listenWindow != null && listenWindow.isDisplayable()) {
+                listenWindow.applyTextSize();
+            }
+            if (activeArqWindow != null && activeArqWindow.isDisplayable()) {
+                activeArqWindow.applyTextSize();
+            }
+            for (ConnectionWindow w : new ArrayList<>(deadArqWindows)) {
+                if (w != null && w.isDisplayable()) {
+                    w.applyTextSize();
+                }
+            }
+        });
+    }
+
+    /**
+     * Recolor transcript runs that still use the previous outgoing or incoming color.
+     * EDT-safe.
+     */
+    public void applyChatColors(Color previousOutgoing, Color previousIncoming) {
+        runOnEdt(() -> {
+            if (listenWindow != null && listenWindow.isDisplayable()) {
+                listenWindow.applyTranscriptColors(previousOutgoing, previousIncoming);
+            }
+            if (activeArqWindow != null && activeArqWindow.isDisplayable()) {
+                activeArqWindow.applyTranscriptColors(previousOutgoing, previousIncoming);
+            }
+            for (ConnectionWindow w : new ArrayList<>(deadArqWindows)) {
+                if (w != null && w.isDisplayable()) {
+                    w.applyTranscriptColors(previousOutgoing, previousIncoming);
+                }
+            }
+        });
+    }
+
     /**
      * Run one macro top to bottom on a background thread. Compose edits hop to the UI thread.
      * A send that actually transmits, and every Host command, finishes before the next line.
