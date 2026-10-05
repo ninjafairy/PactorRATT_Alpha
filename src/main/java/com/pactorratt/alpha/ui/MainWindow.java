@@ -5,6 +5,7 @@ import com.pactorratt.alpha.app.AppMode;
 import com.pactorratt.alpha.config.AppConfig;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
@@ -38,13 +39,13 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dialog;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Point;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -514,31 +515,27 @@ public final class MainWindow extends JFrame {
         bottom.setBackground(UiColors.PANEL_BG);
         bottom.setBorder(BorderFactory.createEmptyBorder(4, 8, 8, 8));
 
-        JPanel callRow = new JPanel(new WrapLayout(FlowLayout.LEFT, 5, 4));
-        callRow.setBackground(UiColors.PANEL_BG);
-        final int[] callRowWidth = {-1};
-        callRow.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                int width = callRow.getWidth();
-                if (width > 0 && width != callRowWidth[0]) {
-                    callRowWidth[0] = width;
-                    callRow.revalidate();
-                }
-            }
-        });
+        JPanel callRow = leftAlignedRow();
         callRow.add(new JLabel("Callsign:"));
         callsignField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
         callRow.add(callsignField);
-        callRow.add(connectTipWrap);
-        callRow.add(listenTipWrap);
-        JLabel lpLabel = new JLabel("Use Longpath");
+        JLabel lpLabel = new JLabel("Longpath?");
         longpathToggle.setOpaque(false);
         longpathToggle.setToolTipText("Long path: prefix ! on PG unless already typed. Session only; does not change the callsign field.");
         callRow.add(lpLabel);
         callRow.add(longpathToggle);
+
+        JPanel actionRow = leftAlignedRow();
+        actionRow.add(connectTipWrap);
+        actionRow.add(listenTipWrap);
         tncLabel.setFont(tncLabel.getFont().deriveFont(Font.BOLD));
-        callRow.add(tncLabel);
+        actionRow.add(tncLabel);
+
+        JPanel rows = new JPanel();
+        rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));
+        rows.setBackground(UiColors.PANEL_BG);
+        rows.add(callRow);
+        rows.add(actionRow);
 
         connectButton.addActionListener(e -> app.requestConnect(callsignField.getText()));
         listenToggle.addActionListener(e -> {
@@ -553,11 +550,35 @@ public final class MainWindow extends JFrame {
         installHoverTip(listenToggle, this::fecMonitorTip);
         installHoverTip(listenTipWrap, this::fecMonitorTip);
 
-        bottom.add(callRow, BorderLayout.CENTER);
+        bottom.add(rows, BorderLayout.CENTER);
 
         add(top, BorderLayout.NORTH);
         add(treeScroll, BorderLayout.CENTER);
         add(bottom, BorderLayout.SOUTH);
+    }
+
+    /**
+     * Left-aligned row whose controls share a vertical center.
+     * Maximum height stays at the preferred height so the row does not stretch.
+     */
+    private static JPanel leftAlignedRow() {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 4)) {
+            @Override
+            public Dimension getMaximumSize() {
+                Dimension pref = getPreferredSize();
+                pref.width = Integer.MAX_VALUE;
+                return pref;
+            }
+        };
+        row.setBackground(UiColors.PANEL_BG);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return row;
+    }
+
+    /** Clear the callsign box, then set {@code value}. EDT. */
+    public void populateCallsign(String value) {
+        callsignField.setText("");
+        callsignField.setText(value == null ? "" : value);
     }
 
     /** Heard / Mentioned / &lt;C&gt;onnect leaves; most recent first. Double-click still Connects. */

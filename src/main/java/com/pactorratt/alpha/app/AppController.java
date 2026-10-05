@@ -1068,9 +1068,10 @@ public final class AppController {
     }
 
     /**
-     * FEC Abort — same Host command as ARQ Abort ({@code PN} if FEC/Monitor is on, else
-     * {@code Pt}). Leaves the FEC window open and does not turn Listen off.
-     * Refuses while an ARQ link is up so the command cannot drop that link.
+     * One-press FEC abort kept for callers that are not the control button.
+     * The FEC Abort button uses {@link #confirmLinkAbort} ({@code TC} then {@code PN}).
+     * This path sends {@code PN} if FEC/Monitor is on, else {@code Pt}, leaves the window
+     * open, and refuses while an ARQ link is up.
      */
     public void fecAbort(ConnectionWindow window) {
         if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
@@ -1109,6 +1110,93 @@ public final class AppController {
             final String notice = resultNotice;
             runOnEdt(() -> noticeWindow(window, notice));
         }, "fec-abort");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Two-press abort from the ARQ or FEC control button.
+     * {@code TC}, wait for ack, then {@code PN} (FEC, or ARQ while FEC/Monitor is on) or {@code Pt},
+     * wait for ack. Both acks paint the red transcript line and then mark an ARQ link dead.
+     * Failure leaves the link up and reports on the notice line. {@code onDone} runs on the EDT
+     * either way so the button can return to faint Abort. Exit and the Calling dialog keep
+     * {@link #arqAbort(ConnectionWindow)}.
+     */
+    public void confirmLinkAbort(ConnectionWindow window, Runnable onDone) {
+        Runnable finished = () -> {
+            if (onDone != null) {
+                onDone.run();
+            }
+        };
+        if (window == null) {
+            runOnEdt(finished);
+            return;
+        }
+        boolean fec = window.kind() == ConnectionWindow.Kind.LISTEN;
+        boolean arq = window.kind() == ConnectionWindow.Kind.ARQ;
+        if (!fec && !arq) {
+            runOnEdt(finished);
+            return;
+        }
+        if (fec && hasActiveArq()) {
+            runOnEdt(() -> {
+                noticeWindow(window, "Abort — unavailable while ARQ is up.");
+                finished.run();
+            });
+            return;
+        }
+        if (arq && !window.isSessionActive()) {
+            runOnEdt(() -> {
+                noticeWindow(window, "Abort — TNC not connected.");
+                finished.run();
+            });
+            return;
+        }
+        boolean pn = fec || (mainWindow != null && mainWindow.isListenSelected());
+        String mnemonic = pn ? "PN" : "Pt";
+        if (!tncConnected) {
+            runOnEdt(() -> {
+                noticeWindow(window, "Abort — TNC not connected.");
+                finished.run();
+            });
+            return;
+        }
+        HostSession session = hostSession;
+        if (session == null || !session.isOpen()) {
+            runOnEdt(() -> {
+                noticeWindow(window, "Abort — no open Host session.");
+                finished.run();
+            });
+            return;
+        }
+
+        Thread worker = new Thread(() -> {
+            String error = null;
+            try {
+                sendHostOk(session, "TC");
+                sendHostOk(session, mnemonic);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                error = "Abort — interrupted.";
+                debugLog.info("Abort sequence interrupted");
+            } catch (IOException e) {
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                error = "Abort — " + msg;
+                debugLog.info("Abort sequence failed: " + msg);
+            }
+            final String failure = error;
+            runOnEdt(() -> {
+                if (failure != null) {
+                    noticeWindow(window, failure);
+                } else {
+                    window.paintAbortSequenceComplete();
+                    if (arq) {
+                        markArqDead(window);
+                    }
+                }
+                finished.run();
+            });
+        }, fec ? "fec-abort" : "arq-abort");
         worker.setDaemon(true);
         worker.start();
     }

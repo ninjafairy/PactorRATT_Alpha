@@ -3,6 +3,7 @@ package com.pactorratt.alpha.ui;
 import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.config.CommitMode;
 import com.pactorratt.alpha.config.MacroFile;
+import com.pactorratt.alpha.hostmode.CallsignLineParser;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -20,6 +21,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
+import javax.swing.JViewport;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextPane;
@@ -29,6 +31,8 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.WindowConstants;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Element;
@@ -40,6 +44,7 @@ import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -49,6 +54,8 @@ import java.awt.KeyEventDispatcher;
 import java.awt.Rectangle;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.LayoutManager;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.event.KeyEvent;
@@ -56,11 +63,15 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
@@ -77,6 +88,16 @@ public final class ConnectionWindow extends JFrame {
     private static final Color MAILBOX_RED = Color.RED;
     private static final Color MAILBOX_RED_DIM = new Color(0x8B0000);
     private static final Color ABORT_FAINT_RED = new Color(255, 220, 220);
+    /** Halfway between idle pink and pure red. The lighter step of the armed pulse. */
+    private static final Color ABORT_BRIGHT_RED = new Color(255, 110, 110);
+    /** Former lighter armed color. The darker step of the armed pulse. */
+    private static final Color ABORT_PULSE_RED = new Color(255, 0, 0);
+    private static final int ABORT_ARM_MS = 5000;
+    private static final int ABORT_PRESS_MS = 400;
+    private static final int ABORT_AGAIN_MS = 600;
+    private static final String ABORT_COMPLETE_LINE =
+            "[Abort sequence complete, unsent data cleared]";
+    private static final DateTimeFormatter TRANSCRIPT_DATE = DateTimeFormatter.ofPattern("MM-dd-yy");
     private static final Color MAILBOX_PURPLE = new Color(0xD8, 0xB4, 0xFE);
     private static final int MAILBOX_FLASH_MS = 500;
     private static final int MAILBOX_HIDE_MS = 3000;
@@ -151,6 +172,16 @@ public final class ConnectionWindow extends JFrame {
     private boolean previewTowardLocal = true;
     /** Dead ARQ chip stays DEAD and ignores later status bytes. */
     private boolean linkStatusFrozen;
+    private enum AbortArm {
+        IDLE, ARMED, SENDING
+    }
+    private AbortArm abortArm = AbortArm.IDLE;
+    private Timer abortLabelTimer;
+    private long abortArmDeadlineMs;
+    /** Selection captured on mouse press, before a popup trigger can clear it. */
+    private int popupSelStart;
+    private int popupSelEnd;
+    private int popupClickPos;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
         super(kind == Kind.LISTEN ? "PtR FEC" : "PtR ARQ — " + titleCall);
@@ -177,6 +208,7 @@ public final class ConnectionWindow extends JFrame {
                 mailboxUiClosed = true;
                 stopMailboxUi();
                 stopArqTxPreview();
+                stopAbortArm();
                 if (directionArrow != null) {
                     directionArrow.stop();
                 }
@@ -281,6 +313,9 @@ public final class ConnectionWindow extends JFrame {
 
     public void setSessionActive(boolean active) {
         this.sessionActive = active;
+        if (!active && kind == Kind.ARQ && !statusPreview && abortArm == AbortArm.ARMED) {
+            restoreAbortIdle();
+        }
         if (!active) {
             handoverLocked = false;
             handoverSawIrs = false;
@@ -291,7 +326,7 @@ public final class ConnectionWindow extends JFrame {
         for (JButton b : controlButtons) {
             b.setEnabled(active);
         }
-        if (kind == Kind.LISTEN && abortButton != null) {
+        if (abortButton != null && (kind == Kind.LISTEN || statusPreview)) {
             abortButton.setEnabled(true);
         }
         if (active && handoverLocked) {
@@ -408,6 +443,42 @@ public final class ConnectionWindow extends JFrame {
         JMenuItem clearTranscript = new JMenuItem("Clear");
         clearTranscript.addActionListener(e -> clearTranscript());
         transcriptMenu.add(clearTranscript);
+        if (kind == Kind.LISTEN) {
+            JMenuItem populateCallsign = new JMenuItem("Populate callsign");
+            populateCallsign.addActionListener(e -> populateCallsignFromHighlight());
+            transcriptMenu.add(populateCallsign);
+            transcriptMenu.addPopupMenuListener(new PopupMenuListener() {
+                @Override
+                public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                    restorePopupSelection();
+                    String selected = transcript.getSelectedText();
+                    populateCallsign.setEnabled(selected != null && !selected.isBlank());
+                }
+
+                @Override
+                public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+                }
+
+                @Override
+                public void popupMenuCanceled(PopupMenuEvent e) {
+                }
+            });
+            transcript.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    popupSelStart = transcript.getSelectionStart();
+                    popupSelEnd = transcript.getSelectionEnd();
+                    popupClickPos = transcript.viewToModel2D(e.getPoint());
+                }
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (e.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(e)) {
+                        SwingUtilities.invokeLater(ConnectionWindow.this::populateDoubleClickedCallsign);
+                    }
+                }
+            });
+        }
         transcript.setComponentPopupMenu(transcriptMenu);
         JScrollPane transcriptScroll = new JScrollPane(transcript);
         transcriptScroll.setBorder(BorderFactory.createTitledBorder("Transcript"));
@@ -554,17 +625,16 @@ public final class ConnectionWindow extends JFrame {
     }
 
     private JScrollPane buildControlsScroll() {
-        JPanel p = new ControlsPanel();
-        p.setBackground(UiColors.PANEL_BG);
-        p.setBorder(BorderFactory.createTitledBorder("Controls"));
-
+        JPanel p;
         if (kind == Kind.ARQ) {
+            p = new ControlsPanel();
             addControl(p, "Disc. after TX clear",
                     "Flush App TX, then ch0 CTRL-D $04 after TNC TX empty",
                     () -> app.arqDiscAfterTxClear(this));
             addControl(p, "Disconnect now", "TClear (TC) then ch0 CTRL-D $04",
                     () -> app.arqDisconnectNow(this));
-            addAbortControl(p, "Abort link (PN if Listen on, else Pt)", this::abortSession);
+            addAbortControl(p, "Abort link (TC, then PN if FEC/Monitor is on, else Pt). Press twice.",
+                    this::onAbortPressed);
             JButton hoNow = addControl(p, "Clear TX and Handover",
                     "TClear (TC) then ch0 CTRL-Z $1A",
                     () -> app.arqHandoverNow(this));
@@ -582,21 +652,23 @@ public final class ConnectionWindow extends JFrame {
             handoverButtons.add(hoNow);
             handoverButtons.add(hoAfter);
             handoverButtons.add(hoText);
+            p.add(saveTranscriptButton());
         } else {
-            p.add(fecModeBox());
-            addAbortControl(p,
-                    "Abort FEC transmit (PN if Listen on, else Pt). Window stays open.",
-                    this::abortFec);
-            addControl(p, "FEC / End TX", "FEC mode command → buffer → CTRL-D end",
+            EdgeJustifiedPanel split = new EdgeJustifiedPanel();
+            addControl(split.left(), "Send FEC", "FEC mode command → buffer → CTRL-D end",
                     this::fecEndTx);
-            addControl(p, "CQ", "Canned CQ text × CQ repeat (Program settings) → FEC mode command + CTRL-D",
+            addControl(split.left(), "CQ",
+                    "Canned CQ text × CQ repeat (Program settings) → FEC mode command + CTRL-D",
                     this::sendCq);
+            split.left().add(fecModeBox());
+            addAbortControl(split.right(),
+                    "Abort FEC transmit (TC, then PN). Window stays open. Press twice.",
+                    this::onAbortPressed);
+            split.right().add(saveTranscriptButton());
+            p = split;
         }
-
-        JButton save = new JButton("Save chat");
-        save.setToolTipText("Save transcript to a file");
-        save.addActionListener(e -> saveChat());
-        p.add(save);
+        p.setBackground(UiColors.PANEL_BG);
+        p.setBorder(BorderFactory.createTitledBorder("Controls"));
 
         JScrollPane scroll = new JScrollPane(p,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -610,6 +682,153 @@ public final class ConnectionWindow extends JFrame {
             scheduleFitButtonAreas();
         });
         return scroll;
+    }
+
+    private JButton saveTranscriptButton() {
+        JButton save = new JButton("Save transcript");
+        save.setToolTipText("Save transcript to a file");
+        save.addActionListener(e -> saveChat());
+        return save;
+    }
+
+    /**
+     * FEC controls: Send FEC, CQ, and the mode box stay left. Abort and Save transcript
+     * stay right. The right pair drops to its own right-aligned line when the row is narrow.
+     */
+    private static final class EdgeJustifiedPanel extends JPanel implements Scrollable {
+        private final JPanel left = buttonGroup(FlowLayout.LEFT);
+        private final JPanel right = buttonGroup(FlowLayout.RIGHT);
+
+        EdgeJustifiedPanel() {
+            super(new EdgeJustifyLayout());
+            setBackground(UiColors.PANEL_BG);
+            add(left);
+            add(right);
+        }
+
+        JPanel left() {
+            return left;
+        }
+
+        JPanel right() {
+            return right;
+        }
+
+        private static JPanel buttonGroup(int align) {
+            JPanel group = new JPanel(new FlowLayout(align, 4, 2));
+            group.setOpaque(false);
+            return group;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(visibleRect.height - 16, 16);
+        }
+    }
+
+    /** Left cluster at the start of the row, right cluster at the end. */
+    private static final class EdgeJustifyLayout implements LayoutManager {
+        private static final int HGAP = 8;
+        private static final int VGAP = 2;
+
+        @Override
+        public void addLayoutComponent(String name, Component comp) {
+        }
+
+        @Override
+        public void removeLayoutComponent(Component comp) {
+        }
+
+        @Override
+        public Dimension preferredLayoutSize(Container parent) {
+            return layoutSize(parent, true);
+        }
+
+        @Override
+        public Dimension minimumLayoutSize(Container parent) {
+            return layoutSize(parent, false);
+        }
+
+        @Override
+        public void layoutContainer(Container parent) {
+            if (parent.getComponentCount() < 2) {
+                return;
+            }
+            Component left = parent.getComponent(0);
+            Component right = parent.getComponent(1);
+            Insets insets = parent.getInsets();
+            int innerW = Math.max(0, parent.getWidth() - insets.left - insets.right);
+            Dimension ld = left.getPreferredSize();
+            Dimension rd = right.getPreferredSize();
+            int y = insets.top;
+            if (fitsOneRow(innerW, ld.width, rd.width)) {
+                int rowH = Math.max(ld.height, rd.height);
+                left.setBounds(insets.left, y + (rowH - ld.height) / 2, ld.width, ld.height);
+                right.setBounds(insets.left + innerW - rd.width, y + (rowH - rd.height) / 2,
+                        rd.width, rd.height);
+            } else {
+                int leftW = Math.min(ld.width, innerW);
+                int rightW = Math.min(rd.width, innerW);
+                left.setBounds(insets.left, y, leftW, ld.height);
+                right.setBounds(insets.left + innerW - rightW, y + ld.height + VGAP, rightW, rd.height);
+            }
+        }
+
+        private Dimension layoutSize(Container parent, boolean preferred) {
+            Insets insets = parent.getInsets();
+            Dimension ld = childSize(parent, 0, preferred);
+            Dimension rd = childSize(parent, 1, preferred);
+            int innerW = Math.max(0, availableWidth(parent) - insets.left - insets.right);
+            int height = fitsOneRow(innerW, ld.width, rd.width)
+                    ? Math.max(ld.height, rd.height)
+                    : ld.height + VGAP + rd.height;
+            int width = Math.max(ld.width, rd.width);
+            return new Dimension(width + insets.left + insets.right, height + insets.top + insets.bottom);
+        }
+
+        private static Dimension childSize(Container parent, int index, boolean preferred) {
+            if (parent.getComponentCount() <= index) {
+                return new Dimension(0, 0);
+            }
+            Component child = parent.getComponent(index);
+            return preferred ? child.getPreferredSize() : child.getMinimumSize();
+        }
+
+        /** {@code innerW == 0} is the not-yet-shown case: keep a single row. */
+        private static boolean fitsOneRow(int innerW, int leftW, int rightW) {
+            return innerW <= 0 || leftW + HGAP + rightW <= innerW;
+        }
+
+        private static int availableWidth(Container target) {
+            Container parent = target.getParent();
+            if (parent instanceof JViewport viewport && viewport.getWidth() > 0) {
+                return viewport.getWidth();
+            }
+            if (target.getWidth() > 0) {
+                return target.getWidth();
+            }
+            return Integer.MAX_VALUE;
+        }
     }
 
     /**
@@ -1066,6 +1285,10 @@ public final class ConnectionWindow extends JFrame {
         }
     }
 
+    /**
+     * Close-dialog Abort stays one press and uses {@link AppController#arqAbort}.
+     * The control-button path is {@link #onAbortPressed}.
+     */
     private void abortSession() {
         if (!sessionActive || kind != Kind.ARQ) {
             return;
@@ -1073,11 +1296,183 @@ public final class ConnectionWindow extends JFrame {
         app.arqAbort(this);
     }
 
-    private void abortFec() {
+    private void onAbortPressed() {
+        if (abortArm == AbortArm.SENDING) {
+            return;
+        }
+        if (kind == Kind.ARQ && !sessionActive && !statusPreview) {
+            return;
+        }
+        if (abortArm == AbortArm.ARMED) {
+            confirmAbortPress();
+            return;
+        }
+        if (kind == Kind.LISTEN && app.hasActiveArq()) {
+            showNotice("Abort — unavailable while ARQ is up.");
+            return;
+        }
+        startAbortArm();
+    }
+
+    private void startAbortArm() {
+        stopAbortTimers();
+        abortArm = AbortArm.ARMED;
+        abortArmDeadlineMs = System.currentTimeMillis() + ABORT_ARM_MS;
+        showAbortPhase("Press", ABORT_BRIGHT_RED);
+        scheduleAbortLabel(ABORT_PRESS_MS, true);
+    }
+
+    /** Label and fill change together. Press is the lighter red, Again the darker red. */
+    private void showAbortPhase(String label, Color fill) {
+        abortButton.setText(label);
+        abortButton.setBackground(fill);
+        if (abortButton instanceof FaintAbortButton faint) {
+            faint.setArmedLook(true);
+        }
+        abortButton.repaint();
+    }
+
+    /** After {@code delayMs}, show Again ({@code nextIsAgain}) or Press, until the 5 s deadline. */
+    private void scheduleAbortLabel(int delayMs, boolean nextIsAgain) {
+        if (abortLabelTimer != null) {
+            abortLabelTimer.stop();
+            abortLabelTimer = null;
+        }
+        if (abortArm != AbortArm.ARMED) {
+            return;
+        }
+        long remaining = abortArmDeadlineMs - System.currentTimeMillis();
+        if (remaining <= 0) {
+            restoreAbortIdle();
+            return;
+        }
+        int wait = (int) Math.min(delayMs, remaining);
+        boolean deadline = remaining <= delayMs;
+        abortLabelTimer = new Timer(wait, e -> {
+            if (abortArm != AbortArm.ARMED) {
+                return;
+            }
+            if (deadline || System.currentTimeMillis() >= abortArmDeadlineMs) {
+                restoreAbortIdle();
+                return;
+            }
+            if (nextIsAgain) {
+                showAbortPhase("Again", ABORT_PULSE_RED);
+            } else {
+                showAbortPhase("Press", ABORT_BRIGHT_RED);
+            }
+            scheduleAbortLabel(nextIsAgain ? ABORT_AGAIN_MS : ABORT_PRESS_MS, !nextIsAgain);
+        });
+        abortLabelTimer.setRepeats(false);
+        abortLabelTimer.start();
+    }
+
+    private void confirmAbortPress() {
+        stopAbortTimers();
+        if (kind == Kind.ARQ && (statusPreview || !sessionActive)) {
+            showNotice("Abort — TNC not connected.");
+            restoreAbortIdle();
+            return;
+        }
+        if (kind == Kind.LISTEN && app.hasActiveArq()) {
+            showNotice("Abort — unavailable while ARQ is up.");
+            restoreAbortIdle();
+            return;
+        }
+        abortArm = AbortArm.SENDING;
+        showAbortPhase("Abort", ABORT_BRIGHT_RED);
+        app.confirmLinkAbort(this, this::restoreAbortIdle);
+    }
+
+    private void restoreAbortIdle() {
+        stopAbortTimers();
+        abortArm = AbortArm.IDLE;
+        if (abortButton == null) {
+            return;
+        }
+        abortButton.setText("Abort");
+        abortButton.setBackground(ABORT_FAINT_RED);
+        if (abortButton instanceof FaintAbortButton faint) {
+            faint.setArmedLook(false);
+        }
+        abortButton.repaint();
+    }
+
+    /** Stop the arm timers without changing the button. Safe if none are running. */
+    private void stopAbortArm() {
+        stopAbortTimers();
+        abortArm = AbortArm.IDLE;
+    }
+
+    private void stopAbortTimers() {
+        if (abortLabelTimer != null) {
+            abortLabelTimer.stop();
+            abortLabelTimer = null;
+        }
+    }
+
+    /** Red transcript line after both abort acks. EDT. */
+    public void paintAbortSequenceComplete() {
+        String line = ABORT_COMPLETE_LINE + "\n";
+        try {
+            StyledDocument doc = transcript.getStyledDocument();
+            int len = doc.getLength();
+            if (len > 0 && !"\n".equals(doc.getText(len - 1, 1))) {
+                line = "\n" + line;
+            }
+        } catch (BadLocationException ignored) {
+        }
+        appendTranscript(line, Color.RED);
+    }
+
+    private void populateDoubleClickedCallsign() {
         if (kind != Kind.LISTEN) {
             return;
         }
-        app.fecAbort(this);
+        String selected = transcript.getSelectedText();
+        if (selected == null) {
+            return;
+        }
+        String trimmed = selected.trim();
+        if (!CallsignLineParser.isCallsign(trimmed)) {
+            return;
+        }
+        pushCallsign(trimmed.toUpperCase(Locale.ROOT));
+    }
+
+    private void populateCallsignFromHighlight() {
+        String selected = transcript.getSelectedText();
+        if (selected == null || selected.isBlank()) {
+            return;
+        }
+        String trimmed = selected.trim();
+        String value = CallsignLineParser.isCallsign(trimmed)
+                ? trimmed.toUpperCase(Locale.ROOT)
+                : trimmed;
+        pushCallsign(value);
+    }
+
+    private void pushCallsign(String value) {
+        MainWindow main = app.mainWindow();
+        if (main != null) {
+            main.populateCallsign(value);
+        }
+    }
+
+    /** Put back a highlight if the popup click landed inside it. */
+    private void restorePopupSelection() {
+        if (popupSelStart >= popupSelEnd) {
+            return;
+        }
+        if (popupClickPos < popupSelStart || popupClickPos > popupSelEnd) {
+            return;
+        }
+        int len = transcript.getDocument().getLength();
+        int start = Math.min(popupSelStart, len);
+        int end = Math.min(popupSelEnd, len);
+        if (start < end) {
+            transcript.select(start, end);
+        }
     }
 
     /** Write this window's bounds into the matching settings slot. Does not save the file. */
@@ -1092,18 +1487,53 @@ public final class ConnectionWindow extends JFrame {
 
     private void saveChat() {
         JFileChooser chooser = new JFileChooser();
-        chooser.setSelectedFile(new java.io.File(
-                titleCall.replaceAll("[^A-Za-z0-9._-]", "_") + "-chat.txt"));
+        File dir = chooser.getCurrentDirectory();
+        chooser.setSelectedFile(new File(dir, nextTranscriptFileName(dir)));
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
         try {
             Files.writeString(chooser.getSelectedFile().toPath(), transcript.getText(), StandardCharsets.UTF_8);
-            showNotice("Chat saved.");
+            showNotice("Transcript saved.");
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Save failed:\n" + e.getMessage(),
                     "PactorRATT_Alpha", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * First free name in {@code dir}. ARQ: {@code QSO with CALL on MM-dd-yy.txt}.
+     * FEC: {@code FEC transcript MM-dd-yy.txt}. The second file is {@code (2)}.
+     */
+    private String nextTranscriptFileName(File dir) {
+        String date = LocalDate.now().format(TRANSCRIPT_DATE);
+        String base;
+        if (kind == Kind.LISTEN) {
+            base = "FEC transcript " + date;
+        } else {
+            String call = sanitizeFileToken(titleCall);
+            if (call.isBlank()) {
+                call = "UNKNOWN";
+            }
+            base = "QSO with " + call + " on " + date;
+        }
+        if (!new File(dir, base + ".txt").exists()) {
+            return base + ".txt";
+        }
+        for (int n = 2; n < 10000; n++) {
+            String name = base + " (" + n + ").txt";
+            if (!new File(dir, name).exists()) {
+                return name;
+            }
+        }
+        return base + ".txt";
+    }
+
+    private static String sanitizeFileToken(String call) {
+        if (call == null) {
+            return "";
+        }
+        return call.trim().replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 
     /**
@@ -1167,6 +1597,9 @@ public final class ConnectionWindow extends JFrame {
         stopArqTxPreview();
         statusPreview = true;
         linkStatusFrozen = false;
+        if (abortButton != null) {
+            abortButton.setEnabled(true);
+        }
         txPreviewStep = 0;
         txChip.setState(TxChip.PREVIEW_STATES[0]);
         txPreviewTimer = new Timer(2000, e -> {
@@ -1495,19 +1928,107 @@ public final class ConnectionWindow extends JFrame {
      * {@link JButton#setBackground}. Keeps the normal button border.
      */
     private static final class FaintAbortButton extends JButton {
+        private static final String[] WIDTH_LABELS = {"Abort", "Press", "Again"};
+        private static final Color ARMED_TEXT = Color.WHITE;
+        private static final Color ARMED_OUTLINE = new Color(60, 0, 0);
+
+        private final Font plainFont;
+        private boolean armedLook;
+
         FaintAbortButton(String text) {
             super(text);
             setContentAreaFilled(false);
             setOpaque(false);
             setBackground(ABORT_FAINT_RED);
             setForeground(Color.BLACK);
+            plainFont = getFont().deriveFont(Font.PLAIN);
+            setFont(plainFont);
+            lockLabelWidth();
+        }
+
+        @Override
+        public void addNotify() {
+            super.addNotify();
+            lockLabelWidth();
+        }
+
+        /** Bold white label while Press / Again (and during the send) is on a red fill. */
+        void setArmedLook(boolean armed) {
+            this.armedLook = armed;
+            setForeground(armed ? ARMED_TEXT : Color.BLACK);
+            setFont(armed ? plainFont.deriveFont(Font.BOLD) : plainFont);
+            repaint();
+        }
+
+        /**
+         * Wide enough for bold "Again", including the border insets and the text outline.
+         * Measured with font metrics so a too-early preferred-size call cannot clip the word.
+         */
+        private void lockLabelWidth() {
+            Font bold = plainFont.deriveFont(Font.BOLD);
+            FontMetrics plainFm = getFontMetrics(plainFont);
+            FontMetrics boldFm = getFontMetrics(bold);
+            int text = plainFm.stringWidth("Abort");
+            for (String label : WIDTH_LABELS) {
+                FontMetrics fm = "Abort".equals(label) ? plainFm : boldFm;
+                text = Math.max(text, fm.stringWidth(label));
+            }
+            Insets insets = getInsets();
+            int chromeX = Math.max(insets.left + insets.right, 24) + 16;
+            int chromeY = Math.max(insets.top + insets.bottom, 8) + 6;
+            int width = text + chromeX;
+            int height = Math.max(plainFm.getHeight(), boldFm.getHeight()) + chromeY;
+            Dimension fixed = new Dimension(width, height);
+            setPreferredSize(fixed);
+            setMinimumSize(fixed);
+            setMaximumSize(fixed);
+            revalidate();
         }
 
         @Override
         protected void paintComponent(Graphics g) {
             g.setColor(getBackground());
             g.fillRect(0, 0, getWidth(), getHeight());
+            if (armedLook) {
+                paintArmedOutline(g);
+            }
             super.paintComponent(g);
+        }
+
+        /** Dark edge behind the white label so it stays readable on both armed reds. */
+        private void paintArmedOutline(Graphics g) {
+            String text = getText();
+            if (text == null || text.isEmpty()) {
+                return;
+            }
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setFont(getFont());
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            FontMetrics fm = g2.getFontMetrics();
+            Insets insets = getInsets();
+            Rectangle view = new Rectangle(
+                    insets.left,
+                    insets.top,
+                    Math.max(0, getWidth() - insets.left - insets.right),
+                    Math.max(0, getHeight() - insets.top - insets.bottom));
+            Rectangle iconR = new Rectangle();
+            Rectangle textR = new Rectangle();
+            SwingUtilities.layoutCompoundLabel(
+                    this, fm, text, null,
+                    getVerticalAlignment(), getHorizontalAlignment(),
+                    getVerticalTextPosition(), getHorizontalTextPosition(),
+                    view, iconR, textR, 0);
+            g2.setColor(ARMED_OUTLINE);
+            int baseline = textR.y + fm.getAscent();
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (dx == 0 && dy == 0) {
+                        continue;
+                    }
+                    g2.drawString(text, textR.x + dx, baseline + dy);
+                }
+            }
+            g2.dispose();
         }
     }
 

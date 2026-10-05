@@ -45,6 +45,7 @@ public final class WrapLayout extends FlowLayout {
             int y = insets.top + getVgap();
             int rowHeight = 0;
             int startX = x;
+            int rowStart = 0;
 
             int count = target.getComponentCount();
             for (int i = 0; i < count; i++) {
@@ -55,14 +56,28 @@ public final class WrapLayout extends FlowLayout {
                 Dimension d = m.getPreferredSize();
                 m.setSize(d.width, d.height);
                 if (x - startX + d.width > maxWidth && x > startX) {
+                    centerRow(target, rowStart, i, rowHeight);
                     x = startX;
                     y += rowHeight + getVgap();
                     rowHeight = 0;
+                    rowStart = i;
                 }
                 m.setLocation(x, y);
                 x += d.width + getHgap();
                 rowHeight = Math.max(rowHeight, d.height);
             }
+            centerRow(target, rowStart, count, rowHeight);
+        }
+    }
+
+    /** Shift shorter controls down so they share the row's vertical center. */
+    private static void centerRow(Container target, int start, int end, int rowHeight) {
+        for (int i = start; i < end; i++) {
+            Component m = target.getComponent(i);
+            if (!m.isVisible() || m.getHeight() >= rowHeight) {
+                continue;
+            }
+            m.setLocation(m.getX(), m.getY() + (rowHeight - m.getHeight()) / 2);
         }
     }
 
