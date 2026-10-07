@@ -28,6 +28,8 @@ A portable **Java 21 + Swing** desktop chat program that drives a **PK-232 with 
 
 Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds/Most Recent Build/PactorRATT_Alpha.jar`. Portable I/O is **`{jarDir}/config/`** beside the *running* jar (often a copy under Downloads), not the GitHub tree.
 
+**Just finished (2026-10-06 — source):** **ARQ IRS control lock and CHO buttons.** While IRS, every Controls button is disabled except **Abort**, **Seize**, and **Save transcript**. Macros, Compose, and Send stay usable. The same control lock starts on press of **Dump traffic & CHO NOW!**, **CHO after traffic**, or **Canned CHO**, and lasts until OPMODE shows IRS then ISS again. While that hold is pending and the status line still says ISS, the App TX pane is titled **queued until next ISS**. Chat committed during that hold queues in App TX (status stays the real OPMODE role) and goes out on the next real IRS→ISS. Ack failure unlocks immediately and, if still ISS, sends that queued App TX. **CHO after traffic** sends only ch0 CTL `$20` / payload `$1A` and waits for the data-ack. It does not `TC` and does not flush App TX. Disc. after TX clear still flushes App TX then `$04`. The 1-second IRS `OP` poll is removed; UBIT 10 status bytes still request `OP`.
+
 **Just finished (2026-09-15 — source, not yet a new jar):** **Reverted ARQ live Compose.** The 1 s ISS clock, `$08` outbound backspace, locked IRS lines, no-Send editor, and `issOutboundExecutor` / `toHostDataBytes(..., false)` are gone. ARQ is again **App TX + Compose + Send + Flush ISS**, with Program **Line / Message** commit. IRS commits queue in App TX; ISS commits (and Flush ISS / OPMODE IRS→ISS) go to Host ch0 with a trailing CR. Disc/HO after TX clear drains App TX then the control byte. Listen uses the same commit setting; **FEC / End TX** and **CQ** are unchanged.
 
 **Just finished (Build 36):** **TNC → UBIT 10…** debug window. Enable/Disable radios send Host `UB10 ON`/`UB10 OFF`; log shows only CTL `$50` frames (raw hex + decoded). **Hardware-validated on Pactor:** with UBIT 10 ON, *w* changes push `SOH $50 n ETB` (`n` = Idle/Traffic/Error/RQ etc.). Printed UBIT 10 list omitted Pactor; the TNC still does it. Closing the window does not turn UBIT 10 off. Link CONNECTED/DISCONNECTED/Timeout also appear here (same `$50`).
@@ -81,11 +83,11 @@ Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds
 | Idle | `Pt` (case-sensitive) |
 | Listen ON | Show Listen window first. Worker: query `OP`. If `Pt` → send `PN`. If already `PN` → leave it. **Any other OPMODE / Host fail → refuse** (close window, uncheck, warn). Offline / no TNC: UI only. |
 | Listen OFF / Listen window closed | Query `OP`. If `PN` → send `Pt`. Otherwise leave TNC alone. |
-| Listen vs ARQ | While an ARQ window is **active**, **never** send `PN` or `Pt` (inactive Listen window UI only). |
+| Listen vs ARQ | While an ARQ window is **active**, **never** send `PN` or `Pt`. Default: Listen window stays inactive and the checkbox stays on. **Close FEC on ARQ link** disposes the FEC window and unchecks Listen without sending `Pt`. **Only 1 ARQ window** disposes leftover ARQ windows when a new link opens; a still-active QSO is not replaced. |
 | Abort / Cancel call | Listen checkbox on → `PN`; else → `Pt`; then `markArqDead` (Cancel also hides Calling and sends `OP`). |
 | Clean disconnect / handover | Embed CTRL-D (`$04`) / CTRL-Z (`$1A`) in Host **ch0 data** (`$01 $20 … $17`). Do **not** send Host CMD `RE` / `PV` (those only *set* the characters). Same-block for with-text. |
 | Disconnect now | Host `TC` (TClear), wait ACK, then ch0 `$04`. Not `RC`/`Rcve`. |
-| Handover now | Host `TC`, wait ACK, then ch0 `$1A`. Label: **Clear TX and Handover**. HO / HO after TX clear / HO with text **lock** until OPMODE IRS then ISS again. |
+| Handover now | Host `TC`, wait ACK, then ch0 `$1A`. Label: **Dump traffic & CHO NOW!**. Any CHO press locks every Controls button except Abort, Seize, and Save transcript until OPMODE IRS then ISS again. |
 | Seize | `AG` (`AChg`) |
 | Inbound text CTLs | Treat **all** `0x30`–`0x3F` the same (Pactor channel 0 only; hardware PTL uses `0x3F`) |
 | EAS | OFF (`EAN`). No grey→green / TX-empty confirm coloring (out of scope). |
@@ -115,7 +117,7 @@ Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds
 | Heard / Mentioned | **Listen inbound only** (after `$08`, scan when a newline completes a line). Not local grey. Not ARQ. Callsign: **1–2 letters + 1 digit + 1–3 letters**, not glued to a letter or digit (space, `>`, other punctuation, or EOL). No SSID. Own `ML` excluded. **Heard:** whole-word `de ` (start of line or after whitespace/punctuation — not the end of `aside`/`made`) immediately followed by that call. **Mentioned:** other matching calls on the same line. A `de CALL` is not also Mentioned for that occurrence. Multiple `de CALL` on one line: each is Heard (last ends up on top). Lists are **independent** (a call may sit on both). Most recent at top; no duplicates; cap **12**; persist `{jarDir}/config/heard.json` + `mentioned.json`. **Connect frames (`?>… <C>`) are never Mentioned or Heard.** |
 | `<C>onnect` frames | Listen inbound (FEC/PTL beacons; not ARQ). Line `?>` + token + ` <C>`. `<C>` = connect frame, **not** a full copy. Token is raw (may be truncated). **Session-only** Stations folder **`<C>onnect`** (no json). Cap 12. Own `ML` excluded. Promote if **3 identical tokens in a row** (valid callsign) **or** last **5** connect frames: two longest tokens identical, every other token a leading prefix of that longest, longest is a valid callsign. |
 | Stations tree menus | Double-click a callsign → fill field + Connect. Right-click **Heard/Mentioned/`<C>onnect` folder** → Clear (empty that list; Connect Clear also drops the in-memory streak window). Right-click **Heard/Mentioned/`<C>onnect` call** → Add buddy (insert at top of Buddies if new) + Clear (remove from this list only). Right-click **Buddies call** → Move to top + Remove. Placeholders `(…)` have no menu. |
-| ARQ Compose | **App TX + Compose + Send + Flush ISS.** Program **Line / Message** commit. **LINE:** Enter commits the current line (Shift+Enter = newline). **MESSAGE:** Enter = newline; Send commits all non-empty lines. **IRS:** commits queue in App TX. **ISS:** commits go to Host ch0 + grey transcript (`toHostDataBytes` appends trailing CR). **IRS→ISS** (OPMODE or Flush ISS): drain App TX to Host. Disc/HO after TX clear: drain App TX then `$04`/`$1A`. |
+| ARQ Compose | **App TX + Compose + Send + Flush ISS.** Program **Line / Message** commit. **LINE:** Enter commits the current line (Shift+Enter = newline). **MESSAGE:** Enter = newline; Send commits all non-empty lines. **IRS:** commits queue in App TX. **ISS:** commits go to Host ch0 + grey transcript (`toHostDataBytes` appends trailing CR). **IRS→ISS** (OPMODE or Flush ISS): drain App TX to Host. A pending CHO hold queues commits the same way, without flipping the status role. While that hold is pending and status still says ISS, the App TX title is **queued until next ISS**. Disc. after TX clear still drains App TX then `$04`. CHO after traffic does not. |
 | Listen Compose | Same Line/Message commit. Send → App TX. **FEC / End TX** = `PD` + data + CTRL-D. **CQ:** canned CQ × CQ repeat on that FEC path; does not use App TX. |
 | Out of scope | File xfer, BBS, Winlink, encryption, mobile, Morse-ID disconnect, auto-AAB, other TNCs, **grey→green / TX-empty confirm coloring** |
 
@@ -213,24 +215,24 @@ This is the work since the previous brief date (2026-08-26). Packaged as **Build
 |---|---|
 | Disc. after TX clear | Flush App TX, then same-block ch0 data + `$04` |
 | Disconnect now | Host `TC`, wait ACK, then ch0 `$04` |
-| HO after TX clear | Flush App TX, then same-block ch0 + `$1A`; HO lock |
-| Clear TX and Handover (was “Handover”) | Host `TC`, wait ACK, then ch0 `$1A`; HO lock |
-| HO with text | Canned text + `$1A` same ch0 block; HO lock |
+| CHO after traffic | ch0 CTL `$20`, payload `$1A` only; wait for data-ack. No `TC`, no App TX flush. Control lock |
+| Dump traffic & CHO NOW! (was “Handover”) | Host `TC`, wait ACK, then ch0 `$1A`; control lock |
+| Canned CHO | Canned text + `$1A` same ch0 block; control lock |
 | Disc. with text | Canned text + `$04` same ch0 block |
 | Seize | `AG` unchanged |
 | Abort | `PN` if Listen on, else `Pt`; `markArqDead` |
 
-Empty App TX on an after-TX-clear button → control byte only.
+Empty App TX on Disc. after TX clear → `$04` only. CHO after traffic is always `$1A` alone.
 
-**HO refused while IRS** unless HO after TX clear has App TX to flush (that path drains then sends `$1A`).
+**HO refused while IRS.** While IRS, Controls are disabled except Abort, Seize, and Save transcript.
 
-#### 2. App TX flush (Disc. / HO after TX clear only)
+#### 2. App TX flush (Disc. after TX clear only)
 
-The App TX buffer is the IRS-hold pane. Flush means: drain grey transcript, mark local ISS, then send drained text **plus** the control byte in **one** `sendData` block. Disconnect now / Clear TX and Handover still `TC` the TNC buffer first; they do **not** flush App TX.
+The App TX buffer is the IRS-hold pane. Flush means: drain grey transcript, mark local ISS, then send drained text **plus** the control byte in **one** `sendData` block. Disconnect now / Dump traffic & CHO NOW! still `TC` the TNC buffer first; they do **not** flush App TX. CHO after traffic does not flush App TX either.
 
 #### 3. Handover lock
 
-HO / HO after TX clear / HO with text lock together on press. Stay disabled until OPMODE shows **IRS** (the `$1A` was consumed) **then ISS again**. If you were already IRS at press, that IRS does not count — wait for ISS first (`handoverSeenIssSinceLock`). Send failure or a dead ARQ window unlocks immediately. If OPPOLL is 0, poll `OP` at 2 Hz only while locked.
+Dump traffic & CHO NOW!, CHO after traffic, and Canned CHO lock on press, before the ack. The lock disables every Controls button except Abort, Seize, and Save transcript (the same set IRS disables). Stay locked until OPMODE shows **IRS** (the `$1A` was consumed) **then ISS again**. Presses are ISS-only, so the next IRS counts. Send and `>` macro lines during the hold queue in App TX and go out on that later ISS. Ack failure unlocks immediately and, if still ISS, sends the queued App TX. A dead ARQ window unlocks without sending. Backslash Host-command macro lines still run.
 
 #### 4. Transcript: IRS→ISS newline + inbound `$08`
 
@@ -254,7 +256,7 @@ Hardware dump:
 - Parser: [`LinkMessageParser`](src/main/java/com/pactorratt/alpha/hostmode/LinkMessageParser.java) — `CONNECTED to `; `DISCONNECTED: <call>` (colon); exact `Timeout`.
 - **Do not** open the ARQ window on Connect click / `PG` ACK. `PG` ACK `$00` means “TNC started calling,” not linked.
 - Connect / buddy double-click: main-window top strip **Calling \<call\>…** + **Cancel** next to Mode/TNC. Worker sends `PG`+call (no space; `!` from **LP:** or already typed). Another Connect while calling sends another `PG` (TNC switches). Connect stays enabled.
-- `$50` CONNECTED (in or out) → hide Calling, `openArqWindowForLink`, deactivate Listen window (checkbox stays), then `OP`.
+- `$50` CONNECTED (in or out) → hide Calling, `openArqWindowForLink`, then `OP`. Default: deactivate Listen window (checkbox stays). **Close FEC on ARQ link**: dispose FEC and uncheck Listen, no `Pt`. **Only 1 ARQ window**: dispose leftover ARQ windows first; ignore CONNECTED while a QSO is still active.
 - Cancel = Abort Host (`PN` if Listen on, else `Pt`), hide Calling, `OP`. End of calling (CONNECTED / cancel / 60 s timeout / `PG` fail) also sends `OP`; Mode from OPMODE if no ARQ window (`PN`→Listen, `Pt`→Idle).
 - `$50 Timeout` while Calling (no following `DISCONNECTED:`) hides Cancel and shows **`<call> no answer`**. Does not Abort the TNC. 60 s local timer is fallback. Linked end is `$50` `DISCONNECTED:` (optional leading `Timeout`).
 - Ignore packet `Connect request:`.
@@ -388,12 +390,12 @@ Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRAT
 |---|---|
 | Disc. after TX clear | Flush App TX, then ch0 `$04` in the same block |
 | Disconnect now | Host `TC`, wait ACK, then ch0 `$04` |
-| Clear TX and Handover | Host `TC`, wait ACK, then ch0 `$1A`; lock HO buttons until IRS then ISS again |
-| HO after TX clear | Flush App TX, then ch0 `$1A` in the same block; same HO lock |
+| Dump traffic & CHO NOW! | Host `TC`, wait ACK, then ch0 `$1A`; lock Controls (except Abort, Seize, Save transcript) until IRS then ISS again |
+| CHO after traffic | ch0 CTL `$20`, payload `$1A` only; wait for data-ack; same control lock. No App TX flush |
 | Flush ISS | Drain App TX to Host + grey transcript; mark local ISS |
 | Seize | CMD `AG` |
 | Abort | Listen checkbox on → `PN`, else `Pt`; then `markArqDead` |
-| HO with text | Canned handover + `$1A` in the same ch0 block; same HO lock |
+| Canned CHO | Canned handover + `$1A` in the same ch0 block; same control lock |
 | Disc. with text | Canned disconnect + `$04` in the same ch0 block |
 
 Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / `SK`); `cannedCqText` / `cqRepeat` (default empty / 1).
@@ -402,7 +404,7 @@ Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / 
 
 - Connect / buddy double-click → **Calling \<call\>…** + **Cancel** on the main-window top strip (Mode / TNC row). Worker `PG`+callsign (no space; `!` from **LP:** unless already typed). No ARQ window yet. New Connect while calling sends another `PG` (TNC switches target).
 - `PG` ACK `$00` = TNC started calling, not linked. Fail/timeout of the Host command → error dialog, hide Calling, `OP` to refresh Mode.
-- **`$50` CONNECTED to \<peer\>** (payload may include `via LONGPATH` + CR LF) → hide Calling, open ARQ window titled with the text after `CONNECTED to `. Same path for inbound. Listen window inactive, checkbox stays on. Then `OP` (ISS/IRS + Mode).
+- **`$50` CONNECTED to \<peer\>** (payload may include `via LONGPATH` + CR LF) → hide Calling, open ARQ window titled with the text after `CONNECTED to `. Same path for inbound. Default: Listen window inactive, checkbox stays on. **Close FEC on ARQ link** disposes FEC and unchecks Listen (no `Pt`; FEC stays closed after the link ends). **Only 1 ARQ window** disposes leftover ARQ windows first and does not replace a QSO that is still active. Then `OP` (ISS/IRS + Mode).
 - **`$50` `DISCONNECTED: <call>`** → mark ARQ dead. If a `$50` `Timeout` frame came first: notice `ARQ ended — Timeout (call).` Else `ARQ ended — DISCONNECTED: call.` Then `OP`. OPMODE `Pt` is fallback only.
 - Cancel while calling = Abort Host (`PN` if Listen on, else `Pt`), hide Calling, `OP`.
 - **`$50 Timeout` while Calling** (single frame; no `DISCONNECTED:`) shows **`<call> no answer`** (Cancel hidden; TNC not aborted). 60 s local timer is fallback. Packet `Connect request:` ignored.

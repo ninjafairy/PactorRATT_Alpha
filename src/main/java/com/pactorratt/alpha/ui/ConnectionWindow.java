@@ -31,6 +31,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.WindowConstants;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.text.AttributeSet;
@@ -101,6 +102,8 @@ public final class ConnectionWindow extends JFrame {
     private static final Color MAILBOX_PURPLE = new Color(0xD8, 0xB4, 0xFE);
     private static final int MAILBOX_FLASH_MS = 500;
     private static final int MAILBOX_HIDE_MS = 3000;
+    private static final String APP_TX_TITLE = "App TX buffer (IRS hold)";
+    private static final String APP_TX_QUEUED_TITLE = "App TX buffer (queued until next ISS)";
 
     private final AppController app;
     private final Kind kind;
@@ -108,6 +111,8 @@ public final class ConnectionWindow extends JFrame {
 
     private final JTextPane transcript = new JTextPane();
     private final JTextArea appTxBuffer = new JTextArea();
+    private TitledBorder appTxBorder;
+    private JScrollPane appTxScroll;
     private final JTextArea compose = new JTextArea(3, 40);
     /**
      * Enter never activates a focused button on this window. Line mode commits Compose.
@@ -133,11 +138,12 @@ public final class ConnectionWindow extends JFrame {
     private boolean mailboxUiClosed;
     private final List<JButton> controlButtons = new ArrayList<>();
     private JButton abortButton;
+    /** ARQ only. Stays enabled while IRS or a handover hold is active. */
+    private JButton seizeButton;
     /** Listen only. Chosen on the window; not saved. */
     private JRadioButton fecFast;
     private JRadioButton fecNormal;
     private JRadioButton fecBaud200;
-    private final List<JButton> handoverButtons = new ArrayList<>();
     private JPanel macroPanel;
     private JSplitPane contentSplit;
     private JPanel bottomPane;
@@ -152,10 +158,9 @@ public final class ConnectionWindow extends JFrame {
     /** True after a non-Standby OPMODE so later Standby can mark the link dead. */
     private boolean opmodeWasLive;
     /**
-     * HO / HO after TX clear / HO with text locked after sending CTRL-Z until OPMODE shows
-     * IRS (consumed) then ISS again — prevents stacking extra {@code $1A} in the TNC buffer.
-     * {@code handoverSeenIssSinceLock} ignores IRS that was already true at press (HO after
-     * TX clear from IRS while flushing App TX).
+     * Set on HO press, before the Host ack. Locks every Controls button except Abort, Seize,
+     * and Save transcript, and holds chat in App TX, until OPMODE shows IRS (the {@code $1A}
+     * was consumed) then ISS again. Presses happen while ISS, so the next IRS counts.
      */
     private volatile boolean handoverLocked;
     private boolean handoverSawIrs;
@@ -277,8 +282,8 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * Disable HO / HO after TX clear / HO with text. EDT. Returns false if already locked
-     * or the session is dead.
+     * Lock Controls (except Abort, Seize, and Save transcript) and hold chat in App TX.
+     * EDT. Returns false if already locked or the session is dead.
      */
     public boolean lockHandoverControls() {
         if (!sessionActive || handoverLocked) {
@@ -286,25 +291,47 @@ public final class ConnectionWindow extends JFrame {
         }
         handoverLocked = true;
         handoverSawIrs = false;
-        handoverSeenIssSinceLock = !localIsIrs;
-        setHandoverButtonsEnabled(false);
+        handoverSeenIssSinceLock = true;
+        refreshStatus();
         return true;
     }
 
-    /** Re-enable HO buttons if the session is still active. EDT. */
+    /**
+     * Clear the handover hold. EDT. If this was a failed send and we are still ISS,
+     * queued App TX goes out now. The IRS→ISS path calls this while still IRS, then
+     * {@link #flushIss()} once, so that path does not send twice.
+     */
     public void unlockHandoverControls() {
+        boolean flushQueued = handoverLocked && sessionActive && !localIsIrs;
         handoverLocked = false;
         handoverSawIrs = false;
         handoverSeenIssSinceLock = false;
-        if (sessionActive) {
-            setHandoverButtonsEnabled(true);
+        if (flushQueued) {
+            flushIss();
+        } else {
+            refreshStatus();
         }
     }
 
-    private void setHandoverButtonsEnabled(boolean enabled) {
-        for (JButton b : handoverButtons) {
-            b.setEnabled(enabled);
+    /**
+     * ARQ: while IRS or a handover hold, only Abort and Seize stay enabled.
+     * Save transcript is not in {@link #controlButtons}. Listen keeps its own rule.
+     */
+    private void applyControlLocks() {
+        boolean holdControls = kind == Kind.ARQ && sessionActive && (localIsIrs || handoverLocked);
+        for (JButton b : controlButtons) {
+            if (b == abortButton || b == seizeButton) {
+                boolean abortAlways = b == abortButton && (kind == Kind.LISTEN || statusPreview);
+                b.setEnabled(abortAlways || sessionActive);
+            } else {
+                b.setEnabled(sessionActive && !holdControls);
+            }
         }
+    }
+
+    /** IRS, or a handover that has not yet been consumed. Chat stays in App TX. */
+    private boolean holdsOutboundChat() {
+        return kind != Kind.ARQ || localIsIrs || handoverLocked;
     }
 
     public boolean isSessionActive() {
@@ -323,15 +350,6 @@ public final class ConnectionWindow extends JFrame {
         }
         compose.setEditable(active);
         sendButton.setEnabled(active);
-        for (JButton b : controlButtons) {
-            b.setEnabled(active);
-        }
-        if (abortButton != null && (kind == Kind.LISTEN || statusPreview)) {
-            abortButton.setEnabled(true);
-        }
-        if (active && handoverLocked) {
-            setHandoverButtonsEnabled(false);
-        }
         refreshStatus();
     }
 
@@ -486,8 +504,9 @@ public final class ConnectionWindow extends JFrame {
         appTxBuffer.setEditable(false);
         appTxBuffer.setFont(chatFont());
         appTxBuffer.setRows(4);
-        JScrollPane bufferScroll = new JScrollPane(appTxBuffer);
-        bufferScroll.setBorder(BorderFactory.createTitledBorder("App TX buffer (IRS hold)"));
+        appTxBorder = BorderFactory.createTitledBorder(APP_TX_TITLE);
+        appTxScroll = new JScrollPane(appTxBuffer);
+        appTxScroll.setBorder(appTxBorder);
         JPopupMenu bufferMenu = new JPopupMenu();
         JMenuItem editItem = new JMenuItem("Edit");
         editItem.addActionListener(e -> editAppTxBuffer());
@@ -534,7 +553,7 @@ public final class ConnectionWindow extends JFrame {
 
         JPanel southCenter = new JPanel(new BorderLayout(4, 4));
         southCenter.setBackground(UiColors.PANEL_BG);
-        southCenter.add(bufferScroll, BorderLayout.NORTH);
+        southCenter.add(appTxScroll, BorderLayout.NORTH);
         southCenter.add(composeRow, BorderLayout.CENTER);
 
         JPanel chatPane = new JPanel(new BorderLayout(4, 4));
@@ -635,23 +654,20 @@ public final class ConnectionWindow extends JFrame {
                     () -> app.arqDisconnectNow(this));
             addAbortControl(p, "Abort link (TC, then PN if FEC/Monitor is on, else Pt). Press twice.",
                     this::onAbortPressed);
-            JButton hoNow = addControl(p, "Clear TX and Handover",
+            addControl(p, "Dump traffic & CHO NOW!",
                     "TClear (TC) then ch0 CTRL-Z $1A",
                     () -> app.arqHandoverNow(this));
-            JButton hoAfter = addControl(p, "HO after TX clear",
-                    "Flush App TX, then ch0 CTRL-Z $1A after TNC TX empty",
+            addControl(p, "CHO after traffic",
+                    "ch0 CTL $20, payload CTRL-Z $1A. Waits for the Host data-ack. Does not clear the TNC buffer.",
                     () -> app.arqHoAfterTxClear(this));
-            addControl(p, "Seize", "Seize link / ACHG (Host AG)",
+            seizeButton = addControl(p, "Seize", "Seize link / ACHG (Host AG)",
                     () -> app.arqSeize(this));
-            JButton hoText = addControl(p, "HO with text",
+            addControl(p, "Canned CHO",
                     "Canned handover text + CTRL-Z $1A in the same ch0 block",
                     () -> app.arqHoWithText(this));
             addControl(p, "Disc. with text",
                     "Canned disconnect text + CTRL-D $04 in the same ch0 block",
                     () -> app.arqDiscWithText(this));
-            handoverButtons.add(hoNow);
-            handoverButtons.add(hoAfter);
-            handoverButtons.add(hoText);
             p.add(saveTranscriptButton());
         } else {
             EdgeJustifiedPanel split = new EdgeJustifiedPanel();
@@ -1010,8 +1026,8 @@ public final class ConnectionWindow extends JFrame {
 
     /**
      * Stage one {@code >} macro line the same way as Send, without starting a Host send.
-     * Listen and IRS queue the line in App TX. ARQ ISS paints the transcript and returns
-     * the text the caller must transmit. EDT.
+     * Listen, IRS, and a pending handover queue the line in App TX. ARQ ISS paints the
+     * transcript and returns the text the caller must transmit. EDT.
      */
     public MacroSendStage stageMacroSendLine(String line) {
         if (!sessionActive) {
@@ -1020,7 +1036,7 @@ public final class ConnectionWindow extends JFrame {
         if (line == null || line.isEmpty()) {
             return MacroSendStage.held();
         }
-        if (localIsIrs || kind != Kind.ARQ) {
+        if (holdsOutboundChat()) {
             if (!appTxBuffer.getText().isEmpty()) {
                 appTxBuffer.append("\n");
             }
@@ -1085,8 +1101,8 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
-     * Commit every Compose line, including blank lines. IRS queues the block in App TX.
-     * ISS paints it and sends it. An empty Compose does nothing.
+     * Commit every Compose line, including blank lines. IRS and a pending handover queue
+     * the block in App TX. ISS paints it and sends it. An empty Compose does nothing.
      */
     private void commitComposeLines() {
         if (!sessionActive) {
@@ -1098,7 +1114,7 @@ public final class ConnectionWindow extends JFrame {
         }
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
         compose.setText("");
-        if (localIsIrs) {
+        if (holdsOutboundChat()) {
             appendAppTx(normalized);
             return;
         }
@@ -1146,11 +1162,6 @@ public final class ConnectionWindow extends JFrame {
         appTxBuffer.setText("");
         refreshStatus();
         return pending;
-    }
-
-    public boolean isAppTxEmpty() {
-        String pending = appTxBuffer.getText();
-        return pending == null || pending.isBlank();
     }
 
     /**
@@ -1242,7 +1253,7 @@ public final class ConnectionWindow extends JFrame {
     }
 
     private void editAppTxBuffer() {
-        if (!sessionActive || !localIsIrs) {
+        if (!sessionActive || !holdsOutboundChat()) {
             showNotice("Edit only applies to IRS-queued App TX buffer lines.");
             return;
         }
@@ -1662,7 +1673,26 @@ public final class ConnectionWindow extends JFrame {
         }
     }
 
+    /** Queued title only while a handover is pending and OPMODE still says ISS. */
+    private void refreshAppTxTitle() {
+        if (appTxBorder == null) {
+            return;
+        }
+        String title = kind == Kind.ARQ && handoverLocked && !localIsIrs
+                ? APP_TX_QUEUED_TITLE
+                : APP_TX_TITLE;
+        if (title.equals(appTxBorder.getTitle())) {
+            return;
+        }
+        appTxBorder.setTitle(title);
+        if (appTxScroll != null) {
+            appTxScroll.repaint();
+        }
+    }
+
     private void refreshStatus() {
+        applyControlLocks();
+        refreshAppTxTitle();
         String role = localIsIrs ? "IRS" : "ISS";
         String speed = opmodeBaud != null ? String.valueOf(opmodeBaud) : "--";
         String tnc = app.isTncConnected() ? "connected" : "offline";

@@ -226,6 +226,8 @@ public final class ConfigStore {
         append(sb, "autoConnectTnc", c.isAutoConnectTnc());
         append(sb, "debugLogEnabled", c.isDebugLogEnabled());
         append(sb, "Display Startup", c.isDisplayStartup());
+        append(sb, "onlyOneArqWindow", c.isOnlyOneArqWindow());
+        append(sb, "closeFecOnArqLink", c.isCloseFecOnArqLink());
         append(sb, "cannedHandoverText", c.getCannedHandoverText(), true);
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
         append(sb, "cannedCqText", c.getCannedCqText(), true);
@@ -314,6 +316,12 @@ public final class ConfigStore {
             config.setDisplayStartup(Boolean.parseBoolean(map.get("Display Startup")));
         } else if (map.containsKey("displayStartup")) {
             config.setDisplayStartup(Boolean.parseBoolean(map.get("displayStartup")));
+        }
+        if (map.containsKey("onlyOneArqWindow")) {
+            config.setOnlyOneArqWindow(Boolean.parseBoolean(map.get("onlyOneArqWindow")));
+        }
+        if (map.containsKey("closeFecOnArqLink")) {
+            config.setCloseFecOnArqLink(Boolean.parseBoolean(map.get("closeFecOnArqLink")));
         }
         if (map.containsKey("cannedHandoverText")) {
             config.setCannedHandoverText(map.get("cannedHandoverText"));

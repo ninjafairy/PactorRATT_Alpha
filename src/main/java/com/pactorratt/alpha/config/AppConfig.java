@@ -40,6 +40,10 @@ public final class AppConfig {
      * ({@code $0009}) info window during connect.
      */
     private boolean displayStartup = false;
+    /** When true, a new ARQ link disposes leftover ARQ windows. A live QSO is left up. */
+    private boolean onlyOneArqWindow = false;
+    /** When true, a new ARQ link disposes the FEC window and turns Listen off. Does not send Pt. */
+    private boolean closeFecOnArqLink = false;
     private String cannedHandoverText = "KKK";
     private String cannedDisconnectText = "SK";
     /** Listen CQ button payload (one copy per {@link #cqRepeat} line). */
@@ -158,6 +162,22 @@ public final class AppConfig {
 
     public void setDisplayStartup(boolean displayStartup) {
         this.displayStartup = displayStartup;
+    }
+
+    public boolean isOnlyOneArqWindow() {
+        return onlyOneArqWindow;
+    }
+
+    public void setOnlyOneArqWindow(boolean onlyOneArqWindow) {
+        this.onlyOneArqWindow = onlyOneArqWindow;
+    }
+
+    public boolean isCloseFecOnArqLink() {
+        return closeFecOnArqLink;
+    }
+
+    public void setCloseFecOnArqLink(boolean closeFecOnArqLink) {
+        this.closeFecOnArqLink = closeFecOnArqLink;
     }
 
     public String getCannedHandoverText() {

@@ -173,12 +173,10 @@ public final class AppController {
     /** Serializes UBIT 10–triggered {@code OP}; extra {@code $50 n} queues one follow-up. */
     private final AtomicBoolean ubit10OpInFlight = new AtomicBoolean(false);
     private final AtomicBoolean ubit10OpFollowup = new AtomicBoolean(false);
-    /**
-     * UBIT 10 is *w* only. Idle IRS→ISS keeps {@code $33}, so the pickup side never
-     * gets {@code $50 n}. While the ARQ window is IRS, solicit {@code OP} for *x*.
+    /*
+     * UBIT 10 does not report *x*, so an Idle changeover can miss OP if *w* stays $33.
+     * Put the 1-second IRS OP poll back if users report random hangs at idle or on changeover.
      */
-    private static final int IRS_ROLE_WATCH_MS = 1000;
-    private Timer irsRoleWatchTimer;
 
     public AppController(Path portableRoot) {
         this.portableRoot = Objects.requireNonNull(portableRoot);
@@ -941,53 +939,49 @@ public final class AppController {
     }
 
     /**
-     * Clear TX and Handover — Host {@code TC} (TClear), wait ACK, then ch0 {@code $1A}.
-     * Locks HO buttons until ISS again.
+     * Dump traffic &amp; CHO NOW! — Host {@code TC} (TClear), wait ACK, then ch0 {@code $1A}.
+     * Locks Controls (except Abort, Seize, and Save transcript) until ISS again.
      */
     public void arqHandoverNow(ConnectionWindow window) {
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
             return;
         }
         if (window.isLocalIrs()) {
-            noticeWindow(window, "Clear TX and Handover — not ISS (use Seize to take the link).");
+            noticeWindow(window, "Dump traffic & CHO NOW! — not ISS (use Seize to take the link).");
             return;
         }
         if (!window.lockHandoverControls()) {
-            noticeWindow(window, "Clear TX and Handover — handover already pending.");
+            noticeWindow(window, "Dump traffic & CHO NOW! — handover already pending.");
             return;
         }
-        runArqHostAction(window, "Clear TX and Handover", session -> {
+        runArqHostAction(window, "Dump traffic & CHO NOW!", session -> {
             sendHostOk(session, "TC");
             sendCh0Control(session, PTOVER_CHAR_CTRL_Z);
         }, window::unlockHandoverControls,
-                "Clear TX and Handover — sent TC then CTRL-Z ($1A); HO buttons locked until ISS again.");
+                "Dump traffic & CHO NOW! — sent TC then CTRL-Z ($1A); controls locked until ISS again.");
     }
 
     /**
-     * HO after TX clear — flush App TX, then ch0 {@code $1A} in the same block.
-     * Locks HO buttons until ISS again. Allowed while IRS if App TX has text to flush.
+     * CHO after traffic — one ch0 data frame (CTL {@code $20}), payload CTRL-Z {@code $1A},
+     * then wait for the Host data-ack. Does not clear the TNC buffer or flush App TX.
+     * Locks Controls until ISS again. Refuses while IRS.
      */
     public void arqHoAfterTxClear(ConnectionWindow window) {
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
             return;
         }
-        if (window.isLocalIrs() && window.isAppTxEmpty()) {
-            noticeWindow(window, "HO after TX clear — not ISS (use Seize to take the link).");
+        if (window.isLocalIrs()) {
+            noticeWindow(window, "CHO after traffic — not ISS (use Seize to take the link).");
             return;
         }
         if (!window.lockHandoverControls()) {
-            noticeWindow(window, "HO after TX clear — handover already pending.");
+            noticeWindow(window, "CHO after traffic — handover already pending.");
             return;
         }
-        String pending = window.drainAppTxBufferToTranscript();
-        byte[] payload = hostDataWithControl(pending, PTOVER_CHAR_CTRL_Z);
-        String notice = pending.isBlank()
-                ? "HO after TX clear — sent CTRL-Z; HO buttons locked until ISS again."
-                : "HO after TX clear — flushed App TX + CTRL-Z; HO buttons locked until ISS again.";
-        runArqHostAction(window, "HO after TX clear",
-                session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
+        runArqHostAction(window, "CHO after traffic",
+                session -> sendCh0Control(session, PTOVER_CHAR_CTRL_Z),
                 window::unlockHandoverControls,
-                notice);
+                "CHO after traffic — sent CTRL-Z ($1A); controls locked, typed text queued until ISS again.");
     }
 
     /** Seize — Host {@code AG} (AChg). */
@@ -1236,9 +1230,9 @@ public final class AppController {
         worker.start();
     }
 
-    /** HO with text — canned handover + {@code $1A} in the same ch0 block. Locks HO until ISS again. */
+    /** Canned CHO — canned handover + {@code $1A} in the same ch0 block. Locks controls until ISS again. */
     public void arqHoWithText(ConnectionWindow window) {
-        runHandoverAction(window, "HO with text", config.getCannedHandoverText(), PTOVER_CHAR_CTRL_Z);
+        runHandoverAction(window, "Canned CHO", config.getCannedHandoverText(), PTOVER_CHAR_CTRL_Z);
     }
 
     /** Disc. with text — canned disconnect + {@code $04} in the same ch0 block. */
@@ -1915,7 +1909,7 @@ public final class AppController {
 
     /**
      * Send PTOver ({@code $1A}) as ch0 data (optionally after canned text in the same block).
-     * Locks all HO buttons until OPMODE shows IRS then ISS again.
+     * Locks Controls until OPMODE shows IRS then ISS again.
      */
     private void runHandoverAction(ConnectionWindow window, String actionName, String canned, byte control) {
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
@@ -1933,7 +1927,7 @@ public final class AppController {
         runArqHostAction(window, actionName,
                 session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
                 window::unlockHandoverControls,
-                actionName + " — sent CTRL-Z; HO buttons locked until ISS again.",
+                actionName + " — sent CTRL-Z; controls locked until ISS again.",
                 () -> paintCannedIfPresent(window, canned));
     }
 
@@ -2041,7 +2035,6 @@ public final class AppController {
         ConnectionWindow arq = activeArqWindow;
         if (arq == null || !arq.isSessionActive()) {
             applyMainModeFromOpmode(decoded);
-            stopIrsRoleWatch();
             return;
         }
         if (decoded.standby) {
@@ -2051,54 +2044,10 @@ public final class AppController {
                 markArqDead(arq);
                 noticeArq(arq, "ARQ ended — OPMODE " + w + " (no $50 DISCONNECTED).");
             }
-            syncIrsRoleWatch();
             return;
         }
         arq.markOpmodeLive();
         arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
-        syncIrsRoleWatch();
-    }
-
-    /**
-     * While linked IRS, poll {@code OP} so an Idle *w* pickup still sees *x*=S.
-     * Stop as soon as OPMODE reports ISS or the ARQ window dies.
-     */
-    private void syncIrsRoleWatch() {
-        ConnectionWindow arq = activeArqWindow;
-        boolean need = arq != null && arq.isSessionActive() && arq.isLocalIrs();
-        if (need) {
-            startIrsRoleWatch();
-        } else {
-            stopIrsRoleWatch();
-        }
-    }
-
-    private void startIrsRoleWatch() {
-        runOnEdt(() -> {
-            if (irsRoleWatchTimer != null && irsRoleWatchTimer.isRunning()) {
-                return;
-            }
-            if (irsRoleWatchTimer == null) {
-                irsRoleWatchTimer = new Timer(IRS_ROLE_WATCH_MS, e -> {
-                    ConnectionWindow arq = activeArqWindow;
-                    if (arq == null || !arq.isSessionActive() || !arq.isLocalIrs()) {
-                        stopIrsRoleWatch();
-                        return;
-                    }
-                    requestOpFromUbit10();
-                });
-                irsRoleWatchTimer.setRepeats(true);
-            }
-            irsRoleWatchTimer.start();
-        });
-    }
-
-    private void stopIrsRoleWatch() {
-        runOnEdt(() -> {
-            if (irsRoleWatchTimer != null && irsRoleWatchTimer.isRunning()) {
-                irsRoleWatchTimer.stop();
-            }
-        });
     }
 
     /** Map a Pactor OPMODE reply onto the main-window Mode label when no ARQ window is live. */
@@ -2397,7 +2346,6 @@ public final class AppController {
         setTncConnected(false);
         tncBusy.set(false);
         stopCallingUi();
-        stopIrsRoleWatch();
         if (mainWindow != null) {
             mainWindow.refreshConnectionState();
         }
@@ -3090,6 +3038,9 @@ public final class AppController {
             debugLog.info("CONNECTED ignored — ARQ already active: " + peerTitle);
             return;
         }
+        if (config.isOnlyOneArqWindow()) {
+            closeLeftoverArqWindows();
+        }
         openArqWindowForLink(peerTitle);
         pollOpmodeAfterCalling();
     }
@@ -3222,6 +3173,42 @@ public final class AppController {
         worker.start();
     }
 
+    /**
+     * Dispose ARQ windows left from an earlier link. A still-active session is not
+     * passed here. No Abort dialog and no Host abort. {@code dispose()} does not
+     * run {@link #onConnectionWindowClosed}, so Listen is not restored.
+     */
+    private void closeLeftoverArqWindows() {
+        boolean remembered = false;
+        if (activeArqWindow != null && !activeArqWindow.isSessionActive()) {
+            remembered = quietDisposeWindow(activeArqWindow);
+            activeArqWindow = null;
+        }
+        for (ConnectionWindow window : new ArrayList<>(deadArqWindows)) {
+            if (window != null && window.kind() == ConnectionWindow.Kind.ARQ) {
+                remembered |= quietDisposeWindow(window);
+            }
+        }
+        if (remembered) {
+            saveConfig();
+        }
+    }
+
+    /** Remember bounds, drop the list reference, dispose. Returns true if bounds were stored. */
+    private boolean quietDisposeWindow(ConnectionWindow window) {
+        if (window == null) {
+            return false;
+        }
+        boolean remembered = false;
+        if (window.isDisplayable()) {
+            window.rememberBounds();
+            remembered = true;
+        }
+        deadArqWindows.remove(window);
+        window.dispose();
+        return remembered;
+    }
+
     /** Opens the ARQ window after {@code $50} CONNECTED (inbound or outbound). */
     private void openArqWindowForLink(String call) {
         if (activeArqWindow != null) {
@@ -3229,8 +3216,12 @@ public final class AppController {
         }
         mode = AppMode.ARQ;
         if (listenWindow != null) {
-            listenWindow.setSessionActive(false);
-            listenWindow.showInactive();
+            if (config.isCloseFecOnArqLink()) {
+                closeFecWindowForArqLink();
+            } else {
+                listenWindow.setSessionActive(false);
+                listenWindow.showInactive();
+            }
         }
         activeArqWindow = new ConnectionWindow(this, ConnectionWindow.Kind.ARQ, call);
         activeArqWindow.setSessionActive(true);
@@ -3242,7 +3233,25 @@ public final class AppController {
             SwingUtilities.invokeLater(mainWindow::hideCallingDialog);
         }
         debugLog.info("ARQ window opened for " + call);
-        syncIrsRoleWatch();
+    }
+
+    /**
+     * Close the FEC window and uncheck Listen. Does not send {@code Pt}; the TNC
+     * is already on the new ARQ link.
+     */
+    private void closeFecWindowForArqLink() {
+        ConnectionWindow closing = listenWindow;
+        listenWindow = null;
+        if (mainWindow != null) {
+            mainWindow.setListenToggleSilently(false);
+        }
+        if (closing != null && closing.isDisplayable()) {
+            closing.rememberBounds();
+            saveConfig();
+        }
+        if (closing != null) {
+            closing.dispose();
+        }
     }
 
     private void showConnectError(String message) {
@@ -3330,7 +3339,6 @@ public final class AppController {
             if (mainWindow != null) {
                 mainWindow.refreshModeLabel();
             }
-            stopIrsRoleWatch();
             restoreListenAfterArq();
         }
     }
