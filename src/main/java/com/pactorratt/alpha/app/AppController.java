@@ -18,6 +18,7 @@ import com.pactorratt.alpha.ui.CompatNotifyDialog;
 import com.pactorratt.alpha.ui.CompatWarningDialog;
 import com.pactorratt.alpha.ui.ConnectionWindow;
 import com.pactorratt.alpha.ui.DebugMonitorWindow;
+import com.pactorratt.alpha.ui.DebugSettingsDialog;
 import com.pactorratt.alpha.ui.DisplayMonitorWindow;
 import com.pactorratt.alpha.ui.MainWindow;
 import com.pactorratt.alpha.ui.PdBugCheckWindow;
@@ -371,6 +372,20 @@ public final class AppController {
 
     public void removeSerialByteListener(SerialByteListener listener) {
         serialTaps.remove(listener);
+    }
+
+    private DebugSettingsDialog debugSettingsDialog;
+
+    /** Modeless Dev Tools window. Re-focuses the existing one. */
+    public void openDebugSettings(Window owner) {
+        runOnEdt(() -> {
+            if (debugSettingsDialog == null || !debugSettingsDialog.isDisplayable()) {
+                debugSettingsDialog = new DebugSettingsDialog(owner, this);
+                debugSettingsDialog.setVisible(true);
+            } else {
+                debugSettingsDialog.toFront();
+            }
+        });
     }
 
     public void openDebugMonitor() {
@@ -911,16 +926,16 @@ public final class AppController {
         return null;
     }
 
-    /** Disc. after TX clear — flush App TX, then ch0 {@code $04} in the same block. */
+    /** Disc. when finished — flush App TX, then ch0 {@code $04} in the same block. */
     public void arqDiscAfterTxClear(ConnectionWindow window) {
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
             return;
         }
         String pending = window.drainAppTxBufferToTranscript();
         String notice = pending.isBlank()
-                ? "Disc. after TX clear — sent CTRL-D ($04)."
-                : "Disc. after TX clear — flushed App TX + CTRL-D ($04).";
-        runArqHostAction(window, "Disc. after TX clear",
+                ? "Disc. when finished — sent CTRL-D ($04)."
+                : "Disc. when finished — flushed App TX + CTRL-D ($04).";
+        runArqHostAction(window, "Disc. when finished",
                 session -> session.sendData(0,
                         hostDataWithControl(pending, RECEIVE_CHAR_CTRL_D),
                         ARQ_HOST_TIMEOUT_MS),
@@ -1235,15 +1250,15 @@ public final class AppController {
         runHandoverAction(window, "Canned CHO", config.getCannedHandoverText(), PTOVER_CHAR_CTRL_Z);
     }
 
-    /** Disc. with text — canned disconnect + {@code $04} in the same ch0 block. */
+    /** Canned text disc. — canned disconnect + {@code $04} in the same ch0 block. */
     public void arqDiscWithText(ConnectionWindow window) {
         String canned = config.getCannedDisconnectText();
-        runArqHostAction(window, "Disc. with text",
+        runArqHostAction(window, "Canned text disc.",
                 session -> session.sendData(0,
                         hostDataWithControl(canned, RECEIVE_CHAR_CTRL_D),
                         ARQ_HOST_TIMEOUT_MS),
                 null,
-                "Disc. with text — sent canned text + CTRL-D ($04).",
+                "Canned text disc. — sent canned text + CTRL-D ($04).",
                 () -> paintCannedIfPresent(window, canned));
     }
 

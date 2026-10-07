@@ -49,6 +49,8 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.FontMetrics;
 import java.awt.KeyboardFocusManager;
 import java.awt.KeyEventDispatcher;
@@ -199,6 +201,7 @@ public final class ConnectionWindow extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e) {
+                applyConnectionMinimumWidth();
                 scheduleFitButtonAreas();
             }
 
@@ -223,6 +226,7 @@ public final class ConnectionWindow extends JFrame {
                 kind == Kind.LISTEN ? app.config().getWindowFec() : app.config().getWindowArq(),
                 WindowPlacement.CONNECTION_WIDTH,
                 WindowPlacement.CONNECTION_HEIGHT);
+        applyConnectionMinimumWidth();
         if (kind == Kind.ARQ) {
             beginTmailMailboxCheck();
         }
@@ -643,32 +647,71 @@ public final class ConnectionWindow extends JFrame {
         buttonAreasFitted = true;
     }
 
+    /** Outer width of an ARQ or FEC window. Same floor for both. */
+    private static final int CONNECTION_MIN_WIDTH = 580;
+
+    @Override
+    public void setBounds(int x, int y, int width, int height) {
+        int[] clamped = WindowPlacement.clampWidth(this, x, width, CONNECTION_MIN_WIDTH);
+        super.setBounds(clamped[0], y, clamped[1], height);
+    }
+
+    /** ARQ and FEC cannot be narrowed past the control boxes. */
+    private void applyConnectionMinimumWidth() {
+        WindowPlacement.installMinimumWidth(this, CONNECTION_MIN_WIDTH, 360, WindowPlacement.CONNECTION_HEIGHT);
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+        Dimension min = super.getMinimumSize();
+        int height = min == null ? 360 : min.height;
+        int width = min == null ? CONNECTION_MIN_WIDTH : Math.max(CONNECTION_MIN_WIDTH, min.width);
+        return new Dimension(width, height);
+    }
+
     private JScrollPane buildControlsScroll() {
         JPanel p;
         if (kind == Kind.ARQ) {
-            p = new ControlsPanel();
-            addControl(p, "Disc. after TX clear",
-                    "Flush App TX, then ch0 CTRL-D $04 after TNC TX empty",
-                    () -> app.arqDiscAfterTxClear(this));
-            addControl(p, "Disconnect now", "TClear (TC) then ch0 CTRL-D $04",
-                    () -> app.arqDisconnectNow(this));
-            addAbortControl(p, "Abort link (TC, then PN if FEC/Monitor is on, else Pt). Press twice.",
-                    this::onAbortPressed);
-            addControl(p, "Dump traffic & CHO NOW!",
+            JPanel changeover = sideBox("Changeover");
+            JPanel disconnect = new JPanel(new GridBagLayout());
+            disconnect.setOpaque(false);
+            disconnect.setBorder(BorderFactory.createTitledBorder("Disconnect"));
+            JPanel emergency = sideBox("Emergency");
+            addSideButton(changeover, "Dump traffic & CHO NOW!",
                     "TClear (TC) then ch0 CTRL-Z $1A",
                     () -> app.arqHandoverNow(this));
-            addControl(p, "CHO after traffic",
+            addSideButton(changeover, "CHO after traffic",
                     "ch0 CTL $20, payload CTRL-Z $1A. Waits for the Host data-ack. Does not clear the TNC buffer.",
                     () -> app.arqHoAfterTxClear(this));
-            seizeButton = addControl(p, "Seize", "Seize link / ACHG (Host AG)",
-                    () -> app.arqSeize(this));
-            addControl(p, "Canned CHO",
+            addSideButton(changeover, "Canned CHO",
                     "Canned handover text + CTRL-Z $1A in the same ch0 block",
                     () -> app.arqHoWithText(this));
-            addControl(p, "Disc. with text",
+            closeSideBox(changeover);
+            JButton discFinished = addControl(new JPanel(), "Disc. when finished",
+                    "Flush App TX, then ch0 CTRL-D $04 after TNC TX empty",
+                    () -> app.arqDiscAfterTxClear(this));
+            JButton discNow = addControl(new JPanel(), "Disconnect now",
+                    "TClear (TC) then ch0 CTRL-D $04",
+                    () -> app.arqDisconnectNow(this));
+            JButton discCanned = addControl(new JPanel(), "Canned text disc.",
                     "Canned disconnect text + CTRL-D $04 in the same ch0 block",
                     () -> app.arqDiscWithText(this));
-            p.add(saveTranscriptButton());
+            JButton saveTranscript = saveTranscriptButton();
+            equalizeButtonSize(discFinished, discNow, discCanned, saveTranscript);
+            JPanel discGrid = new JPanel(new GridLayout(2, 2, 4, 2));
+            discGrid.setOpaque(false);
+            discGrid.add(discFinished);
+            discGrid.add(discNow);
+            discGrid.add(discCanned);
+            discGrid.add(saveTranscript);
+            disconnect.add(discGrid);
+            addSideAbort(emergency,
+                    "Abort link (TC, then PN if FEC/Monitor is on, else Pt). Press twice.",
+                    this::onAbortPressed);
+            seizeButton = addSideButton(emergency, "Seize", "Seize link / ACHG (Host AG)",
+                    () -> app.arqSeize(this));
+            closeSideBox(emergency);
+            p = new ArqControlsRow(changeover, disconnect, emergency);
         } else {
             EdgeJustifiedPanel split = new EdgeJustifiedPanel();
             addControl(split.left(), "Send FEC", "FEC mode command → buffer → CTRL-D end",
@@ -848,6 +891,79 @@ public final class ConnectionWindow extends JFrame {
     }
 
     /**
+     * Three fixed-width boxes in a left-aligned row. Extra window width stays empty
+     * on the right. Boxes share one height; their buttons stay centered inside.
+     */
+    private static final class ArqControlsRow extends JPanel implements Scrollable {
+        private static final int HGAP = 4;
+
+        ArqControlsRow(JPanel changeover, JPanel disconnect, JPanel emergency) {
+            super();
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            add(lockBoxWidth(changeover));
+            add(Box.createHorizontalStrut(HGAP));
+            add(lockBoxWidth(disconnect));
+            add(Box.createHorizontalStrut(HGAP));
+            add(lockBoxWidth(emergency));
+            add(Box.createHorizontalGlue());
+        }
+
+        /** Preferred width only. Height may grow so the three borders match. */
+        private static JPanel lockBoxWidth(JPanel box) {
+            box.setMaximumSize(null);
+            box.invalidate();
+            Dimension pref = box.getPreferredSize();
+            int width = Math.max(pref.width, boxWidth(box));
+            box.setAlignmentX(Component.LEFT_ALIGNMENT);
+            box.setAlignmentY(Component.TOP_ALIGNMENT);
+            box.setMaximumSize(new Dimension(width, Integer.MAX_VALUE));
+            return box;
+        }
+
+        private static int boxWidth(JPanel box) {
+            int inner = 0;
+            for (Component c : box.getComponents()) {
+                if (c instanceof JButton button) {
+                    inner = Math.max(inner, button.getPreferredSize().width);
+                } else if (c instanceof JPanel grid) {
+                    inner = Math.max(inner, grid.getPreferredSize().width);
+                }
+            }
+            Insets in = box.getInsets();
+            int border = in.left + in.right;
+            if (border < 16) {
+                border = 16;
+            }
+            return inner + border;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(visibleRect.height - 16, 16);
+        }
+    }
+
+    /**
      * Control buttons wrap to the viewport width. Extra rows scroll vertically
      * instead of being clipped when the window is narrowed.
      */
@@ -915,6 +1031,93 @@ public final class ConnectionWindow extends JFrame {
             return "PD2,2";
         }
         return "PD";
+    }
+
+    /** Titled column. A top glue is already in place; {@link #closeSideBox} adds the bottom glue. */
+    private static JPanel sideBox(String title) {
+        JPanel box = new JPanel();
+        box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
+        box.setOpaque(false);
+        box.setBorder(BorderFactory.createTitledBorder(title));
+        box.add(Box.createVerticalGlue());
+        return box;
+    }
+
+    private static void closeSideBox(JPanel box) {
+        box.add(Box.createVerticalGlue());
+    }
+
+    private JButton addSideButton(JPanel box, String label, String tooltip, Runnable action) {
+        gapBeforeSideButton(box);
+        JButton b = addControl(box, label, tooltip, action);
+        keepOwnWidth(b);
+        return b;
+    }
+
+    private void addSideAbort(JPanel box, String tooltip, Runnable action) {
+        gapBeforeSideButton(box);
+        keepOwnWidth(addAbortControl(box, tooltip, action));
+    }
+
+    private static void gapBeforeSideButton(JPanel box) {
+        for (Component c : box.getComponents()) {
+            if (c instanceof JButton) {
+                box.add(Box.createVerticalStrut(2));
+                return;
+            }
+        }
+    }
+
+    /** One shared size: the widest and tallest of the labels. */
+    private static void equalizeButtonSize(JButton... buttons) {
+        int width = 0;
+        int height = 0;
+        for (JButton b : buttons) {
+            Dimension pref = b.getPreferredSize();
+            width = Math.max(width, Math.max(pref.width, labelWidth(b)));
+            height = Math.max(height, pref.height);
+        }
+        Dimension size = new Dimension(width, height);
+        for (JButton b : buttons) {
+            b.setPreferredSize(size);
+            b.setMinimumSize(size);
+            b.setMaximumSize(size);
+            b.setHorizontalAlignment(SwingConstants.CENTER);
+        }
+    }
+
+    /**
+     * Fill the column width so a short label is not clipped, and keep the
+     * button only as tall as its text. Text stays centered in the button.
+     */
+    private static void keepOwnWidth(JButton b) {
+        b.setAlignmentX(Component.CENTER_ALIGNMENT);
+        b.setHorizontalAlignment(SwingConstants.CENTER);
+        Dimension pref = b.getPreferredSize();
+        int width = Math.max(pref.width, labelWidth(b));
+        b.setPreferredSize(new Dimension(width, pref.height));
+        b.setMinimumSize(new Dimension(width, pref.height));
+        b.setMaximumSize(new Dimension(Integer.MAX_VALUE, pref.height));
+    }
+
+    /** Text width plus the button's own padding, measured after the font exists. */
+    private static int labelWidth(JButton b) {
+        String text = b.getText();
+        if (text == null || text.isEmpty()) {
+            return 0;
+        }
+        Font font = b.getFont();
+        FontMetrics fm = b.getFontMetrics(font);
+        Insets margin = b.getMargin();
+        Insets insets = b.getInsets();
+        int padX = 24;
+        if (margin != null) {
+            padX = Math.max(padX, margin.left + margin.right + 16);
+        }
+        if (insets != null) {
+            padX = Math.max(padX, insets.left + insets.right + 12);
+        }
+        return fm.stringWidth(text) + padX;
     }
 
     private JButton addControl(JPanel p, String label, String tooltip, Runnable action) {

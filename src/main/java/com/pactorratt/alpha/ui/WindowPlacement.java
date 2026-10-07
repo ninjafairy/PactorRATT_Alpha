@@ -1,5 +1,6 @@
 package com.pactorratt.alpha.ui;
 
+import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
@@ -8,6 +9,7 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.util.List;
+import javax.swing.RootPaneContainer;
 
 /**
  * Saved window bounds ({@code x,y,width,height}) and the Settings reset stack.
@@ -21,6 +23,39 @@ public final class WindowPlacement {
     private static final int CASCADE = 24;
 
     private WindowPlacement() {
+    }
+
+    /**
+     * Keep the right edge still when a left-edge drag would go under {@code minWidth}.
+     * Returns {@code {x, width}} to pass to {@code setBounds}.
+     */
+    public static int[] clampWidth(Window window, int x, int width, int minWidth) {
+        if (width >= minWidth) {
+            return new int[] { x, width };
+        }
+        int right = x + width;
+        int clampedX = x != window.getX() ? right - minWidth : x;
+        return new int[] { clampedX, minWidth };
+    }
+
+    /**
+     * The Windows frame uses the content pane's minimum, not a larger size set
+     * only on the frame. Set all three so the drag stops at {@code minWidth}.
+     */
+    public static void installMinimumWidth(Window window, int minWidth, int minHeight, int defaultHeight) {
+        Dimension min = new Dimension(minWidth, minHeight);
+        if (window instanceof RootPaneContainer root) {
+            if (root.getRootPane() != null) {
+                root.getRootPane().setMinimumSize(min);
+            }
+            if (root.getContentPane() != null) {
+                root.getContentPane().setMinimumSize(min);
+            }
+        }
+        window.setMinimumSize(min);
+        if (window.getWidth() > 0 && window.getWidth() < minWidth) {
+            window.setSize(minWidth, Math.max(window.getHeight(), defaultHeight));
+        }
     }
 
     /**

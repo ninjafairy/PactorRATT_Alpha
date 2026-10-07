@@ -71,6 +71,9 @@ public final class MainWindow extends JFrame {
 
     private final JLabel modeLabel = new JLabel();
     private final JLabel tncLabel = new JLabel();
+    private static final int MAIN_MIN_WIDTH = 240;
+    private JPanel actionRow;
+    private JPanel statusRow;
     private final JLabel callingLabel = new JLabel();
     private final JButton cancelCallingButton = new JButton("Cancel");
     private JDialog callingDialog;
@@ -125,6 +128,11 @@ public final class MainWindow extends JFrame {
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
+            public void windowOpened(WindowEvent e) {
+                applyMainMinimumWidth();
+            }
+
+            @Override
             public void windowClosing(WindowEvent e) {
                 attemptExit();
             }
@@ -136,6 +144,7 @@ public final class MainWindow extends JFrame {
         });
         WindowPlacement.apply(this, app.config().getWindowMain(),
                 WindowPlacement.MAIN_WIDTH, WindowPlacement.MAIN_HEIGHT);
+        applyMainMinimumWidth();
     }
 
     public boolean isListenSelected() {
@@ -151,6 +160,25 @@ public final class MainWindow extends JFrame {
         suppressListenCallback = true;
         listenToggle.setSelected(selected);
         suppressListenCallback = false;
+    }
+
+    @Override
+    public void setBounds(int x, int y, int width, int height) {
+        int[] clamped = WindowPlacement.clampWidth(this, x, width, MAIN_MIN_WIDTH);
+        super.setBounds(clamped[0], y, clamped[1], height);
+    }
+
+    /** Main window cannot be narrowed past the TNC status row. */
+    private void applyMainMinimumWidth() {
+        WindowPlacement.installMinimumWidth(this, MAIN_MIN_WIDTH, 400, WindowPlacement.MAIN_HEIGHT);
+    }
+
+    @Override
+    public Dimension getMinimumSize() {
+        Dimension min = super.getMinimumSize();
+        int height = min == null ? 400 : min.height;
+        int width = min == null ? MAIN_MIN_WIDTH : Math.max(MAIN_MIN_WIDTH, min.width);
+        return new Dimension(width, height);
     }
 
     public void refreshConnectionState() {
@@ -359,6 +387,10 @@ public final class MainWindow extends JFrame {
         tncMenu.addSeparator();
 
         JMenu devTools = new JMenu("Dev Tools");
+        JMenuItem debugSettings = new JMenuItem("Debug settings…");
+        debugSettings.addActionListener(e -> app.openDebugSettings(this));
+        devTools.add(debugSettings);
+        devTools.addSeparator();
         JMenuItem debugMonitor = new JMenuItem("Debug Monitor…");
         debugMonitor.addActionListener(e -> app.openDebugMonitor());
         devTools.add(debugMonitor);
@@ -428,7 +460,7 @@ public final class MainWindow extends JFrame {
         cancelCallingButton.setVisible(false);
         cancelCallingButton.setToolTipText("Stop the outbound ARQ call (same as Abort: PN if Listen on, else Pt)");
         cancelCallingButton.addActionListener(e -> app.cancelOutboundCall());
-        JPanel statusRow = new JPanel(new BorderLayout());
+        statusRow = new JPanel(new BorderLayout());
         statusRow.setBackground(UiColors.PANEL_BG);
         JPanel statusLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         statusLeft.setOpaque(false);
@@ -525,7 +557,7 @@ public final class MainWindow extends JFrame {
         callRow.add(lpLabel);
         callRow.add(longpathToggle);
 
-        JPanel actionRow = leftAlignedRow();
+        actionRow = leftAlignedRow();
         actionRow.add(connectTipWrap);
         actionRow.add(listenTipWrap);
         tncLabel.setFont(tncLabel.getFont().deriveFont(Font.BOLD));

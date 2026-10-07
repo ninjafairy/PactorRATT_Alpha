@@ -46,9 +46,6 @@ public final class ProgramSettingsDialog extends JDialog {
         listenOnStart.setToolTipText("After the TNC connects, open FEC/Monitor once this launch.");
         JCheckBox autoConnectTnc = new JCheckBox("Auto connect TNC", config.isAutoConnectTnc());
         autoConnectTnc.setToolTipText("On startup, run TNC → Connect after the main window opens.");
-        JCheckBox debugLog = new JCheckBox("Debug log", config.isDebugLogEnabled());
-        JCheckBox displayStartup = new JCheckBox("Display Startup", config.isDisplayStartup());
-        displayStartup.setToolTipText("Show PK-232 startup text and TNC firmware/hardware ($0009) windows on connect.");
         JCheckBox onlyOneArqWindow = new JCheckBox("Only 1 ARQ window", config.isOnlyOneArqWindow());
         onlyOneArqWindow.setToolTipText("When a new ARQ link opens, close any previous ARQ window.");
         JCheckBox closeFecOnArqLink = new JCheckBox("Close FEC on ARQ link", config.isCloseFecOnArqLink());
@@ -96,8 +93,6 @@ public final class ProgramSettingsDialog extends JDialog {
         form.add(message);
         form.add(listenOnStart);
         form.add(autoConnectTnc);
-        form.add(debugLog);
-        form.add(displayStartup);
         form.add(onlyOneArqWindow);
         form.add(closeFecOnArqLink);
         form.add(labeled("Canned handover text", handover));
@@ -116,8 +111,6 @@ public final class ProgramSettingsDialog extends JDialog {
             config.setCommitMode(line.isSelected() ? CommitMode.LINE : CommitMode.MESSAGE);
             config.setListenOnStart(listenOnStart.isSelected());
             config.setAutoConnectTnc(autoConnectTnc.isSelected());
-            config.setDebugLogEnabled(debugLog.isSelected());
-            config.setDisplayStartup(displayStartup.isSelected());
             config.setOnlyOneArqWindow(onlyOneArqWindow.isSelected());
             config.setCloseFecOnArqLink(closeFecOnArqLink.isSelected());
             config.setCannedHandoverText(handover.getText());

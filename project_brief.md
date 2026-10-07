@@ -28,7 +28,7 @@ A portable **Java 21 + Swing** desktop chat program that drives a **PK-232 with 
 
 Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds/Most Recent Build/PactorRATT_Alpha.jar`. Portable I/O is **`{jarDir}/config/`** beside the *running* jar (often a copy under Downloads), not the GitHub tree.
 
-**Just finished (2026-10-06 — source):** **ARQ IRS control lock and CHO buttons.** While IRS, every Controls button is disabled except **Abort**, **Seize**, and **Save transcript**. Macros, Compose, and Send stay usable. The same control lock starts on press of **Dump traffic & CHO NOW!**, **CHO after traffic**, or **Canned CHO**, and lasts until OPMODE shows IRS then ISS again. While that hold is pending and the status line still says ISS, the App TX pane is titled **queued until next ISS**. Chat committed during that hold queues in App TX (status stays the real OPMODE role) and goes out on the next real IRS→ISS. Ack failure unlocks immediately and, if still ISS, sends that queued App TX. **CHO after traffic** sends only ch0 CTL `$20` / payload `$1A` and waits for the data-ack. It does not `TC` and does not flush App TX. Disc. after TX clear still flushes App TX then `$04`. The 1-second IRS `OP` poll is removed; UBIT 10 status bytes still request `OP`.
+**Just finished (2026-10-06 — source):** **ARQ IRS control lock and CHO buttons.** While IRS, every Controls button is disabled except **Abort**, **Seize**, and **Save transcript**. Macros, Compose, and Send stay usable. The same control lock starts on press of **Dump traffic & CHO NOW!**, **CHO after traffic**, or **Canned CHO**, and lasts until OPMODE shows IRS then ISS again. While that hold is pending and the status line still says ISS, the App TX pane is titled **queued until next ISS**. Chat committed during that hold queues in App TX (status stays the real OPMODE role) and goes out on the next real IRS→ISS. Ack failure unlocks immediately and, if still ISS, sends that queued App TX. **CHO after traffic** sends only ch0 CTL `$20` / payload `$1A` and waits for the data-ack. It does not `TC` and does not flush App TX. Disc. when finished still flushes App TX then `$04`. The 1-second IRS `OP` poll is removed; UBIT 10 status bytes still request `OP`.
 
 **Just finished (2026-09-15 — source, not yet a new jar):** **Reverted ARQ live Compose.** The 1 s ISS clock, `$08` outbound backspace, locked IRS lines, no-Send editor, and `issOutboundExecutor` / `toHostDataBytes(..., false)` are gone. ARQ is again **App TX + Compose + Send + Flush ISS**, with Program **Line / Message** commit. IRS commits queue in App TX; ISS commits (and Flush ISS / OPMODE IRS→ISS) go to Host ch0 with a trailing CR. Disc/HO after TX clear drains App TX then the control byte. Listen uses the same commit setting; **FEC / End TX** and **CQ** are unchanged.
 
@@ -117,7 +117,7 @@ Packaged **Build 46** (ARQ live Compose revert). Launch from `Run.txt` / `Builds
 | Heard / Mentioned | **Listen inbound only** (after `$08`, scan when a newline completes a line). Not local grey. Not ARQ. Callsign: **1–2 letters + 1 digit + 1–3 letters**, not glued to a letter or digit (space, `>`, other punctuation, or EOL). No SSID. Own `ML` excluded. **Heard:** whole-word `de ` (start of line or after whitespace/punctuation — not the end of `aside`/`made`) immediately followed by that call. **Mentioned:** other matching calls on the same line. A `de CALL` is not also Mentioned for that occurrence. Multiple `de CALL` on one line: each is Heard (last ends up on top). Lists are **independent** (a call may sit on both). Most recent at top; no duplicates; cap **12**; persist `{jarDir}/config/heard.json` + `mentioned.json`. **Connect frames (`?>… <C>`) are never Mentioned or Heard.** |
 | `<C>onnect` frames | Listen inbound (FEC/PTL beacons; not ARQ). Line `?>` + token + ` <C>`. `<C>` = connect frame, **not** a full copy. Token is raw (may be truncated). **Session-only** Stations folder **`<C>onnect`** (no json). Cap 12. Own `ML` excluded. Promote if **3 identical tokens in a row** (valid callsign) **or** last **5** connect frames: two longest tokens identical, every other token a leading prefix of that longest, longest is a valid callsign. |
 | Stations tree menus | Double-click a callsign → fill field + Connect. Right-click **Heard/Mentioned/`<C>onnect` folder** → Clear (empty that list; Connect Clear also drops the in-memory streak window). Right-click **Heard/Mentioned/`<C>onnect` call** → Add buddy (insert at top of Buddies if new) + Clear (remove from this list only). Right-click **Buddies call** → Move to top + Remove. Placeholders `(…)` have no menu. |
-| ARQ Compose | **App TX + Compose + Send + Flush ISS.** Program **Line / Message** commit. **LINE:** Enter commits the current line (Shift+Enter = newline). **MESSAGE:** Enter = newline; Send commits all non-empty lines. **IRS:** commits queue in App TX. **ISS:** commits go to Host ch0 + grey transcript (`toHostDataBytes` appends trailing CR). **IRS→ISS** (OPMODE or Flush ISS): drain App TX to Host. A pending CHO hold queues commits the same way, without flipping the status role. While that hold is pending and status still says ISS, the App TX title is **queued until next ISS**. Disc. after TX clear still drains App TX then `$04`. CHO after traffic does not. |
+| ARQ Compose | **App TX + Compose + Send + Flush ISS.** Program **Line / Message** commit. **LINE:** Enter commits the current line (Shift+Enter = newline). **MESSAGE:** Enter = newline; Send commits all non-empty lines. **IRS:** commits queue in App TX. **ISS:** commits go to Host ch0 + grey transcript (`toHostDataBytes` appends trailing CR). **IRS→ISS** (OPMODE or Flush ISS): drain App TX to Host. A pending CHO hold queues commits the same way, without flipping the status role. While that hold is pending and status still says ISS, the App TX title is **queued until next ISS**. Disc. when finished still drains App TX then `$04`. CHO after traffic does not. |
 | Listen Compose | Same Line/Message commit. Send → App TX. **FEC / End TX** = `PD` + data + CTRL-D. **CQ:** canned CQ × CQ repeat on that FEC path; does not use App TX. |
 | Out of scope | File xfer, BBS, Winlink, encryption, mobile, Morse-ID disconnect, auto-AAB, other TNCs, **grey→green / TX-empty confirm coloring** |
 
@@ -213,20 +213,20 @@ This is the work since the previous brief date (2026-08-26). Packaged as **Build
 
 | Button | Wire |
 |---|---|
-| Disc. after TX clear | Flush App TX, then same-block ch0 data + `$04` |
+| Disc. when finished | Flush App TX, then same-block ch0 data + `$04` |
 | Disconnect now | Host `TC`, wait ACK, then ch0 `$04` |
 | CHO after traffic | ch0 CTL `$20`, payload `$1A` only; wait for data-ack. No `TC`, no App TX flush. Control lock |
 | Dump traffic & CHO NOW! (was “Handover”) | Host `TC`, wait ACK, then ch0 `$1A`; control lock |
 | Canned CHO | Canned text + `$1A` same ch0 block; control lock |
-| Disc. with text | Canned text + `$04` same ch0 block |
+| Canned text disc. | Canned text + `$04` same ch0 block |
 | Seize | `AG` unchanged |
 | Abort | `PN` if Listen on, else `Pt`; `markArqDead` |
 
-Empty App TX on Disc. after TX clear → `$04` only. CHO after traffic is always `$1A` alone.
+Empty App TX on Disc. when finished → `$04` only. CHO after traffic is always `$1A` alone.
 
 **HO refused while IRS.** While IRS, Controls are disabled except Abort, Seize, and Save transcript.
 
-#### 2. App TX flush (Disc. after TX clear only)
+#### 2. App TX flush (Disc. when finished only)
 
 The App TX buffer is the IRS-hold pane. Flush means: drain grey transcript, mark local ISS, then send drained text **plus** the control byte in **one** `sendData` block. Disconnect now / Dump traffic & CHO NOW! still `TC` the TNC buffer first; they do **not** flush App TX. CHO after traffic does not flush App TX either.
 
@@ -388,7 +388,7 @@ Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRAT
 
 | UI control | Host action |
 |---|---|
-| Disc. after TX clear | Flush App TX, then ch0 `$04` in the same block |
+| Disc. when finished | Flush App TX, then ch0 `$04` in the same block |
 | Disconnect now | Host `TC`, wait ACK, then ch0 `$04` |
 | Dump traffic & CHO NOW! | Host `TC`, wait ACK, then ch0 `$1A`; lock Controls (except Abort, Seize, Save transcript) until IRS then ISS again |
 | CHO after traffic | ch0 CTL `$20`, payload `$1A` only; wait for data-ack; same control lock. No App TX flush |
@@ -396,7 +396,7 @@ Copy-Item -Force target\PactorRATT_Alpha.jar "Builds\Most Recent Build\PactorRAT
 | Seize | CMD `AG` |
 | Abort | Listen checkbox on → `PN`, else `Pt`; then `markArqDead` |
 | Canned CHO | Canned handover + `$1A` in the same ch0 block; same control lock |
-| Disc. with text | Canned disconnect + `$04` in the same ch0 block |
+| Canned text disc. | Canned disconnect + `$04` in the same ch0 block |
 
 Canned strings: `cannedHandoverText` / `cannedDisconnectText` (defaults `KKK` / `SK`); `cannedCqText` / `cqRepeat` (default empty / 1).
 
