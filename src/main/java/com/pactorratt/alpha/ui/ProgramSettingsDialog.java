@@ -4,32 +4,41 @@ import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.CommitMode;
 
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JColorChooser;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.JSpinner;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeListener;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.GridLayout;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 public final class ProgramSettingsDialog extends JDialog {
+
+    private final JTextArea cannedCqArea;
+    private final JTextArea cqFooterArea;
+    private final JSpinner cqRepeatSpinner;
 
     public ProgramSettingsDialog(Window owner, AppController app) {
         super(owner, "Settings — Program", ModalityType.APPLICATION_MODAL);
@@ -53,13 +62,17 @@ public final class ProgramSettingsDialog extends JDialog {
                 "When an ARQ link opens, close the FEC window and turn Listen off. Does not send Pt.");
         JTextField handover = new JTextField(config.getCannedHandoverText(), 20);
         JTextField disconnect = new JTextField(config.getCannedDisconnectText(), 20);
-        JTextField cannedCq = new JTextField(config.getCannedCqText(), 20);
-        cannedCq.setToolTipText("Listen CQ button sends this line CQ-repeat times (e.g. CQ de KJ7RBS)");
+        cannedCqArea = multiline(config.getCannedCqText(),
+                "Repeated as a block. A blank block sends CQ Footer once.");
+        cqFooterArea = multiline(config.getCannedCqFooter(),
+                "Sent once after the repeated CQ block.");
+        JTextArea awayMsg = multiline(config.getAwayMsg(),
+                "Loaded into a new ARQ window's TX buffer when the FEC Away box is checked.");
         JTextField wrap = new JTextField(Integer.toString(config.getWrapColumns()), 4);
 
-        JSpinner cqRepeat = new JSpinner(new SpinnerNumberModel(config.getCqRepeat(), 0, 10, 1));
-        cqRepeat.setToolTipText("Listen CQ button: how many copies of canned CQ text to send. 0 = nothing.");
-        JPanel cqRepeatRow = labeled("CQ repeat", cqRepeat);
+        cqRepeatSpinner = new JSpinner(new SpinnerNumberModel(config.getCqRepeat(), 1, 10, 1));
+        cqRepeatSpinner.setToolTipText("How many copies of the canned CQ block to send. 1–10.");
+        JPanel cqRepeatRow = labeled("CQ repeat", cqRepeatSpinner);
 
         Color originalOutgoing = config.getOutgoingText();
         Color originalIncoming = config.getIncomingText();
@@ -86,23 +99,26 @@ public final class ProgramSettingsDialog extends JDialog {
             app.applyChatFont();
         });
 
-        JPanel form = new JPanel(new GridLayout(0, 1, 4, 4));
+        JPanel form = new JPanel();
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
         form.setBorder(new EmptyBorder(10, 10, 10, 10));
-        form.add(labeled("Local callsign", callsign));
-        form.add(line);
-        form.add(message);
-        form.add(listenOnStart);
-        form.add(autoConnectTnc);
-        form.add(onlyOneArqWindow);
-        form.add(closeFecOnArqLink);
-        form.add(labeled("Canned handover text", handover));
-        form.add(labeled("Canned disconnect text", disconnect));
-        form.add(labeled("Canned CQ text", cannedCq));
-        form.add(cqRepeatRow);
-        form.add(labeled("Wrap columns", wrap));
-        form.add(labeled("Text outgoing", swatchRow(outgoingSwatch)));
-        form.add(labeled("Text incoming", swatchRow(incomingSwatch)));
-        form.add(labeled("Text size", textSize));
+        addRow(form, labeled("Local callsign", callsign));
+        addRow(form, line);
+        addRow(form, message);
+        addRow(form, listenOnStart);
+        addRow(form, autoConnectTnc);
+        addRow(form, onlyOneArqWindow);
+        addRow(form, closeFecOnArqLink);
+        addRow(form, labeled("Canned handover text", handover));
+        addRow(form, labeled("Canned disconnect text", disconnect));
+        addRow(form, labeled("Away Msg", new JScrollPane(awayMsg)));
+        addRow(form, labeled("Canned CQ text", new JScrollPane(cannedCqArea)));
+        addRow(form, cqRepeatRow);
+        addRow(form, labeled("CQ Footer", new JScrollPane(cqFooterArea)));
+        addRow(form, labeled("Wrap columns", wrap));
+        addRow(form, labeled("Text outgoing", swatchRow(outgoingSwatch)));
+        addRow(form, labeled("Text incoming", swatchRow(incomingSwatch)));
+        addRow(form, labeled("Text size", textSize));
 
         boolean[] committed = {false};
         JButton save = new JButton("Save");
@@ -115,8 +131,10 @@ public final class ProgramSettingsDialog extends JDialog {
             config.setCloseFecOnArqLink(closeFecOnArqLink.isSelected());
             config.setCannedHandoverText(handover.getText());
             config.setCannedDisconnectText(disconnect.getText());
-            config.setCannedCqText(cannedCq.getText());
-            config.setCqRepeat((Integer) cqRepeat.getValue());
+            config.setCannedCqText(cannedCqArea.getText());
+            config.setCannedCqFooter(cqFooterArea.getText());
+            config.setAwayMsg(awayMsg.getText());
+            config.setCqRepeat((Integer) cqRepeatSpinner.getValue());
             try {
                 config.setWrapColumns(Integer.parseInt(wrap.getText().trim()));
             } catch (NumberFormatException ignored) {
@@ -136,23 +154,57 @@ public final class ProgramSettingsDialog extends JDialog {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
+                app.detachProgramSettings(ProgramSettingsDialog.this);
                 if (!committed[0]) {
                     config.setTextSize(originalTextSize);
                     app.applyChatFont();
                 }
             }
         });
+        app.attachProgramSettings(this);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttons.add(cancel);
         buttons.add(save);
 
+        JScrollPane formScroll = new JScrollPane(form,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        formScroll.setBorder(new EmptyBorder(0, 0, 0, 0));
+        formScroll.getVerticalScrollBar().setUnitIncrement(16);
+        formScroll.setPreferredSize(new Dimension(520, 560));
+
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
-        add(form, BorderLayout.CENTER);
+        add(formScroll, BorderLayout.CENTER);
         add(buttons, BorderLayout.SOUTH);
         pack();
         setLocationRelativeTo(owner);
+    }
+
+    /** Push a CQ-editor save into the open settings fields so a later Save keeps it. */
+    public void showSavedCq(String canned, String footer, int repeat) {
+        cannedCqArea.setText(canned == null ? "" : canned);
+        cqFooterArea.setText(footer == null ? "" : footer);
+        cqRepeatSpinner.setValue(repeat);
+    }
+
+    private static JTextArea multiline(String text, String tip) {
+        JTextArea area = new JTextArea(text == null ? "" : text, 3, 24);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        area.setToolTipText(tip);
+        return area;
+    }
+
+    private static void addRow(JPanel form, Component row) {
+        if (row instanceof JComponent component) {
+            component.setAlignmentX(Component.LEFT_ALIGNMENT);
+            Dimension pref = component.getPreferredSize();
+            component.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(pref.height, 1)));
+        }
+        form.add(row);
     }
 
     private static JPanel labeled(String label, java.awt.Component field) {

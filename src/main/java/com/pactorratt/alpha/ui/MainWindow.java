@@ -3,6 +3,7 @@ package com.pactorratt.alpha.ui;
 import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.app.AppMode;
 import com.pactorratt.alpha.config.AppConfig;
+import com.pactorratt.alpha.config.Buddy;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -100,7 +101,22 @@ public final class MainWindow extends JFrame {
     private final DefaultMutableTreeNode mentionedNode = new DefaultMutableTreeNode(NODE_MENTIONED);
     private final DefaultMutableTreeNode connectNode = new DefaultMutableTreeNode(NODE_CONNECT);
     private final DefaultTreeModel treeModel = new DefaultTreeModel(root);
-    private final JTree stationTree = new JTree(treeModel);
+    private final JTree stationTree = new JTree(treeModel) {
+        @Override
+        public String getToolTipText(MouseEvent event) {
+            if (event == null) {
+                return null;
+            }
+            TreePath path = getPathForLocation(event.getX(), event.getY());
+            if (path == null || !(path.getLastPathComponent() instanceof DefaultMutableTreeNode node)) {
+                return null;
+            }
+            if (node.getUserObject() instanceof Buddy buddy) {
+                return buddy.tooltip();
+            }
+            return null;
+        }
+    };
 
     private boolean suppressListenCallback;
     private boolean suppressExpandPersist;
@@ -478,7 +494,21 @@ public final class MainWindow extends JFrame {
         stationTree.setRootVisible(false);
         stationTree.setShowsRootHandles(true);
         stationTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
-        DefaultTreeCellRenderer renderer = new DefaultTreeCellRenderer();
+        stationTree.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        ToolTipManager.sharedInstance().registerComponent(stationTree);
+        DefaultTreeCellRenderer renderer = new DefaultTreeCellRenderer() {
+            @Override
+            public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
+                    boolean expanded, boolean leaf, int row, boolean hasFocus) {
+                Component c = super.getTreeCellRendererComponent(
+                        tree, value, sel, expanded, leaf, row, hasFocus);
+                if (value instanceof DefaultMutableTreeNode node && node.getUserObject() instanceof Buddy buddy) {
+                    setText(buddy.listLabel());
+                }
+                setFont(tree.getFont());
+                return c;
+            }
+        };
         renderer.setOpenIcon(null);
         renderer.setClosedIcon(null);
         renderer.setLeafIcon(null);
@@ -508,7 +538,7 @@ public final class MainWindow extends JFrame {
                         && !NODE_CONNECT.equals(category)) {
                     return;
                 }
-                String call = String.valueOf(node.getUserObject());
+                String call = callOf(node);
                 if (call.startsWith("(")) {
                     return; // placeholder text
                 }
@@ -550,6 +580,33 @@ public final class MainWindow extends JFrame {
         JPanel callRow = leftAlignedRow();
         callRow.add(new JLabel("Callsign:"));
         callsignField.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+        callsignField.addMouseListener(new MouseAdapter() {
+            private void showAddBuddyMenu(MouseEvent e) {
+                if (!e.isPopupTrigger()) {
+                    return;
+                }
+                JPopupMenu menu = new JPopupMenu();
+                JMenuItem add = new JMenuItem("Add Buddy");
+                String raw = callsignField.getText() == null ? "" : callsignField.getText().trim();
+                if (raw.startsWith("!")) {
+                    raw = raw.substring(1).trim();
+                }
+                add.setEnabled(!raw.isEmpty());
+                add.addActionListener(ev -> addBuddyFromCallsignBox());
+                menu.add(add);
+                menu.show(callsignField, e.getX(), e.getY());
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                showAddBuddyMenu(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                showAddBuddyMenu(e);
+            }
+        });
         callRow.add(callsignField);
         JLabel lpLabel = new JLabel("Longpath?");
         longpathToggle.setOpaque(false);
@@ -685,7 +742,7 @@ public final class MainWindow extends JFrame {
         if (NODE_HEARD.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
             JMenuItem addBuddy = new JMenuItem("Move to buddies");
-            addBuddy.addActionListener(ev -> app.addBuddy(label));
+            addBuddy.addActionListener(ev -> showAddBuddyForCall(label));
             JMenuItem clear = new JMenuItem("Clear");
             clear.addActionListener(ev -> app.clearHeardCall(label));
             menu.add(addBuddy);
@@ -695,7 +752,7 @@ public final class MainWindow extends JFrame {
         if (NODE_MENTIONED.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
             JMenuItem addBuddy = new JMenuItem("Move to buddies");
-            addBuddy.addActionListener(ev -> app.addBuddy(label));
+            addBuddy.addActionListener(ev -> showAddBuddyForCall(label));
             JMenuItem clear = new JMenuItem("Clear");
             clear.addActionListener(ev -> app.clearMentionedCall(label));
             menu.add(addBuddy);
@@ -705,7 +762,7 @@ public final class MainWindow extends JFrame {
         if (NODE_CONNECT.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
             JMenuItem addBuddy = new JMenuItem("Add buddy");
-            addBuddy.addActionListener(ev -> app.addBuddy(label));
+            addBuddy.addActionListener(ev -> showAddBuddyForCall(label));
             JMenuItem clear = new JMenuItem("Clear");
             clear.addActionListener(ev -> app.clearConnectCall(label));
             menu.add(addBuddy);
@@ -714,13 +771,19 @@ public final class MainWindow extends JFrame {
         }
         if (NODE_BUDDIES.equals(category)) {
             JPopupMenu menu = new JPopupMenu();
+            String call = callOf(node);
+            Buddy buddy = node.getUserObject() instanceof Buddy b ? b : app.findBuddy(call);
             JMenuItem add = new JMenuItem("Add buddy");
-            add.addActionListener(ev -> showAddBuddyDialog());
+            add.addActionListener(ev -> showAddBuddyDialog("", "", false));
+            JMenuItem edit = new JMenuItem("Edit name");
+            edit.addActionListener(ev -> showAddBuddyDialog(
+                    call, buddy == null ? "" : buddy.name(), true));
             JMenuItem top = new JMenuItem("Move to top");
-            top.addActionListener(ev -> app.moveBuddyToTop(label));
+            top.addActionListener(ev -> app.moveBuddyToTop(call));
             JMenuItem remove = new JMenuItem("Remove");
-            remove.addActionListener(ev -> app.removeBuddy(label));
+            remove.addActionListener(ev -> app.removeBuddy(call));
             menu.add(add);
+            menu.add(edit);
             menu.add(top);
             menu.add(remove);
             return menu;
@@ -728,25 +791,70 @@ public final class MainWindow extends JFrame {
         return null;
     }
 
+    private static String callOf(DefaultMutableTreeNode node) {
+        Object user = node.getUserObject();
+        if (user instanceof Buddy buddy) {
+            return buddy.callsign();
+        }
+        return String.valueOf(user);
+    }
+
+    /** Callsign-box menu. A blank box, or a box that is only {@code !}, does not open the dialog. */
+    private void addBuddyFromCallsignBox() {
+        String raw = callsignField.getText() == null ? "" : callsignField.getText().trim();
+        if (raw.startsWith("!")) {
+            raw = raw.substring(1).trim();
+        }
+        if (raw.isEmpty()) {
+            return;
+        }
+        showAddBuddyForCall(raw);
+    }
+
+    /** Opens Add Buddy. An existing callsign locks the callsign and shows its saved name. */
+    private void showAddBuddyForCall(String call) {
+        Buddy existing = app.findBuddy(call);
+        if (existing != null) {
+            showAddBuddyDialog(existing.callsign(), existing.name(), true);
+        } else {
+            showAddBuddyDialog(call, "", false);
+        }
+    }
+
     private void showAddBuddyDialog() {
-        JDialog dialog = new JDialog(this, "Add buddy", Dialog.ModalityType.APPLICATION_MODAL);
-        JTextField field = new JTextField(16);
+        showAddBuddyDialog("", "", false);
+    }
+
+    private void showAddBuddyDialog(String presetCall, String presetName, boolean lockCall) {
+        JDialog dialog = new JDialog(this, lockCall ? "Edit buddy" : "Add buddy",
+                Dialog.ModalityType.APPLICATION_MODAL);
+        JTextField callField = new JTextField(presetCall == null ? "" : presetCall, 16);
+        callField.setEditable(!lockCall);
+        JTextField nameField = new JTextField(presetName == null ? "" : presetName, 16);
+        JLabel warning = new JLabel(" ");
+        warning.setForeground(new java.awt.Color(160, 0, 0));
         JButton ok = new JButton("OK");
         JButton cancel = new JButton("Cancel");
         ok.addActionListener(e -> {
-            String text = field.getText();
-            dialog.dispose();
-            if (text != null && !text.isBlank()) {
-                app.addBuddy(text);
+            String error = app.saveBuddy(callField.getText(), nameField.getText());
+            if (error != null) {
+                warning.setText(error);
+                dialog.pack();
+                return;
             }
+            dialog.dispose();
         });
         cancel.addActionListener(e -> dialog.dispose());
-        field.addActionListener(e -> ok.doClick());
+        nameField.addActionListener(e -> ok.doClick());
+        if (!lockCall) {
+            callField.addActionListener(e -> nameField.requestFocusInWindow());
+        }
 
-        JPanel form = new JPanel(new BorderLayout(6, 0));
+        JPanel form = new JPanel(new GridLayout(0, 1, 0, 6));
         form.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
-        form.add(new JLabel("Callsign:"), BorderLayout.WEST);
-        form.add(field, BorderLayout.CENTER);
+        form.add(labeledBuddyRow("Callsign:", callField));
+        form.add(labeledBuddyRow("Name:", nameField));
+        form.add(warning);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttons.add(cancel);
@@ -759,7 +867,21 @@ public final class MainWindow extends JFrame {
         dialog.pack();
         dialog.setResizable(false);
         dialog.setLocationRelativeTo(this);
+        JTextField focus = presetCall != null && !presetCall.isBlank() ? nameField : callField;
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                focus.requestFocusInWindow();
+            }
+        });
         dialog.setVisible(true);
+    }
+
+    private static JPanel labeledBuddyRow(String label, JTextField field) {
+        JPanel row = new JPanel(new BorderLayout(6, 0));
+        row.add(new JLabel(label), BorderLayout.WEST);
+        row.add(field, BorderLayout.CENTER);
+        return row;
     }
 
     private void fillCallBranch(DefaultMutableTreeNode branch, List<String> calls) {
@@ -808,12 +930,12 @@ public final class MainWindow extends JFrame {
         buddiesNode.removeAllChildren();
         try {
             app.configStore().ensureBuddiesFile();
-            List<String> calls = app.configStore().loadBuddyList();
-            if (calls.isEmpty()) {
+            List<Buddy> buddies = app.configStore().loadBuddyList();
+            if (buddies.isEmpty()) {
                 buddiesNode.add(new DefaultMutableTreeNode("(no buddies yet)"));
             } else {
-                for (String call : calls) {
-                    buddiesNode.add(new DefaultMutableTreeNode(call));
+                for (Buddy buddy : buddies) {
+                    buddiesNode.add(new DefaultMutableTreeNode(buddy));
                 }
             }
         } catch (Exception e) {

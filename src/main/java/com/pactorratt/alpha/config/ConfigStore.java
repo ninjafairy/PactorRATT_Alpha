@@ -16,12 +16,8 @@ import java.util.Map;
  */
 public final class ConfigStore {
 
-    private static final String DEFAULT_BUDDIES_JSON = """
-            [
-              "N0CALL",
-              "KJ7RBS"
-            ]
-            """;
+    /** New installs: one {@code CALLSIGN|Name} line. Blank name keeps the delimiter. */
+    private static final String DEFAULT_BUDDIES = "N0CALL|\r\nKJ7RBS|\r\n";
 
     public static final int MONITOR_LIST_CAP = 12;
 
@@ -139,66 +135,87 @@ public final class ConfigStore {
         Files.writeString(settingsFile, toJson(config), StandardCharsets.UTF_8);
     }
 
-    /** Existing {@code buddies.json} order; empty if missing after {@link #ensureBuddiesFile}. */
-    public List<String> loadBuddyList() {
-        List<String> calls = new ArrayList<>();
+    /**
+     * Existing {@code buddies.json} order. A JSON array is read as callsigns with blank
+     * names and rewritten as {@code CALLSIGN|Name} lines. Empty if missing.
+     */
+    public List<Buddy> loadBuddyList() {
+        List<Buddy> buddies = new ArrayList<>();
         if (!Files.isRegularFile(buddiesFile)) {
-            return calls;
+            return buddies;
         }
         try {
-            String text = Files.readString(buddiesFile, StandardCharsets.UTF_8).trim();
-            if (text.startsWith("[")) {
-                String body = text.substring(1, text.endsWith("]") ? text.length() - 1 : text.length());
+            String text = Files.readString(buddiesFile, StandardCharsets.UTF_8);
+            String trimmed = text.trim();
+            if (trimmed.startsWith("[")) {
+                String body = trimmed.substring(1, trimmed.endsWith("]") ? trimmed.length() - 1 : trimmed.length());
                 for (String part : body.split(",")) {
                     String s = part.trim();
                     if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
-                        appendBuddyCall(calls, s.substring(1, s.length() - 1));
+                        appendBuddy(buddies, s.substring(1, s.length() - 1), "");
                     }
+                }
+                try {
+                    saveBuddyList(buddies);
+                } catch (IOException ignored) {
+                    // Keep the in-memory list if the rewrite fails.
                 }
             } else {
                 for (String line : text.split("\\R")) {
                     String s = line.trim();
-                    if (!s.isEmpty() && !s.startsWith("#")) {
-                        appendBuddyCall(calls, s);
+                    if (s.isEmpty() || s.startsWith("#")) {
+                        continue;
+                    }
+                    int bar = s.indexOf('|');
+                    if (bar < 0) {
+                        appendBuddy(buddies, s, "");
+                    } else {
+                        appendBuddy(buddies, s.substring(0, bar), s.substring(bar + 1));
                     }
                 }
             }
         } catch (IOException ignored) {
-            return calls;
+            return buddies;
         }
-        return calls;
+        return buddies;
     }
 
-    public void saveBuddyList(List<String> calls) throws IOException {
+    public void saveBuddyList(List<Buddy> buddies) throws IOException {
         Files.createDirectories(buddiesFile.getParent());
-        List<String> unique = new ArrayList<>();
-        if (calls != null) {
-            for (String call : calls) {
-                appendBuddyCall(unique, call);
+        List<Buddy> unique = new ArrayList<>();
+        if (buddies != null) {
+            for (Buddy buddy : buddies) {
+                if (buddy != null) {
+                    appendBuddy(unique, buddy.callsign(), buddy.name());
+                }
             }
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("[\r\n");
-        for (int i = 0; i < unique.size(); i++) {
-            sb.append("  \"").append(escape(unique.get(i))).append('"');
-            if (i + 1 < unique.size()) {
-                sb.append(',');
-            }
-            sb.append("\r\n");
+        for (Buddy buddy : unique) {
+            sb.append(buddy.callsign()).append('|').append(buddy.name()).append("\r\n");
         }
-        sb.append("]\r\n");
         Files.writeString(buddiesFile, sb.toString(), StandardCharsets.UTF_8);
     }
 
-    private static void appendBuddyCall(List<String> calls, String raw) {
-        if (raw == null) {
+    private static void appendBuddy(List<Buddy> buddies, String rawCall, String rawName) {
+        if (rawCall == null) {
             return;
         }
-        String call = raw.trim().toUpperCase(Locale.ROOT);
-        if (call.isEmpty() || calls.contains(call)) {
+        String call = rawCall.trim().toUpperCase(Locale.ROOT).replace("|", "");
+        if (call.isEmpty() || indexOfBuddy(buddies, call) >= 0) {
             return;
         }
-        calls.add(call);
+        String name = rawName == null ? "" : rawName.trim().replace("|", "").replace("\r", "").replace("\n", "");
+        buddies.add(new Buddy(call, name));
+    }
+
+    private static int indexOfBuddy(List<Buddy> buddies, String call) {
+        for (int i = 0; i < buddies.size(); i++) {
+            if (call.equals(buddies.get(i).callsign())) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Creates {@code config/buddies.json} with defaults if the file is missing (CRLF endings). */
@@ -207,8 +224,7 @@ public final class ConfigStore {
             return;
         }
         Files.createDirectories(buddiesFile.getParent());
-        String crlf = DEFAULT_BUDDIES_JSON.replace("\r\n", "\n").replace("\n", "\r\n");
-        Files.writeString(buddiesFile, crlf, StandardCharsets.UTF_8);
+        Files.writeString(buddiesFile, DEFAULT_BUDDIES, StandardCharsets.UTF_8);
     }
 
     private static String toJson(AppConfig c) {
@@ -231,6 +247,8 @@ public final class ConfigStore {
         append(sb, "cannedHandoverText", c.getCannedHandoverText(), true);
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
         append(sb, "cannedCqText", c.getCannedCqText(), true);
+        append(sb, "cannedCqFooter", c.getCannedCqFooter(), true);
+        append(sb, "awayMsg", c.getAwayMsg(), true);
         append(sb, "wrapColumns", c.getWrapColumns());
         append(sb, "outgoingText", AppConfig.formatColor(c.getOutgoingText()), true);
         append(sb, "incomingText", AppConfig.formatColor(c.getIncomingText()), true);
@@ -271,7 +289,14 @@ public final class ConfigStore {
     }
 
     private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r\n", "\\n")
+                .replace("\n", "\\n")
+                .replace("\r", "\\n");
     }
 
     private static void apply(AppConfig config, Map<String, String> map) {
@@ -332,6 +357,12 @@ public final class ConfigStore {
         if (map.containsKey("cannedCqText")) {
             config.setCannedCqText(map.get("cannedCqText"));
         }
+        if (map.containsKey("cannedCqFooter")) {
+            config.setCannedCqFooter(map.get("cannedCqFooter"));
+        }
+        if (map.containsKey("awayMsg")) {
+            config.setAwayMsg(map.get("awayMsg"));
+        }
         if (map.containsKey("wrapColumns")) {
             config.setWrapColumns(parseInt(map.get("wrapColumns"), 80));
         }
@@ -389,7 +420,11 @@ public final class ConfigStore {
         for (int i = 0; i < body.length(); i++) {
             char c = body.charAt(i);
             if (escape) {
-                token.append(c);
+                if (c == 'n' || c == 'r') {
+                    token.append('\n');
+                } else {
+                    token.append(c);
+                }
                 escape = false;
                 continue;
             }

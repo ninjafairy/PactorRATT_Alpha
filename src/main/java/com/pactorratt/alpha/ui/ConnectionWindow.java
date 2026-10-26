@@ -1,11 +1,15 @@
 package com.pactorratt.alpha.ui;
 
 import com.pactorratt.alpha.app.AppController;
+import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.CommitMode;
 import com.pactorratt.alpha.config.MacroFile;
 import com.pactorratt.alpha.hostmode.CallsignLineParser;
 
 import javax.swing.BorderFactory;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JSlider;
 import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.BoxLayout;
@@ -32,6 +36,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.WindowConstants;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.text.AttributeSet;
@@ -47,6 +53,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Dialog;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagLayout;
@@ -62,6 +69,8 @@ import java.awt.LayoutManager;
 import java.awt.RenderingHints;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.event.KeyEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -140,6 +149,14 @@ public final class ConnectionWindow extends JFrame {
     private boolean mailboxUiClosed;
     private final List<JButton> controlButtons = new ArrayList<>();
     private JButton abortButton;
+    /** FEC only. Session state; not saved. Checked means the next new ARQ window loads Away Msg. */
+    private JCheckBox awayCheck;
+    /** Set when this ARQ window minimized FEC. Closing it puts FEC back on these bounds. */
+    private boolean restoreFecOnClose;
+    /** Set when Close FEC on ARQ link disposed FEC. Listen on start may open a new FEC window. */
+    private boolean reopenListenOnClose;
+    /** Last non-iconified bounds. Iconified {@link #getBounds()} is not the restored frame. */
+    private Rectangle restoredBounds;
     /** ARQ only. Stays enabled while IRS or a handover hold is active. */
     private JButton seizeButton;
     /** Listen only. Chosen on the window; not saved. */
@@ -226,7 +243,20 @@ public final class ConnectionWindow extends JFrame {
                 kind == Kind.LISTEN ? app.config().getWindowFec() : app.config().getWindowArq(),
                 WindowPlacement.CONNECTION_WIDTH,
                 WindowPlacement.CONNECTION_HEIGHT);
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                captureRestoredBounds();
+            }
+
+            @Override
+            public void componentResized(ComponentEvent e) {
+                captureRestoredBounds();
+            }
+        });
+        captureRestoredBounds();
         applyConnectionMinimumWidth();
+        applyControlLocks();
         if (kind == Kind.ARQ) {
             beginTmailMailboxCheck();
         }
@@ -319,18 +349,31 @@ public final class ConnectionWindow extends JFrame {
 
     /**
      * ARQ: while IRS or a handover hold, only Abort and Seize stay enabled.
-     * Save transcript is not in {@link #controlButtons}. Listen keeps its own rule.
+     * A dead ARQ link disables Abort. FEC Abort is enabled only while this app is
+     * sending FEC and no ARQ link is active. Save transcript is not in {@link #controlButtons}.
      */
     private void applyControlLocks() {
         boolean holdControls = kind == Kind.ARQ && sessionActive && (localIsIrs || handoverLocked);
+        boolean fecAbort = kind == Kind.LISTEN && app.isFecSendInProgress() && !app.hasActiveArq();
         for (JButton b : controlButtons) {
-            if (b == abortButton || b == seizeButton) {
-                boolean abortAlways = b == abortButton && (kind == Kind.LISTEN || statusPreview);
-                b.setEnabled(abortAlways || sessionActive);
+            if (b == abortButton && statusPreview) {
+                b.setEnabled(true);
+            } else if (b == abortButton && kind == Kind.LISTEN) {
+                if (!fecAbort && abortArm == AbortArm.ARMED) {
+                    restoreAbortIdle();
+                }
+                b.setEnabled(fecAbort);
+            } else if (b == abortButton || b == seizeButton) {
+                b.setEnabled(sessionActive);
             } else {
                 b.setEnabled(sessionActive && !holdControls);
             }
         }
+    }
+
+    /** EDT. Re-apply Abort and the other control locks after a FEC send starts or ends. */
+    public void refreshControlLocks() {
+        applyControlLocks();
     }
 
     /** IRS, or a handover that has not yet been consumed. Chat stays in App TX. */
@@ -654,6 +697,7 @@ public final class ConnectionWindow extends JFrame {
     public void setBounds(int x, int y, int width, int height) {
         int[] clamped = WindowPlacement.clampWidth(this, x, width, CONNECTION_MIN_WIDTH);
         super.setBounds(clamped[0], y, clamped[1], height);
+        captureRestoredBounds();
     }
 
     /** ARQ and FEC cannot be narrowed past the control boxes. */
@@ -716,12 +760,34 @@ public final class ConnectionWindow extends JFrame {
             EdgeJustifiedPanel split = new EdgeJustifiedPanel();
             addControl(split.left(), "Send FEC", "FEC mode command → buffer → CTRL-D end",
                     this::fecEndTx);
-            addControl(split.left(), "CQ",
-                    "Canned CQ text × CQ repeat (Program settings) → FEC mode command + CTRL-D",
+            JButton cq = addControl(split.left(), "CQ",
+                    "Canned CQ block × CQ repeat, then CQ Footer. Right-click to edit.",
                     this::sendCq);
+            cq.addMouseListener(new MouseAdapter() {
+                private void showEditor(MouseEvent e) {
+                    if (e.isPopupTrigger()) {
+                        showCqEditor();
+                    }
+                }
+
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    showEditor(e);
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    showEditor(e);
+                }
+            });
             split.left().add(fecModeBox());
+            awayCheck = new JCheckBox("Away");
+            awayCheck.setOpaque(false);
+            awayCheck.setToolTipText(
+                    "When checked, the next new ARQ window loads Away Msg into its TX buffer.");
+            split.right().add(awayCheck);
             addAbortControl(split.right(),
-                    "Abort FEC transmit (TC, then PN). Window stays open. Press twice.",
+                    "Abort FEC transmit (TC, then PN). Enabled only while FEC is sending. Press twice.",
                     this::onAbortPressed);
             split.right().add(saveTranscriptButton());
             p = split;
@@ -1517,12 +1583,11 @@ public final class ConnectionWindow extends JFrame {
         if (kind == Kind.ARQ && !sessionActive && !statusPreview) {
             return;
         }
-        if (abortArm == AbortArm.ARMED) {
-            confirmAbortPress();
+        if (kind == Kind.LISTEN && (!app.isFecSendInProgress() || app.hasActiveArq())) {
             return;
         }
-        if (kind == Kind.LISTEN && app.hasActiveArq()) {
-            showNotice("Abort — unavailable while ARQ is up.");
+        if (abortArm == AbortArm.ARMED) {
+            confirmAbortPress();
             return;
         }
         startAbortArm();
@@ -1588,8 +1653,7 @@ public final class ConnectionWindow extends JFrame {
             restoreAbortIdle();
             return;
         }
-        if (kind == Kind.LISTEN && app.hasActiveArq()) {
-            showNotice("Abort — unavailable while ARQ is up.");
+        if (kind == Kind.LISTEN && (!app.isFecSendInProgress() || app.hasActiveArq())) {
             restoreAbortIdle();
             return;
         }
@@ -1691,12 +1755,167 @@ public final class ConnectionWindow extends JFrame {
 
     /** Write this window's bounds into the matching settings slot. Does not save the file. */
     public void rememberBounds() {
-        String bounds = WindowPlacement.capture(this);
+        Rectangle bounds = placementBounds();
+        String saved = bounds.x + "," + bounds.y + "," + bounds.width + "," + bounds.height;
         if (kind == Kind.LISTEN) {
-            app.config().setWindowFec(bounds);
+            app.config().setWindowFec(saved);
         } else {
-            app.config().setWindowArq(bounds);
+            app.config().setWindowArq(saved);
         }
+    }
+
+    private void captureRestoredBounds() {
+        if ((getExtendedState() & ICONIFIED) != 0) {
+            return;
+        }
+        if (getWidth() <= 0 || getHeight() <= 0) {
+            return;
+        }
+        restoredBounds = getBounds();
+    }
+
+    /** Normal frame rectangle, including while this window is minimized. */
+    public Rectangle placementBounds() {
+        if ((getExtendedState() & ICONIFIED) != 0 && restoredBounds != null) {
+            return new Rectangle(restoredBounds);
+        }
+        if (getWidth() > 0 && getHeight() > 0) {
+            return getBounds();
+        }
+        return restoredBounds == null ? getBounds() : new Rectangle(restoredBounds);
+    }
+
+    public boolean isMinimized() {
+        return (getExtendedState() & ICONIFIED) != 0;
+    }
+
+    public void minimizeToTaskbar() {
+        setExtendedState(getExtendedState() | ICONIFIED);
+    }
+
+    /** Leave the taskbar and, when {@code bounds} is set, take that size and position. */
+    public void restoreAt(Rectangle bounds) {
+        setExtendedState(NORMAL);
+        if (bounds != null) {
+            setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+        setVisible(true);
+        toFront();
+    }
+
+    public boolean isAwayChecked() {
+        return awayCheck != null && awayCheck.isSelected();
+    }
+
+    /** Place Away Msg in an empty TX buffer. Does not send. */
+    public void preloadAwayText(String text) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        appTxBuffer.setText(text.replace("\r\n", "\n").replace('\r', '\n'));
+    }
+
+    public void setRestoreFecOnClose(boolean restoreFecOnClose) {
+        this.restoreFecOnClose = restoreFecOnClose;
+    }
+
+    public boolean restoresFecOnClose() {
+        return restoreFecOnClose;
+    }
+
+    public void setReopenListenOnClose(boolean reopenListenOnClose) {
+        this.reopenListenOnClose = reopenListenOnClose;
+    }
+
+    public boolean reopensListenOnClose() {
+        return reopenListenOnClose;
+    }
+
+    /** Right-click CQ. Save writes settings immediately. Cancel discards. */
+    private void showCqEditor() {
+        AppConfig config = app.config();
+        JDialog dialog = new JDialog(this, "CQ", Dialog.ModalityType.APPLICATION_MODAL);
+        JTextArea canned = cqEditorArea(config.getCannedCqText());
+        JTextArea footer = cqEditorArea(config.getCannedCqFooter());
+        JSlider repeats = new JSlider(1, 10, config.getCqRepeat());
+        repeats.setMajorTickSpacing(1);
+        repeats.setPaintTicks(true);
+        repeats.setPaintLabels(true);
+        repeats.setSnapToTicks(true);
+        repeats.setLabelTable(repeats.createStandardLabels(1));
+        JTextArea preview = cqEditorArea("");
+        preview.setEditable(false);
+        preview.setBackground(UiColors.TRANSCRIPT_BG);
+        Runnable refreshPreview = () -> preview.setText(AppConfig.cqPayload(
+                canned.getText(), footer.getText(), repeats.getValue()));
+        DocumentListener live = new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                refreshPreview.run();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                refreshPreview.run();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                refreshPreview.run();
+            }
+        };
+        canned.getDocument().addDocumentListener(live);
+        footer.getDocument().addDocumentListener(live);
+        repeats.addChangeListener(e -> refreshPreview.run());
+        refreshPreview.run();
+
+        JPanel form = new JPanel();
+        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+        form.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        form.add(cqEditorBlock("Canned CQ text", canned));
+        form.add(cqEditorBlock("CQ Footer", footer));
+        JPanel sliderRow = new JPanel(new BorderLayout(6, 0));
+        sliderRow.setOpaque(false);
+        sliderRow.add(new JLabel("CQ Repeats"), BorderLayout.NORTH);
+        sliderRow.add(repeats, BorderLayout.CENTER);
+        form.add(sliderRow);
+        form.add(cqEditorBlock("Preview", preview));
+
+        JButton save = new JButton("Save");
+        JButton cancel = new JButton("Cancel");
+        save.addActionListener(e -> {
+            app.saveCqSettings(canned.getText(), footer.getText(), repeats.getValue());
+            dialog.dispose();
+        });
+        cancel.addActionListener(e -> dialog.dispose());
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttons.add(cancel);
+        buttons.add(save);
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(form, BorderLayout.CENTER);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(save);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private static JTextArea cqEditorArea(String text) {
+        JTextArea area = new JTextArea(text == null ? "" : text, 3, 28);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
+        return area;
+    }
+
+    private static JPanel cqEditorBlock(String label, JTextArea area) {
+        JPanel block = new JPanel(new BorderLayout(0, 4));
+        block.setOpaque(false);
+        block.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        block.add(new JLabel(label), BorderLayout.NORTH);
+        block.add(new JScrollPane(area), BorderLayout.CENTER);
+        return block;
     }
 
     private void saveChat() {

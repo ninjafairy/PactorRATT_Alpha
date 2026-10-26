@@ -46,13 +46,17 @@ public final class AppConfig {
     private boolean closeFecOnArqLink = false;
     private String cannedHandoverText = "KKK";
     private String cannedDisconnectText = "SK";
-    /** Listen CQ button payload (one copy per {@link #cqRepeat} line). */
+    /** Listen CQ body. Repeated {@link #cqRepeat} times, then {@link #cannedCqFooter}. */
     private String cannedCqText = "";
+    /** Sent once after the repeated CQ block. Sent alone when the canned block is blank. */
+    private String cannedCqFooter = "";
     /**
-     * How many times the Listen CQ button sends {@link #cannedCqText}. Range 0–10;
-     * {@code 0} means the button sends nothing.
+     * How many times the Listen CQ button sends {@link #cannedCqText}. Range 1–10.
+     * A stored 0 is clamped to 1. A blank canned block sends the footer once.
      */
     private int cqRepeat = 1;
+    /** Preloaded into a new ARQ window's TX buffer when the FEC Away box is checked. */
+    private String awayMsg = "";
     private int wrapColumns = 80;
     private Color outgoingText = DEFAULT_OUTGOING_TEXT;
     private Color incomingText = DEFAULT_INCOMING_TEXT;
@@ -204,14 +208,30 @@ public final class AppConfig {
         this.cannedCqText = cannedCqText == null ? "" : cannedCqText;
     }
 
+    public String getCannedCqFooter() {
+        return cannedCqFooter;
+    }
+
+    public void setCannedCqFooter(String cannedCqFooter) {
+        this.cannedCqFooter = cannedCqFooter == null ? "" : cannedCqFooter;
+    }
+
+    public String getAwayMsg() {
+        return awayMsg;
+    }
+
+    public void setAwayMsg(String awayMsg) {
+        this.awayMsg = awayMsg == null ? "" : awayMsg;
+    }
+
     public int getCqRepeat() {
         return cqRepeat;
     }
 
-    /** Clamps to 0–10 (Listen CQ copies; 0 = send nothing). */
+    /** Clamps to 1–10. Values below 1, including a stored 0, become 1. */
     public void setCqRepeat(int cqRepeat) {
-        if (cqRepeat < 0) {
-            this.cqRepeat = 0;
+        if (cqRepeat < 1) {
+            this.cqRepeat = 1;
         } else if (cqRepeat > 10) {
             this.cqRepeat = 10;
         } else {
@@ -220,19 +240,41 @@ public final class AppConfig {
     }
 
     /**
-     * Listen CQ payload: canned text copied {@link #cqRepeat} times, each copy on its own
-     * line. Empty if the canned string is blank or repeat is 0.
+     * Listen CQ payload from the saved canned text, footer, and repeat.
+     * Empty when both strings are blank.
      */
     public String cqFecPayload() {
-        if (cqRepeat <= 0) {
+        return cqPayload(cannedCqText, cannedCqFooter, cqRepeat);
+    }
+
+    /**
+     * Canned block repeated {@code repeat} times, then the footer once.
+     * A newline is added between copies only when the block does not already end with one.
+     * A blank canned block sends the footer once. Both blank sends nothing.
+     */
+    public static String cqPayload(String cannedText, String footerText, int repeat) {
+        int copies = repeat < 1 ? 1 : Math.min(repeat, 10);
+        String canned = normalizeNewlines(cannedText);
+        String footer = normalizeNewlines(footerText);
+        if (canned.isBlank() && footer.isBlank()) {
             return "";
         }
-        String canned = cannedCqText == null ? "" : cannedCqText.replace("\r\n", "\n").replace('\r', '\n');
         if (canned.isBlank()) {
-            return "";
+            return footer.endsWith("\n") ? footer : footer + "\n";
         }
         String block = canned.endsWith("\n") ? canned : canned + "\n";
-        return block.repeat(cqRepeat);
+        String repeated = block.repeat(copies);
+        if (footer.isBlank()) {
+            return repeated;
+        }
+        return footer.endsWith("\n") ? repeated + footer : repeated + footer + "\n";
+    }
+
+    private static String normalizeNewlines(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return text.replace("\r\n", "\n").replace('\r', '\n');
     }
 
     public int getWrapColumns() {

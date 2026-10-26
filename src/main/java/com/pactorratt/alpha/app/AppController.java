@@ -1,6 +1,7 @@
 package com.pactorratt.alpha.app;
 
 import com.pactorratt.alpha.config.AppConfig;
+import com.pactorratt.alpha.config.Buddy;
 import com.pactorratt.alpha.config.ConfigStore;
 import com.pactorratt.alpha.config.HostCommandIni;
 import com.pactorratt.alpha.config.MacroFile;
@@ -22,6 +23,7 @@ import com.pactorratt.alpha.ui.DebugSettingsDialog;
 import com.pactorratt.alpha.ui.DisplayMonitorWindow;
 import com.pactorratt.alpha.ui.MainWindow;
 import com.pactorratt.alpha.ui.PdBugCheckWindow;
+import com.pactorratt.alpha.ui.ProgramSettingsDialog;
 import com.pactorratt.alpha.ui.StatusMonitorWindow;
 import com.pactorratt.alpha.ui.Ubit10MonitorWindow;
 import com.pactorratt.alpha.ui.UiColors;
@@ -39,6 +41,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -107,6 +110,8 @@ public final class AppController {
 
     private MainWindow mainWindow;
     private ConnectionWindow listenWindow;
+    /** Open Program settings dialog, so a CQ-editor Save can refresh its fields. */
+    private ProgramSettingsDialog programSettings;
     private volatile ConnectionWindow activeArqWindow;
     private DebugMonitorWindow debugMonitorWindow;
     private StatusMonitorWindow statusMonitorWindow;
@@ -290,24 +295,64 @@ public final class AppController {
         }
     }
 
-    public void addBuddy(String call) {
+    /** Null when {@code call} is not in the buddy list. */
+    public Buddy findBuddy(String call) {
         String u = normalizeListCall(call);
         if (u.isEmpty()) {
-            return;
+            return null;
         }
+        for (Buddy buddy : configStore.loadBuddyList()) {
+            if (u.equals(buddy.callsign())) {
+                return buddy;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Insert a new buddy at the top, or update an existing callsign's name in place.
+     * @return a warning to keep the dialog open, or null when saved
+     */
+    public String saveBuddy(String call, String name) {
+        if (call != null && call.indexOf('|') >= 0) {
+            return "Callsign cannot contain |.";
+        }
+        String u = normalizeListCall(call);
+        if (u.isEmpty()) {
+            return "Enter a callsign.";
+        }
+        if (u.indexOf('\n') >= 0 || u.indexOf('\r') >= 0) {
+            return "Callsign cannot contain a line break.";
+        }
+        String nameError = Buddy.nameError(name);
+        if (nameError != null) {
+            return nameError;
+        }
+        String cleanName = name == null ? "" : name.trim();
         try {
             configStore.ensureBuddiesFile();
-            List<String> buddies = configStore.loadBuddyList();
-            if (buddies.contains(u)) {
-                return;
+            List<Buddy> buddies = configStore.loadBuddyList();
+            int index = -1;
+            for (int i = 0; i < buddies.size(); i++) {
+                if (u.equals(buddies.get(i).callsign())) {
+                    index = i;
+                    break;
+                }
             }
-            buddies.add(0, u);
+            Buddy saved = new Buddy(u, cleanName);
+            if (index >= 0) {
+                buddies.set(index, saved);
+            } else {
+                buddies.add(0, saved);
+            }
             configStore.saveBuddyList(buddies);
             if (mainWindow != null) {
                 mainWindow.refreshBuddies();
             }
+            return null;
         } catch (IOException e) {
-            debugLog.info("Could not add buddy: " + e.getMessage());
+            debugLog.info("Could not save buddy: " + e.getMessage());
+            return "Could not save buddy.";
         }
     }
 
@@ -317,11 +362,19 @@ public final class AppController {
             return;
         }
         try {
-            List<String> buddies = configStore.loadBuddyList();
-            if (!buddies.remove(u)) {
+            List<Buddy> buddies = configStore.loadBuddyList();
+            int index = -1;
+            for (int i = 0; i < buddies.size(); i++) {
+                if (u.equals(buddies.get(i).callsign())) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) {
                 return;
             }
-            buddies.add(0, u);
+            Buddy buddy = buddies.remove(index);
+            buddies.add(0, buddy);
             configStore.saveBuddyList(buddies);
             if (mainWindow != null) {
                 mainWindow.refreshBuddies();
@@ -337,8 +390,8 @@ public final class AppController {
             return;
         }
         try {
-            List<String> buddies = configStore.loadBuddyList();
-            if (!buddies.remove(u)) {
+            List<Buddy> buddies = configStore.loadBuddyList();
+            if (!buddies.removeIf(buddy -> u.equals(buddy.callsign()))) {
                 return;
             }
             configStore.saveBuddyList(buddies);
@@ -1598,6 +1651,7 @@ public final class AppController {
             noticeWindow(window, action + " — already in progress.");
             return;
         }
+        refreshFecAbortLock();
 
         Thread worker = new Thread(() -> {
             String resultNotice = null;
@@ -1632,6 +1686,7 @@ public final class AppController {
                 debugLog.info(action + " failed: " + msg);
             } finally {
                 fecBusy.set(false);
+                refreshFecAbortLock();
                 if (!sent) {
                     runOnEdt(() -> {
                         if (mode == AppMode.UNPROTO) {
@@ -2663,6 +2718,59 @@ public final class AppController {
         WindowPlacement.restack(mainWindow, stack);
     }
 
+    public boolean isFecSendInProgress() {
+        return fecBusy.get();
+    }
+
+    /** EDT refresh of the FEC Abort button after {@link #fecBusy} changes. */
+    private void refreshFecAbortLock() {
+        runOnEdt(() -> {
+            if (listenWindow != null) {
+                listenWindow.refreshControlLocks();
+            }
+        });
+    }
+
+    public void attachProgramSettings(ProgramSettingsDialog dialog) {
+        programSettings = dialog;
+    }
+
+    public void detachProgramSettings(ProgramSettingsDialog dialog) {
+        if (programSettings == dialog) {
+            programSettings = null;
+        }
+    }
+
+    /** Write CQ text, footer, and repeat, and refresh Program settings if it is open. */
+    public void saveCqSettings(String canned, String footer, int repeat) {
+        config.setCannedCqText(canned);
+        config.setCannedCqFooter(footer);
+        config.setCqRepeat(repeat);
+        saveConfig();
+        if (programSettings != null && programSettings.isDisplayable()) {
+            programSettings.showSavedCq(
+                    config.getCannedCqText(), config.getCannedCqFooter(), config.getCqRepeat());
+        }
+    }
+
+    /**
+     * FEC/Monitor click while the window exists. Stays checked. Minimizes or restores.
+     * Does not send {@code Pt}.
+     */
+    private void toggleListenWindow() {
+        if (mainWindow != null) {
+            mainWindow.setListenToggleSilently(true);
+        }
+        if (listenWindow == null) {
+            return;
+        }
+        if (listenWindow.isMinimized()) {
+            listenWindow.restoreAt(null);
+        } else {
+            listenWindow.minimizeToTaskbar();
+        }
+    }
+
     public void saveConfig() {
         try {
             configStore.save(config);
@@ -2677,6 +2785,10 @@ public final class AppController {
     }
 
     public void setListenEnabled(boolean enabled) {
+        if (listenWindow != null && listenWindow.isDisplayable()) {
+            toggleListenWindow();
+            return;
+        }
         if (enabled) {
             if (mode == AppMode.ARQ || hasActiveArq()) {
                 // Spec: Listen window may exist but inactive while ARQ active. Do not send PN.
@@ -3230,18 +3342,45 @@ public final class AppController {
             return;
         }
         mode = AppMode.ARQ;
-        if (listenWindow != null) {
+        Rectangle fecBounds = null;
+        boolean away = false;
+        boolean restoreFec = false;
+        boolean reopenListen = false;
+        if (listenWindow != null && listenWindow.isDisplayable()) {
+            fecBounds = listenWindow.placementBounds();
+            away = listenWindow.isAwayChecked();
             if (config.isCloseFecOnArqLink()) {
+                reopenListen = config.isListenOnStart();
                 closeFecWindowForArqLink();
             } else {
                 listenWindow.setSessionActive(false);
                 listenWindow.showInactive();
+                listenWindow.minimizeToTaskbar();
+                if (mainWindow != null) {
+                    mainWindow.setListenToggleSilently(true);
+                }
+                restoreFec = true;
+            }
+        }
+        for (ConnectionWindow dead : deadArqWindows) {
+            if (dead != null) {
+                dead.setRestoreFecOnClose(false);
+                dead.setReopenListenOnClose(false);
             }
         }
         activeArqWindow = new ConnectionWindow(this, ConnectionWindow.Kind.ARQ, call);
+        activeArqWindow.setRestoreFecOnClose(restoreFec);
+        activeArqWindow.setReopenListenOnClose(reopenListen);
+        if (fecBounds != null) {
+            activeArqWindow.setBounds(fecBounds.x, fecBounds.y, fecBounds.width, fecBounds.height);
+        }
+        if (away) {
+            activeArqWindow.preloadAwayText(config.getAwayMsg());
+        }
         activeArqWindow.setSessionActive(true);
         activeArqWindow.setVisible(true);
         seedLinkStatus(activeArqWindow);
+        refreshFecAbortLock();
         if (mainWindow != null) {
             mainWindow.hideCallingDialog();
             mainWindow.refreshModeLabel();
@@ -3313,21 +3452,47 @@ public final class AppController {
             leaveListenHostIfPn();
             return;
         }
-        if (window == activeArqWindow) {
+        boolean tracked = window == activeArqWindow;
+        if (tracked) {
             activeArqWindow = null;
-            deadArqWindows.remove(window);
-            if (config.isListenOnStart() || (mainWindow != null && mainWindow.isListenSelected())) {
-                mode = AppMode.LISTEN;
-                ensureListenWindow(true);
-            } else {
-                mode = AppMode.IDLE;
-            }
-            if (mainWindow != null) {
-                mainWindow.refreshModeLabel();
-            }
-            return;
         }
         deadArqWindows.remove(window);
+        if (tracked || window.restoresFecOnClose() || window.reopensListenOnClose()) {
+            finishArqClose(window);
+        }
+    }
+
+    /**
+     * After an ARQ window is disposed: put a minimized FEC window back on the ARQ
+     * window's final bounds, or open a new one when Close FEC on ARQ link had
+     * disposed it and Listen on start is set. A FEC window the user had already
+     * closed is left closed.
+     */
+    private void finishArqClose(ConnectionWindow window) {
+        if (window.restoresFecOnClose() && listenWindow != null && listenWindow.isDisplayable()) {
+            listenWindow.restoreAt(window.placementBounds());
+            resumeListenUi();
+        } else if (window.reopensListenOnClose() && config.isListenOnStart()) {
+            resumeListenUi();
+        } else if (mainWindow != null && mainWindow.isListenSelected()) {
+            mode = AppMode.LISTEN;
+            ensureListenWindow(true);
+        } else {
+            mode = AppMode.IDLE;
+        }
+        if (mainWindow != null) {
+            mainWindow.refreshModeLabel();
+        }
+        refreshFecAbortLock();
+    }
+
+    /** FEC window is on screen again and the FEC/Monitor button stays checked. */
+    private void resumeListenUi() {
+        if (mainWindow != null) {
+            mainWindow.setListenToggleSilently(true);
+        }
+        mode = AppMode.LISTEN;
+        ensureListenWindow(true);
     }
 
     public boolean hasActiveArq() {
