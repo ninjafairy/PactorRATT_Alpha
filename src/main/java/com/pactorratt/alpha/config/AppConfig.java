@@ -44,6 +44,11 @@ public final class AppConfig {
     private boolean onlyOneArqWindow = false;
     /** When true, a new ARQ link disposes the FEC window and turns Listen off. Does not send Pt. */
     private boolean closeFecOnArqLink = false;
+    /**
+     * When true, CHO after traffic, Canned CHO, Disc. when finished, and Canned text disc.
+     * each send Compose and wait for its Host ack before their own sequence.
+     */
+    private boolean sendAllOnCho = false;
     private String cannedHandoverText = "KKK";
     private String cannedDisconnectText = "SK";
     /** Listen CQ body. Repeated {@link #cqRepeat} times, then {@link #cannedCqFooter}. */
@@ -182,6 +187,14 @@ public final class AppConfig {
 
     public void setCloseFecOnArqLink(boolean closeFecOnArqLink) {
         this.closeFecOnArqLink = closeFecOnArqLink;
+    }
+
+    public boolean isSendAllOnCho() {
+        return sendAllOnCho;
+    }
+
+    public void setSendAllOnCho(boolean sendAllOnCho) {
+        this.sendAllOnCho = sendAllOnCho;
     }
 
     public String getCannedHandoverText() {

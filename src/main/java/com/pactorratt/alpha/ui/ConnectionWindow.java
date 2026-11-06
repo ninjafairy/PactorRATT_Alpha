@@ -1807,6 +1807,39 @@ public final class ConnectionWindow extends JFrame {
         return awayCheck != null && awayCheck.isSelected();
     }
 
+    /** Clear the FEC Away box. An incoming link still reads whatever is checked later. */
+    public void uncheckAway() {
+        if (awayCheck != null) {
+            awayCheck.setSelected(false);
+        }
+    }
+
+    /** Compose has characters, including spaces. EDT. */
+    public boolean hasComposeText() {
+        String text = compose.getText();
+        return text != null && !text.isEmpty();
+    }
+
+    /**
+     * Clear Compose and paint it as local outbound, the same way Send does while ISS.
+     * Returns the text to send, or empty. Does not send and does not queue App TX. EDT.
+     */
+    public String takeComposeForHostSend() {
+        if (!sessionActive || kind != Kind.ARQ) {
+            return "";
+        }
+        String text = compose.getText();
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        compose.setText("");
+        ensureTranscriptNewline();
+        String forTranscript = normalized.endsWith("\n") ? normalized : normalized + "\n";
+        appendTranscript(forTranscript, outgoingColor());
+        return normalized;
+    }
+
     /** Place Away Msg in an empty TX buffer. Does not send. */
     public void preloadAwayText(String text) {
         if (text == null || text.isBlank()) {

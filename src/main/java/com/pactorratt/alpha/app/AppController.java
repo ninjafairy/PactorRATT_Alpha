@@ -59,6 +59,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Coordinates modes, windows, and TNC Host session lifecycle.
@@ -984,16 +985,23 @@ public final class AppController {
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
             return;
         }
-        String pending = window.drainAppTxBufferToTranscript();
-        String notice = pending.isBlank()
-                ? "Disc. when finished — sent CTRL-D ($04)."
-                : "Disc. when finished — flushed App TX + CTRL-D ($04).";
-        runArqHostAction(window, "Disc. when finished",
-                session -> session.sendData(0,
-                        hostDataWithControl(pending, RECEIVE_CHAR_CTRL_D),
-                        ARQ_HOST_TIMEOUT_MS),
-                null,
-                notice);
+        AtomicReference<String> notice = new AtomicReference<>(
+                "Disc. when finished — sent CTRL-D ($04).");
+        runArqHostAction(window, "Disc. when finished", session -> {
+            String compose = takeSendAllCompose(window);
+            sendComposeBeforeControl(session, compose);
+            String pending = drainAppTxOnEdt(window);
+            if (!compose.isEmpty() && pending.isBlank()) {
+                notice.set("Disc. when finished — sent Compose + CTRL-D ($04).");
+            } else if (!compose.isEmpty()) {
+                notice.set("Disc. when finished — sent Compose, flushed App TX + CTRL-D ($04).");
+            } else if (!pending.isBlank()) {
+                notice.set("Disc. when finished — flushed App TX + CTRL-D ($04).");
+            }
+            session.sendData(0,
+                    hostDataWithControl(pending, RECEIVE_CHAR_CTRL_D),
+                    ARQ_HOST_TIMEOUT_MS);
+        }, null, notice::get, null);
     }
 
     /**
@@ -1046,10 +1054,17 @@ public final class AppController {
             noticeWindow(window, "CHO after traffic — handover already pending.");
             return;
         }
-        runArqHostAction(window, "CHO after traffic",
-                session -> sendCh0Control(session, PTOVER_CHAR_CTRL_Z),
-                window::unlockHandoverControls,
+        AtomicReference<String> notice = new AtomicReference<>(
                 "CHO after traffic — sent CTRL-Z ($1A); controls locked, typed text queued until ISS again.");
+        runArqHostAction(window, "CHO after traffic", session -> {
+            String compose = takeSendAllCompose(window);
+            sendComposeBeforeControl(session, compose);
+            if (!compose.isEmpty()) {
+                notice.set("CHO after traffic — sent Compose then CTRL-Z ($1A); "
+                        + "controls locked, typed text queued until ISS again.");
+            }
+            sendCh0Control(session, PTOVER_CHAR_CTRL_Z);
+        }, window::unlockHandoverControls, notice::get, null);
     }
 
     /** Seize — Host {@code AG} (AChg). */
@@ -1306,13 +1321,22 @@ public final class AppController {
     /** Canned text disc. — canned disconnect + {@code $04} in the same ch0 block. */
     public void arqDiscWithText(ConnectionWindow window) {
         String canned = config.getCannedDisconnectText();
-        runArqHostAction(window, "Canned text disc.",
-                session -> session.sendData(0,
-                        hostDataWithControl(canned, RECEIVE_CHAR_CTRL_D),
-                        ARQ_HOST_TIMEOUT_MS),
-                null,
-                "Canned text disc. — sent canned text + CTRL-D ($04).",
-                () -> paintCannedIfPresent(window, canned));
+        boolean sendComposeFirst = config.isSendAllOnCho()
+                && window != null && window.hasComposeText();
+        AtomicReference<String> notice = new AtomicReference<>(
+                "Canned text disc. — sent canned text + CTRL-D ($04).");
+        byte[] payload = hostDataWithControl(canned, RECEIVE_CHAR_CTRL_D);
+        runArqHostAction(window, "Canned text disc.", session -> {
+            String compose = takeSendAllCompose(window);
+            sendComposeBeforeControl(session, compose);
+            if (!compose.isEmpty()) {
+                notice.set("Canned text disc. — sent Compose, then canned text + CTRL-D ($04).");
+            }
+            if (sendComposeFirst) {
+                onEdt(() -> paintCannedIfPresent(window, canned));
+            }
+            session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS);
+        }, null, notice::get, sendComposeFirst ? null : () -> paintCannedIfPresent(window, canned));
     }
 
     /**
@@ -1931,6 +1955,11 @@ public final class AppController {
 
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
             Runnable onFailure, String successNotice, Runnable onDispatch) {
+        runArqHostAction(window, actionName, work, onFailure, () -> successNotice, onDispatch);
+    }
+
+    private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
+            Runnable onFailure, Supplier<String> successNotice, Runnable onDispatch) {
         if (!tncConnected) {
             noticeWindow(window, actionName + " — TNC not connected.");
             if (onFailure != null) {
@@ -1952,7 +1981,8 @@ public final class AppController {
         Thread worker = new Thread(() -> {
             try {
                 work.run(session);
-                runOnEdt(() -> noticeWindow(window, successNotice));
+                String notice = successNotice == null ? "" : successNotice.get();
+                runOnEdt(() -> noticeWindow(window, notice));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("ARQ " + actionName + " interrupted");
@@ -1993,12 +2023,58 @@ public final class AppController {
             noticeWindow(window, actionName + " — handover already pending.");
             return;
         }
+        boolean sendComposeFirst = config.isSendAllOnCho() && window.hasComposeText();
+        AtomicReference<String> notice = new AtomicReference<>(
+                actionName + " — sent CTRL-Z; controls locked until ISS again.");
         byte[] payload = hostDataWithControl(canned, control);
-        runArqHostAction(window, actionName,
-                session -> session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS),
-                window::unlockHandoverControls,
-                actionName + " — sent CTRL-Z; controls locked until ISS again.",
-                () -> paintCannedIfPresent(window, canned));
+        runArqHostAction(window, actionName, session -> {
+            String compose = takeSendAllCompose(window);
+            sendComposeBeforeControl(session, compose);
+            if (!compose.isEmpty()) {
+                notice.set(actionName + " — sent Compose, then canned text + CTRL-Z; "
+                        + "controls locked until ISS again.");
+            }
+            if (sendComposeFirst) {
+                onEdt(() -> paintCannedIfPresent(window, canned));
+            }
+            session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS);
+        }, window::unlockHandoverControls, notice::get,
+                sendComposeFirst ? null : () -> paintCannedIfPresent(window, canned));
+    }
+
+    /**
+     * Send All on CHO: paint and clear Compose the same way Send does while ISS.
+     * Empty when the setting is off or Compose is empty. Does not send.
+     */
+    private String takeSendAllCompose(ConnectionWindow window) throws IOException, InterruptedException {
+        if (!config.isSendAllOnCho() || window == null) {
+            return "";
+        }
+        AtomicReference<String> taken = new AtomicReference<>("");
+        onEdt(() -> taken.set(window.takeComposeForHostSend()));
+        String text = taken.get();
+        return text == null ? "" : text;
+    }
+
+    /** Host ch0 data for Compose. No-op when there is nothing to send. Waits for the data-ack. */
+    private void sendComposeBeforeControl(HostSession session, String composeText)
+            throws IOException, InterruptedException {
+        if (composeText == null || composeText.isEmpty()) {
+            return;
+        }
+        byte[] bytes = toHostDataBytes(composeText);
+        if (bytes.length == 0) {
+            return;
+        }
+        session.sendData(0, bytes, ARQ_HOST_TIMEOUT_MS);
+    }
+
+    /** EDT drain of App TX. Empty when the buffer was blank. */
+    private String drainAppTxOnEdt(ConnectionWindow window) throws IOException, InterruptedException {
+        AtomicReference<String> pending = new AtomicReference<>("");
+        onEdt(() -> pending.set(window.drainAppTxBufferToTranscript()));
+        String text = pending.get();
+        return text == null ? "" : text;
     }
 
     /** Grey transcript paint for canned HO / Disc text. No-op when there is no text. */
@@ -3100,6 +3176,9 @@ public final class AppController {
         }
 
         int epoch = beginCalling(pgCall);
+        if (listenWindow != null && listenWindow.isDisplayable()) {
+            listenWindow.uncheckAway();
+        }
         final String hostCmd = "PG" + pgCall;
         Thread worker = new Thread(() -> {
             try {

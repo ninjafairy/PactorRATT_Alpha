@@ -244,6 +244,7 @@ public final class ConfigStore {
         append(sb, "Display Startup", c.isDisplayStartup());
         append(sb, "onlyOneArqWindow", c.isOnlyOneArqWindow());
         append(sb, "closeFecOnArqLink", c.isCloseFecOnArqLink());
+        append(sb, "sendAllOnCho", c.isSendAllOnCho());
         append(sb, "cannedHandoverText", c.getCannedHandoverText(), true);
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
         append(sb, "cannedCqText", c.getCannedCqText(), true);
@@ -347,6 +348,9 @@ public final class ConfigStore {
         }
         if (map.containsKey("closeFecOnArqLink")) {
             config.setCloseFecOnArqLink(Boolean.parseBoolean(map.get("closeFecOnArqLink")));
+        }
+        if (map.containsKey("sendAllOnCho")) {
+            config.setSendAllOnCho(Boolean.parseBoolean(map.get("sendAllOnCho")));
         }
         if (map.containsKey("cannedHandoverText")) {
             config.setCannedHandoverText(map.get("cannedHandoverText"));

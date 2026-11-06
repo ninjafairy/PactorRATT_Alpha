@@ -60,6 +60,10 @@ public final class ProgramSettingsDialog extends JDialog {
         JCheckBox closeFecOnArqLink = new JCheckBox("Close FEC on ARQ link", config.isCloseFecOnArqLink());
         closeFecOnArqLink.setToolTipText(
                 "When an ARQ link opens, close the FEC window and turn Listen off. Does not send Pt.");
+        JCheckBox sendAllOnCho = new JCheckBox("Send All on CHO", config.isSendAllOnCho());
+        sendAllOnCho.setToolTipText(
+                "Before CHO after traffic, Canned CHO, Disc. when finished, or Canned text disc., "
+                        + "send Compose and wait for the Host ack.");
         JTextField handover = new JTextField(config.getCannedHandoverText(), 20);
         JTextField disconnect = new JTextField(config.getCannedDisconnectText(), 20);
         cannedCqArea = multiline(config.getCannedCqText(),
@@ -109,6 +113,7 @@ public final class ProgramSettingsDialog extends JDialog {
         addRow(form, autoConnectTnc);
         addRow(form, onlyOneArqWindow);
         addRow(form, closeFecOnArqLink);
+        addRow(form, sendAllOnCho);
         addRow(form, labeled("Canned handover text", handover));
         addRow(form, labeled("Canned disconnect text", disconnect));
         addRow(form, labeled("Away Msg", new JScrollPane(awayMsg)));
@@ -129,6 +134,7 @@ public final class ProgramSettingsDialog extends JDialog {
             config.setAutoConnectTnc(autoConnectTnc.isSelected());
             config.setOnlyOneArqWindow(onlyOneArqWindow.isSelected());
             config.setCloseFecOnArqLink(closeFecOnArqLink.isSelected());
+            config.setSendAllOnCho(sendAllOnCho.isSelected());
             config.setCannedHandoverText(handover.getText());
             config.setCannedDisconnectText(disconnect.getText());
             config.setCannedCqText(cannedCqArea.getText());
