@@ -21,6 +21,12 @@ public final class AppConfig {
     public static final int DEFAULT_TEXT_SIZE = 13;
     public static final int MIN_TEXT_SIZE = 8;
     public static final int MAX_TEXT_SIZE = 28;
+    /** No timestamp on transcript lines. */
+    public static final int TIMESTAMP_OFF = 0;
+    /** {@code [HH:mm] } at the start of each new transcript line. */
+    public static final int TIMESTAMP_HM = 1;
+    /** {@code [dd-MM-yy HH:mm] } at the start of each new transcript line. */
+    public static final int TIMESTAMP_DATE = 2;
 
     private String callsign = "";
     private String comPort = "";
@@ -44,6 +50,13 @@ public final class AppConfig {
     private boolean onlyOneArqWindow = false;
     /** When true, a new ARQ link disposes the FEC window and turns Listen off. Does not send Pt. */
     private boolean closeFecOnArqLink = false;
+    /**
+     * When true, a finished FEC connect frame ({@code ?>… <C>}) is removed from the
+     * transcript after it is painted. The Connect list still updates.
+     */
+    private boolean suppressConnectFrames = false;
+    /** {@link #TIMESTAMP_OFF}, {@link #TIMESTAMP_HM}, or {@link #TIMESTAMP_DATE}. */
+    private int transcriptTimestamp = TIMESTAMP_OFF;
     /**
      * When true, CHO after traffic, Canned CHO, Disc. when finished, and Canned text disc.
      * each send Compose and wait for its Host ack before their own sequence.
@@ -187,6 +200,27 @@ public final class AppConfig {
 
     public void setCloseFecOnArqLink(boolean closeFecOnArqLink) {
         this.closeFecOnArqLink = closeFecOnArqLink;
+    }
+
+    public boolean isSuppressConnectFrames() {
+        return suppressConnectFrames;
+    }
+
+    public void setSuppressConnectFrames(boolean suppressConnectFrames) {
+        this.suppressConnectFrames = suppressConnectFrames;
+    }
+
+    public int getTranscriptTimestamp() {
+        return transcriptTimestamp;
+    }
+
+    /** Values other than {@link #TIMESTAMP_HM} and {@link #TIMESTAMP_DATE} store {@link #TIMESTAMP_OFF}. */
+    public void setTranscriptTimestamp(int transcriptTimestamp) {
+        if (transcriptTimestamp == TIMESTAMP_HM || transcriptTimestamp == TIMESTAMP_DATE) {
+            this.transcriptTimestamp = transcriptTimestamp;
+        } else {
+            this.transcriptTimestamp = TIMESTAMP_OFF;
+        }
     }
 
     public boolean isSendAllOnCho() {

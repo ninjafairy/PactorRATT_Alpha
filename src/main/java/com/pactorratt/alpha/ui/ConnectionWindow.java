@@ -80,6 +80,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -110,6 +111,10 @@ public final class ConnectionWindow extends JFrame {
     private static final String ABORT_COMPLETE_LINE =
             "[Abort sequence complete, unsent data cleared]";
     private static final DateTimeFormatter TRANSCRIPT_DATE = DateTimeFormatter.ofPattern("MM-dd-yy");
+    private static final DateTimeFormatter STAMP_HM = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter STAMP_DATE = DateTimeFormatter.ofPattern("dd-MM-yy HH:mm");
+    /** Marks timestamp characters so inbound backspace cannot delete them. */
+    private static final String TIMESTAMP_MARK = "transcriptTimestamp";
     private static final Color MAILBOX_PURPLE = new Color(0xD8, 0xB4, 0xFE);
     private static final int MAILBOX_FLASH_MS = 500;
     private static final int MAILBOX_HIDE_MS = 3000;
@@ -446,8 +451,17 @@ public final class ConnectionWindow extends JFrame {
                     backspaceCurrentTranscriptLine();
                 }
             } else if (c == '\n') {
+                String line = inboundLine.toString();
                 finishInboundLine();
-                pending.append(c);
+                if (shouldDropConnectFrame(line)) {
+                    int paintedBody = line.length() - unpaintedTailLength(pending);
+                    dropUnpaintedLineTail(pending);
+                    if (paintedBody > 0) {
+                        deletePaintedConnectPrefix(paintedBody);
+                    }
+                } else {
+                    pending.append(c);
+                }
             } else {
                 inboundLine.append(c);
                 pending.append(c);
@@ -455,6 +469,62 @@ public final class ConnectionWindow extends JFrame {
         }
         if (pending.length() > 0) {
             appendTranscript(pending.toString(), incomingColor());
+        }
+    }
+
+    /** FEC only, and only when the setting is on. The Connect list still hears the line. */
+    private boolean shouldDropConnectFrame(String line) {
+        return kind == Kind.LISTEN
+                && app.config().isSuppressConnectFrames()
+                && CallsignLineParser.connectToken(line) != null;
+    }
+
+    /** Characters of the current line still waiting in {@code pending}. */
+    private static int unpaintedTailLength(StringBuilder pending) {
+        int nl = pending.lastIndexOf("\n");
+        return nl >= 0 ? pending.length() - (nl + 1) : pending.length();
+    }
+
+    /** Drop this line's characters that have not been painted yet. */
+    private static void dropUnpaintedLineTail(StringBuilder pending) {
+        int nl = pending.lastIndexOf("\n");
+        if (nl >= 0) {
+            pending.delete(nl + 1, pending.length());
+        } else {
+            pending.setLength(0);
+        }
+    }
+
+    /**
+     * Remove {@code bodyChars} of the connect frame already painted at the end of the
+     * document, plus a timestamp sitting immediately in front of them. Does not cross
+     * onto the previous line.
+     */
+    private void deletePaintedConnectPrefix(int bodyChars) {
+        StyledDocument doc = transcript.getStyledDocument();
+        int len = doc.getLength();
+        if (len <= 0 || bodyChars <= 0) {
+            return;
+        }
+        try {
+            String existing = doc.getText(0, len);
+            int lineStart = existing.lastIndexOf('\n');
+            lineStart = lineStart < 0 ? 0 : lineStart + 1;
+            int lineLen = len - lineStart;
+            int removeBody = Math.min(bodyChars, lineLen);
+            int removeFrom = len - removeBody;
+            while (removeFrom > lineStart) {
+                AttributeSet attrs = doc.getCharacterElement(removeFrom - 1).getAttributes();
+                if (!Boolean.TRUE.equals(attrs.getAttribute(TIMESTAMP_MARK))) {
+                    break;
+                }
+                removeFrom--;
+            }
+            if (removeFrom < len) {
+                doc.remove(removeFrom, len - removeFrom);
+                transcript.setCaretPosition(doc.getLength());
+            }
+        } catch (BadLocationException ignored) {
         }
     }
 
@@ -487,6 +557,9 @@ public final class ConnectionWindow extends JFrame {
                 return;
             }
             AttributeSet attrs = doc.getCharacterElement(len - 1).getAttributes();
+            if (Boolean.TRUE.equals(attrs.getAttribute(TIMESTAMP_MARK))) {
+                return;
+            }
             Color fg = StyleConstants.getForeground(attrs);
             if (sameColor(fg, outgoingColor())) {
                 return;
@@ -750,8 +823,9 @@ public final class ConnectionWindow extends JFrame {
             discGrid.add(saveTranscript);
             disconnect.add(discGrid);
             addSideAbort(emergency,
-                    "Abort link (TC, then PN if FEC/Monitor is on, else Pt). Press twice.",
+                    "Abort link (TC, then RC). Press twice.",
                     this::onAbortPressed);
+            addEmergencyDisconnect(emergency);
             seizeButton = addSideButton(emergency, "Seize", "Seize link / ACHG (Host AG)",
                     () -> app.arqSeize(this));
             closeSideBox(emergency);
@@ -787,7 +861,7 @@ public final class ConnectionWindow extends JFrame {
                     "When checked, the next new ARQ window loads Away Msg into its TX buffer.");
             split.right().add(awayCheck);
             addAbortControl(split.right(),
-                    "Abort FEC transmit (TC, then PN). Enabled only while FEC is sending. Press twice.",
+                    "Abort FEC transmit (TC, then RC). Enabled only while FEC is sending. Press twice.",
                     this::onAbortPressed);
             split.right().add(saveTranscriptButton());
             p = split;
@@ -1123,6 +1197,20 @@ public final class ConnectionWindow extends JFrame {
     private void addSideAbort(JPanel box, String tooltip, Runnable action) {
         gapBeforeSideButton(box);
         keepOwnWidth(addAbortControl(box, tooltip, action));
+    }
+
+    /**
+     * Not in {@link #controlButtons}, so IRS, handover, a dead link, and a closed
+     * host session never disable it.
+     */
+    private void addEmergencyDisconnect(JPanel box) {
+        gapBeforeSideButton(box);
+        JButton b = new JButton("Disconnect");
+        b.setToolTipText("Always available. IRS: Seize (AG), then TClear (TC), then ch0 CTRL-D $04. "
+                + "Otherwise TClear (TC) then ch0 CTRL-D $04.");
+        b.addActionListener(e -> app.arqEmergencyDisconnect(this));
+        keepOwnWidth(b);
+        box.add(b);
     }
 
     private static void gapBeforeSideButton(JPanel box) {
@@ -1553,16 +1641,74 @@ public final class ConnectionWindow extends JFrame {
     }
 
     private void appendTranscript(String text, Color color) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
         StyledDocument doc = transcript.getStyledDocument();
+        SimpleAttributeSet attrs = transcriptAttrs(color, false);
+        SimpleAttributeSet stampAttrs = transcriptAttrs(color, true);
+        try {
+            StringBuilder chunk = new StringBuilder();
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (c != '\n' && atLineStart(doc, chunk)) {
+                    flushChunk(doc, chunk, attrs);
+                    String stamp = timestampPrefix();
+                    if (!stamp.isEmpty()) {
+                        doc.insertString(doc.getLength(), stamp, stampAttrs);
+                    }
+                }
+                chunk.append(c);
+            }
+            flushChunk(doc, chunk, attrs);
+            transcript.setCaretPosition(doc.getLength());
+        } catch (BadLocationException ignored) {
+        }
+    }
+
+    /** True when the next character would be the first on its line. */
+    private static boolean atLineStart(StyledDocument doc, StringBuilder pending) throws BadLocationException {
+        if (pending.length() > 0) {
+            return pending.charAt(pending.length() - 1) == '\n';
+        }
+        int len = doc.getLength();
+        if (len == 0) {
+            return true;
+        }
+        return "\n".equals(doc.getText(len - 1, 1));
+    }
+
+    private static void flushChunk(StyledDocument doc, StringBuilder chunk, AttributeSet attrs)
+            throws BadLocationException {
+        if (chunk.length() == 0) {
+            return;
+        }
+        doc.insertString(doc.getLength(), chunk.toString(), attrs);
+        chunk.setLength(0);
+    }
+
+    private SimpleAttributeSet transcriptAttrs(Color color, boolean timestamp) {
         SimpleAttributeSet attrs = new SimpleAttributeSet();
         StyleConstants.setForeground(attrs, color);
         StyleConstants.setFontFamily(attrs, Font.MONOSPACED);
         StyleConstants.setFontSize(attrs, app.config().getTextSize());
-        try {
-            doc.insertString(doc.getLength(), text, attrs);
-            transcript.setCaretPosition(doc.getLength());
-        } catch (BadLocationException ignored) {
+        if (timestamp) {
+            attrs.addAttribute(TIMESTAMP_MARK, Boolean.TRUE);
         }
+        return attrs;
+    }
+
+    /** Empty when timestamps are off. A trailing space separates the stamp from the text. */
+    private String timestampPrefix() {
+        int mode = app.config().getTranscriptTimestamp();
+        LocalDateTime now = LocalDateTime.now();
+        if (mode == AppConfig.TIMESTAMP_HM) {
+            return "[" + now.format(STAMP_HM) + "] ";
+        }
+        if (mode == AppConfig.TIMESTAMP_DATE) {
+            return "[" + now.format(STAMP_DATE) + "] ";
+        }
+        return "";
     }
 
     /**

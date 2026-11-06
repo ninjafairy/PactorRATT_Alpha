@@ -325,7 +325,7 @@ public final class MainWindow extends JFrame {
         callingDialogLongpath.setVisible(false);
 
         JButton abort = new JButton("Abort");
-        abort.setToolTipText("Stop the outbound ARQ call (PN if Listen on, else Pt)");
+        abort.setToolTipText("Stop the outbound ARQ call (TC, then RC)");
         abort.addActionListener(e -> app.cancelOutboundCall());
 
         JPanel text = new JPanel(new GridLayout(0, 1, 0, 6));
@@ -474,7 +474,7 @@ public final class MainWindow extends JFrame {
         mycallLabel.setText("MYCall: connect to tnc");
         callingLabel.setVisible(false);
         cancelCallingButton.setVisible(false);
-        cancelCallingButton.setToolTipText("Stop the outbound ARQ call (same as Abort: PN if Listen on, else Pt)");
+        cancelCallingButton.setToolTipText("Stop the outbound ARQ call (TC, then RC)");
         cancelCallingButton.addActionListener(e -> app.cancelOutboundCall());
         statusRow = new JPanel(new BorderLayout());
         statusRow.setBackground(UiColors.PANEL_BG);
@@ -962,7 +962,8 @@ public final class MainWindow extends JFrame {
 
     /**
      * Modal Abort / Disconnect / Cancel. Disconnect waits for the link to die (30 s,
-     * then Abort {@code PN}/{@code Pt}) before returning true to continue exit.
+     * then Abort {@code TC} then {@code RC}) before returning true to continue exit.
+     * A failed abort leaves this dialog up.
      */
     private boolean confirmExitWhileArq() {
         ConnectionWindow arq = app.activeArqWindow();
@@ -1012,12 +1013,18 @@ public final class MainWindow extends JFrame {
             dialog.setVisible(false);
         };
 
+        Runnable abortFailed = () -> {
+            abort.setEnabled(true);
+            disconnect.setEnabled(true);
+            cancel.setEnabled(true);
+            disconnect.setText("Disconnect");
+        };
         abort.addActionListener(e -> {
             abort.setEnabled(false);
             disconnect.setEnabled(false);
             cancel.setEnabled(false);
             stopWaitTimers.run();
-            app.arqAbort(arq, closeProceed);
+            app.arqAbort(arq, closeProceed, abortFailed);
         });
 
         disconnect.addActionListener(e -> {
@@ -1044,7 +1051,7 @@ public final class MainWindow extends JFrame {
                 disconnect.setText("Disconnecting... 0");
                 stopWaitTimers.run();
                 abort.setEnabled(false);
-                app.arqAbort(arq, closeProceed);
+                app.arqAbort(arq, closeProceed, abortFailed);
             });
             countdown[0].start();
         });

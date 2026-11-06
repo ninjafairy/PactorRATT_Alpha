@@ -1015,6 +1015,27 @@ public final class AppController {
     }
 
     /**
+     * Emergency Disconnect. Always clickable. IRS seizes first ({@code AG}, wait for ack)
+     * so {@code $04} can go out; a failed seize does not send {@code TC} or {@code $04}.
+     * Otherwise the same {@code TC} then {@code $04} as {@link #arqDisconnectNow}.
+     */
+    public void arqEmergencyDisconnect(ConnectionWindow window) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ) {
+            return;
+        }
+        boolean seize = window.isLocalIrs();
+        runArqHostAction(window, "Disconnect", session -> {
+            if (seize) {
+                sendHostOk(session, "AG");
+            }
+            sendHostOk(session, "TC");
+            sendCh0Control(session, RECEIVE_CHAR_CTRL_D);
+        }, null, seize
+                ? "Disconnect — sent AG, TC, then CTRL-D ($04)."
+                : "Disconnect — sent TC then CTRL-D ($04).");
+    }
+
+    /**
      * Dump traffic &amp; CHO NOW! — Host {@code TC} (TClear), wait ACK, then ch0 {@code $1A}.
      * Locks Controls (except Abort, Seize, and Save transcript) until ISS again.
      */
@@ -1073,20 +1094,36 @@ public final class AppController {
     }
 
     /**
-     * Abort — Listen checkbox on → {@code PN}, else {@code Pt}; then {@link #markArqDead}.
+     * Abort — {@code TC}, wait for ack, then {@code RC}, wait for ack.
+     * {@link #markArqDead} runs only after both acks.
      */
     public void arqAbort(ConnectionWindow window) {
         arqAbort(window, null);
     }
 
     /**
-     * Same as {@link #arqAbort(ConnectionWindow)}; {@code onDone} runs on the EDT after
-     * the window is marked dead (or immediately if there is nothing to abort).
+     * Same as {@link #arqAbort(ConnectionWindow, Runnable, Runnable)} with no failure callback.
+     * {@code onDone} runs on the EDT after the link is aborted, or immediately when there is
+     * nothing to abort. A failed {@code TC} or {@code RC} does not call {@code onDone}.
      */
     public void arqAbort(ConnectionWindow window, Runnable onDone) {
+        arqAbort(window, onDone, null);
+    }
+
+    /**
+     * {@code TC} then {@code RC}, each waited for its ack. {@code onSuccess} runs on the EDT
+     * after the link is marked dead, or immediately when there is nothing to abort.
+     * A failed command leaves the link up and runs {@code onFailure} instead.
+     */
+    public void arqAbort(ConnectionWindow window, Runnable onSuccess, Runnable onFailure) {
         Runnable finished = () -> {
-            if (onDone != null) {
-                onDone.run();
+            if (onSuccess != null) {
+                onSuccess.run();
+            }
+        };
+        Runnable failed = () -> {
+            if (onFailure != null) {
+                onFailure.run();
             }
         };
         if (window == null || window.kind() != ConnectionWindow.Kind.ARQ) {
@@ -1097,9 +1134,6 @@ public final class AppController {
             runOnEdt(finished);
             return;
         }
-        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
-        String mnemonic = listenOn ? "PN" : "Pt";
-
         if (!tncConnected) {
             runOnEdt(() -> {
                 noticeArq(window, "Abort — TNC not connected; closing ARQ window.");
@@ -1119,25 +1153,29 @@ public final class AppController {
         }
 
         Thread worker = new Thread(() -> {
-            String resultNotice;
+            String failure = null;
             try {
-                sendHostOk(session, mnemonic);
-                resultNotice = "Abort — sent " + mnemonic
-                        + (listenOn ? " (Listen on)" : " (Idle)");
+                sendHostOk(session, "TC");
+                sendHostOk(session, "RC");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                resultNotice = "Abort — interrupted; closing ARQ window.";
+                failure = "Abort — interrupted.";
                 debugLog.info("ARQ Abort interrupted");
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                resultNotice = "Abort — " + msg + "; closing ARQ window.";
+                failure = "Abort — " + msg;
                 debugLog.info("ARQ Abort failed: " + msg);
             }
-            final String notice = resultNotice;
+            final String error = failure;
             runOnEdt(() -> {
-                markArqDead(window);
-                noticeArq(window, notice);
-                finished.run();
+                if (error != null) {
+                    noticeArq(window, error);
+                    failed.run();
+                } else {
+                    finishAbortLink(window);
+                    noticeArq(window, "Abort — sent TC then RC.");
+                    finished.run();
+                }
             });
         }, "arq-abort");
         worker.setDaemon(true);
@@ -1146,9 +1184,9 @@ public final class AppController {
 
     /**
      * One-press FEC abort kept for callers that are not the control button.
-     * The FEC Abort button uses {@link #confirmLinkAbort} ({@code TC} then {@code PN}).
-     * This path sends {@code PN} if FEC/Monitor is on, else {@code Pt}, leaves the window
-     * open, and refuses while an ARQ link is up.
+     * The FEC Abort button uses {@link #confirmLinkAbort} ({@code TC} then {@code RC}).
+     * This path sends the same {@code TC} then {@code RC}, leaves the window open,
+     * and refuses while an ARQ link is up. Listen is restored after both acks.
      */
     public void fecAbort(ConnectionWindow window) {
         if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
@@ -1158,8 +1196,6 @@ public final class AppController {
             runOnEdt(() -> noticeWindow(window, "Abort — unavailable while ARQ is up."));
             return;
         }
-        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
-        String mnemonic = listenOn ? "PN" : "Pt";
         if (!tncConnected) {
             runOnEdt(() -> noticeWindow(window, "Abort — TNC not connected."));
             return;
@@ -1170,22 +1206,28 @@ public final class AppController {
             return;
         }
         Thread worker = new Thread(() -> {
-            String resultNotice;
+            String failure = null;
             try {
-                sendHostOk(session, mnemonic);
-                resultNotice = "Abort — sent " + mnemonic
-                        + (listenOn ? " (Listen on)" : " (Idle)");
+                sendHostOk(session, "TC");
+                sendHostOk(session, "RC");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                resultNotice = "Abort — interrupted.";
+                failure = "Abort — interrupted.";
                 debugLog.info("FEC Abort interrupted");
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                resultNotice = "Abort — " + msg;
+                failure = "Abort — " + msg;
                 debugLog.info("FEC Abort failed: " + msg);
             }
-            final String notice = resultNotice;
-            runOnEdt(() -> noticeWindow(window, notice));
+            final String error = failure;
+            runOnEdt(() -> {
+                if (error != null) {
+                    noticeWindow(window, error);
+                } else {
+                    noticeWindow(window, "Abort — sent TC then RC.");
+                    restoreListenAfterArq();
+                }
+            });
         }, "fec-abort");
         worker.setDaemon(true);
         worker.start();
@@ -1193,11 +1235,11 @@ public final class AppController {
 
     /**
      * Two-press abort from the ARQ or FEC control button.
-     * {@code TC}, wait for ack, then {@code PN} (FEC, or ARQ while FEC/Monitor is on) or {@code Pt},
-     * wait for ack. Both acks paint the red transcript line and then mark an ARQ link dead.
+     * {@code TC}, wait for ack, then {@code RC}, wait for ack. Both acks paint the red
+     * transcript line. An ARQ link is then marked dead, which restores Listen.
+     * FEC, and an ARQ window already closed, restore Listen without marking a live window dead.
      * Failure leaves the link up and reports on the notice line. {@code onDone} runs on the EDT
-     * either way so the button can return to faint Abort. Exit and the Calling dialog keep
-     * {@link #arqAbort(ConnectionWindow)}.
+     * either way so the button can return to faint Abort.
      */
     public void confirmLinkAbort(ConnectionWindow window, Runnable onDone) {
         Runnable finished = () -> {
@@ -1229,8 +1271,6 @@ public final class AppController {
             });
             return;
         }
-        boolean pn = fec || (mainWindow != null && mainWindow.isListenSelected());
-        String mnemonic = pn ? "PN" : "Pt";
         if (!tncConnected) {
             runOnEdt(() -> {
                 noticeWindow(window, "Abort — TNC not connected.");
@@ -1251,7 +1291,7 @@ public final class AppController {
             String error = null;
             try {
                 sendHostOk(session, "TC");
-                sendHostOk(session, mnemonic);
+                sendHostOk(session, "RC");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 error = "Abort — interrupted.";
@@ -1267,9 +1307,7 @@ public final class AppController {
                     noticeWindow(window, failure);
                 } else {
                     window.paintAbortSequenceComplete();
-                    if (arq) {
-                        markArqDead(window);
-                    }
+                    finishAbortLink(window);
                 }
                 finished.run();
             });
@@ -1814,6 +1852,18 @@ public final class AppController {
                 debugLog.info(reason + " — PN but Listen off; sent Pt");
                 queryOpmode(session);
             }
+        }
+    }
+
+    /**
+     * Abort command succeeded. A still-active ARQ window is marked dead, which restores Listen.
+     * A window already closed, or a FEC abort, only restores Listen.
+     */
+    private void finishAbortLink(ConnectionWindow window) {
+        if (window != null && window == activeArqWindow) {
+            markArqDead(window);
+        } else {
+            restoreListenAfterArq();
         }
     }
 
@@ -3211,24 +3261,28 @@ public final class AppController {
             return;
         }
         stopCallingUi();
-        boolean listenOn = mainWindow != null && mainWindow.isListenSelected();
-        String mnemonic = listenOn ? "PN" : "Pt";
         HostSession session = hostSession;
         if (session == null || !session.isOpen()) {
             pollOpmodeAfterCalling();
             return;
         }
         Thread worker = new Thread(() -> {
+            boolean aborted = false;
             try {
-                sendHostOk(session, mnemonic);
-                debugLog.info("Call cancel — sent " + mnemonic);
+                sendHostOk(session, "TC");
+                sendHostOk(session, "RC");
+                debugLog.info("Call cancel — sent TC then RC");
+                aborted = true;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 debugLog.info("Call cancel interrupted");
             } catch (IOException e) {
                 String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
                 debugLog.info("Call cancel failed: " + msg);
-            } finally {
+            }
+            if (aborted) {
+                restoreListenAfterArq();
+            } else {
                 pollOpmodeAfterCallingOn(session);
             }
         }, "arq-call-cancel");

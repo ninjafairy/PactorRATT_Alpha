@@ -244,6 +244,8 @@ public final class ConfigStore {
         append(sb, "Display Startup", c.isDisplayStartup());
         append(sb, "onlyOneArqWindow", c.isOnlyOneArqWindow());
         append(sb, "closeFecOnArqLink", c.isCloseFecOnArqLink());
+        append(sb, "suppressConnectFrames", c.isSuppressConnectFrames());
+        append(sb, "transcriptTimestamp", c.getTranscriptTimestamp());
         append(sb, "sendAllOnCho", c.isSendAllOnCho());
         append(sb, "cannedHandoverText", c.getCannedHandoverText(), true);
         append(sb, "cannedDisconnectText", c.getCannedDisconnectText(), true);
@@ -348,6 +350,12 @@ public final class ConfigStore {
         }
         if (map.containsKey("closeFecOnArqLink")) {
             config.setCloseFecOnArqLink(Boolean.parseBoolean(map.get("closeFecOnArqLink")));
+        }
+        if (map.containsKey("suppressConnectFrames")) {
+            config.setSuppressConnectFrames(Boolean.parseBoolean(map.get("suppressConnectFrames")));
+        }
+        if (map.containsKey("transcriptTimestamp")) {
+            config.setTranscriptTimestamp(parseInt(map.get("transcriptTimestamp"), AppConfig.TIMESTAMP_OFF));
         }
         if (map.containsKey("sendAllOnCho")) {
             config.setSendAllOnCho(Boolean.parseBoolean(map.get("sendAllOnCho")));

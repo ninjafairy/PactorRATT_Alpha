@@ -60,6 +60,21 @@ public final class ProgramSettingsDialog extends JDialog {
         JCheckBox closeFecOnArqLink = new JCheckBox("Close FEC on ARQ link", config.isCloseFecOnArqLink());
         closeFecOnArqLink.setToolTipText(
                 "When an ARQ link opens, close the FEC window and turn Listen off. Does not send Pt.");
+        JCheckBox suppressConnect = new JCheckBox("Suppress connect frames", config.isSuppressConnectFrames());
+        suppressConnect.setToolTipText(
+                "After a FEC line ?>… <C> is painted, remove it. The Connect list still updates.");
+        int stampMode = config.getTranscriptTimestamp();
+        JRadioButton stampOff = new JRadioButton("Off", stampMode == AppConfig.TIMESTAMP_OFF);
+        JRadioButton stampHm = new JRadioButton("Hour and minute", stampMode == AppConfig.TIMESTAMP_HM);
+        JRadioButton stampDate = new JRadioButton("Date and time", stampMode == AppConfig.TIMESTAMP_DATE);
+        stampOff.setToolTipText("No timestamp on transcript lines.");
+        stampHm.setToolTipText("Start each new transcript line with [HH:mm]. Example: [15:04] ");
+        stampDate.setToolTipText(
+                "Start each new transcript line with [DD-MM-YY HH:mm]. Example: [06-11-26 15:04] ");
+        ButtonGroup stampGroup = new ButtonGroup();
+        stampGroup.add(stampOff);
+        stampGroup.add(stampHm);
+        stampGroup.add(stampDate);
         JCheckBox sendAllOnCho = new JCheckBox("Send All on CHO", config.isSendAllOnCho());
         sendAllOnCho.setToolTipText(
                 "Before CHO after traffic, Canned CHO, Disc. when finished, or Canned text disc., "
@@ -113,6 +128,7 @@ public final class ProgramSettingsDialog extends JDialog {
         addRow(form, autoConnectTnc);
         addRow(form, onlyOneArqWindow);
         addRow(form, closeFecOnArqLink);
+        addRow(form, suppressConnect);
         addRow(form, sendAllOnCho);
         addRow(form, labeled("Canned handover text", handover));
         addRow(form, labeled("Canned disconnect text", disconnect));
@@ -124,6 +140,10 @@ public final class ProgramSettingsDialog extends JDialog {
         addRow(form, labeled("Text outgoing", swatchRow(outgoingSwatch)));
         addRow(form, labeled("Text incoming", swatchRow(incomingSwatch)));
         addRow(form, labeled("Text size", textSize));
+        addRow(form, new JLabel("Transcript timestamps"));
+        addRow(form, stampOff);
+        addRow(form, stampHm);
+        addRow(form, stampDate);
 
         boolean[] committed = {false};
         JButton save = new JButton("Save");
@@ -134,6 +154,10 @@ public final class ProgramSettingsDialog extends JDialog {
             config.setAutoConnectTnc(autoConnectTnc.isSelected());
             config.setOnlyOneArqWindow(onlyOneArqWindow.isSelected());
             config.setCloseFecOnArqLink(closeFecOnArqLink.isSelected());
+            config.setSuppressConnectFrames(suppressConnect.isSelected());
+            config.setTranscriptTimestamp(stampDate.isSelected()
+                    ? AppConfig.TIMESTAMP_DATE
+                    : stampHm.isSelected() ? AppConfig.TIMESTAMP_HM : AppConfig.TIMESTAMP_OFF);
             config.setSendAllOnCho(sendAllOnCho.isSelected());
             config.setCannedHandoverText(handover.getText());
             config.setCannedDisconnectText(disconnect.getText());
