@@ -213,6 +213,18 @@ public final class DebugMonitorWindow extends JFrame implements SerialByteListen
         rxLooseBytes.reset();
     }
 
+    /** App note, not a serial byte. Shown even while Pause is held. */
+    public void appendNote(String line) {
+        if (line == null || line.isEmpty()) {
+            return;
+        }
+        if (SwingUtilities.isEventDispatchThread()) {
+            appendLine(line);
+        } else {
+            SwingUtilities.invokeLater(() -> appendLine(line));
+        }
+    }
+
     private void appendLine(String line) {
         textArea.append(line);
         textArea.append("\n");

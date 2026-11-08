@@ -4,6 +4,7 @@ import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.CommitMode;
 
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -53,16 +54,16 @@ public final class ProgramSettingsDialog extends JDialog {
 
         JCheckBox listenOnStart = new JCheckBox("Listen on start", config.isListenOnStart());
         listenOnStart.setToolTipText("After the TNC connects, open FEC/Monitor once this launch.");
-        JCheckBox autoConnectTnc = new JCheckBox("Auto connect TNC", config.isAutoConnectTnc());
+        JCheckBox autoConnectTnc = new JCheckBox("Autoconnect", config.isAutoConnectTnc());
         autoConnectTnc.setToolTipText("On startup, run TNC → Connect after the main window opens.");
         JCheckBox onlyOneArqWindow = new JCheckBox("Only 1 ARQ window", config.isOnlyOneArqWindow());
         onlyOneArqWindow.setToolTipText("When a new ARQ link opens, close any previous ARQ window.");
-        JCheckBox closeFecOnArqLink = new JCheckBox("Close FEC on ARQ link", config.isCloseFecOnArqLink());
+        JCheckBox closeFecOnArqLink = new JCheckBox("Close FEC on ARQ", config.isCloseFecOnArqLink());
         closeFecOnArqLink.setToolTipText(
                 "When an ARQ link opens, close the FEC window and turn Listen off. Does not send Pt.");
         JCheckBox suppressConnect = new JCheckBox("Suppress connect frames", config.isSuppressConnectFrames());
         suppressConnect.setToolTipText(
-                "After a FEC line ?>… <C> is painted, remove it. The Connect list still updates.");
+                "When a new FEC line ends with <C>, remove that line. Lines already on screen stay. The Connect list still updates.");
         int stampMode = config.getTranscriptTimestamp();
         JRadioButton stampOff = new JRadioButton("Off", stampMode == AppConfig.TIMESTAMP_OFF);
         JRadioButton stampHm = new JRadioButton("Hour and minute", stampMode == AppConfig.TIMESTAMP_HM);
@@ -75,7 +76,7 @@ public final class ProgramSettingsDialog extends JDialog {
         stampGroup.add(stampOff);
         stampGroup.add(stampHm);
         stampGroup.add(stampDate);
-        JCheckBox sendAllOnCho = new JCheckBox("Send All on CHO", config.isSendAllOnCho());
+        JCheckBox sendAllOnCho = new JCheckBox("Send all on CHO", config.isSendAllOnCho());
         sendAllOnCho.setToolTipText(
                 "Before CHO after traffic, Canned CHO, Disc. when finished, or Canned text disc., "
                         + "send Compose and wait for the Host ack.");
@@ -91,7 +92,7 @@ public final class ProgramSettingsDialog extends JDialog {
 
         cqRepeatSpinner = new JSpinner(new SpinnerNumberModel(config.getCqRepeat(), 1, 10, 1));
         cqRepeatSpinner.setToolTipText("How many copies of the canned CQ block to send. 1–10.");
-        JPanel cqRepeatRow = labeled("CQ repeat", cqRepeatSpinner);
+        JPanel cqRepeatRow = labeled("Repeat", cqRepeatSpinner);
 
         Color originalOutgoing = config.getOutgoingText();
         Color originalIncoming = config.getIncomingText();
@@ -122,28 +123,31 @@ public final class ProgramSettingsDialog extends JDialog {
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
         form.setBorder(new EmptyBorder(10, 10, 10, 10));
         addRow(form, labeled("Local callsign", callsign));
-        addRow(form, line);
-        addRow(form, message);
-        addRow(form, listenOnStart);
+        addRow(form, sideBySide(line, message));
+        addRow(form, sideBySide(
+                new JLabel("Text outgoing color"), outgoingSwatch,
+                new JLabel("Text incoming color"), incomingSwatch));
         addRow(form, autoConnectTnc);
+        addRow(form, listenOnStart);
+        addRow(form, sendAllOnCho);
+        addRow(form, suppressConnect);
         addRow(form, onlyOneArqWindow);
         addRow(form, closeFecOnArqLink);
-        addRow(form, suppressConnect);
-        addRow(form, sendAllOnCho);
-        addRow(form, labeled("Canned handover text", handover));
-        addRow(form, labeled("Canned disconnect text", disconnect));
-        addRow(form, labeled("Away Msg", new JScrollPane(awayMsg)));
-        addRow(form, labeled("Canned CQ text", new JScrollPane(cannedCqArea)));
-        addRow(form, cqRepeatRow);
-        addRow(form, labeled("CQ Footer", new JScrollPane(cqFooterArea)));
-        addRow(form, labeled("Wrap columns", wrap));
-        addRow(form, labeled("Text outgoing", swatchRow(outgoingSwatch)));
-        addRow(form, labeled("Text incoming", swatchRow(incomingSwatch)));
+        addRow(form, sideBySide(new JLabel("Transcript timestamps"), stampOff, stampHm, stampDate));
         addRow(form, labeled("Text size", textSize));
-        addRow(form, new JLabel("Transcript timestamps"));
-        addRow(form, stampOff);
-        addRow(form, stampHm);
-        addRow(form, stampDate);
+        addRow(form, labeled("Wrap", wrap));
+
+        JPanel canned = section("Canned text");
+        addRow(canned, labeled("Handover", handover));
+        addRow(canned, labeled("Disconnect", disconnect));
+        addRow(canned, labeled("Away", new JScrollPane(awayMsg)));
+        addRow(form, canned);
+
+        JPanel cq = section("CQ text");
+        addRow(cq, labeled("CQ", new JScrollPane(cannedCqArea)));
+        addRow(cq, cqRepeatRow);
+        addRow(cq, labeled("Footer", new JScrollPane(cqFooterArea)));
+        addRow(form, cq);
 
         boolean[] committed = {false};
         JButton save = new JButton("Save");
@@ -202,7 +206,7 @@ public final class ProgramSettingsDialog extends JDialog {
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         formScroll.setBorder(new EmptyBorder(0, 0, 0, 0));
         formScroll.getVerticalScrollBar().setUnitIncrement(16);
-        formScroll.setPreferredSize(new Dimension(520, 560));
+        formScroll.setPreferredSize(new Dimension(760, 680));
 
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -237,17 +241,28 @@ public final class ProgramSettingsDialog extends JDialog {
         form.add(row);
     }
 
+    private static JPanel section(String title) {
+        JPanel box = new JPanel();
+        box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
+        box.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(title),
+                new EmptyBorder(4, 6, 6, 6)));
+        return box;
+    }
+
+    private static JPanel sideBySide(Component... parts) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        for (Component part : parts) {
+            row.add(part);
+        }
+        return row;
+    }
+
     private static JPanel labeled(String label, java.awt.Component field) {
         JPanel p = new JPanel(new BorderLayout(6, 0));
         p.add(new JLabel(label), BorderLayout.WEST);
         p.add(field, BorderLayout.CENTER);
         return p;
-    }
-
-    private static JPanel swatchRow(ColorSwatch swatch) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        row.add(swatch);
-        return row;
     }
 
     /** Palette (swatches) plus HSB saturation. Null when the chooser is cancelled. */

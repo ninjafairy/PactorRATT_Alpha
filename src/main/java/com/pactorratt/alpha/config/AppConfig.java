@@ -37,9 +37,9 @@ public final class AppConfig {
     private String flowControl = "NONE"; // NONE, RTS_CTS, XON_XOFF
 
     private CommitMode commitMode = CommitMode.LINE;
-    private boolean listenOnStart = false;
+    private boolean listenOnStart = true;
     /** When true, startup's last step is TNC → Connect. */
-    private boolean autoConnectTnc = false;
+    private boolean autoConnectTnc = true;
     private boolean debugLogEnabled = false;
     /**
      * When false, skip PK-232 startup-message dialogs and the TNC firmware/hardware
@@ -51,17 +51,17 @@ public final class AppConfig {
     /** When true, a new ARQ link disposes the FEC window and turns Listen off. Does not send Pt. */
     private boolean closeFecOnArqLink = false;
     /**
-     * When true, a finished FEC connect frame ({@code ?>… <C>}) is removed from the
-     * transcript after it is painted. The Connect list still updates.
+     * When true, a FEC line just finished is removed when it ends with {@code <C>}.
+     * Lines already in the transcript are left as they are. The Connect list still updates.
      */
-    private boolean suppressConnectFrames = false;
+    private boolean suppressConnectFrames = true;
     /** {@link #TIMESTAMP_OFF}, {@link #TIMESTAMP_HM}, or {@link #TIMESTAMP_DATE}. */
     private int transcriptTimestamp = TIMESTAMP_OFF;
     /**
      * When true, CHO after traffic, Canned CHO, Disc. when finished, and Canned text disc.
      * each send Compose and wait for its Host ack before their own sequence.
      */
-    private boolean sendAllOnCho = false;
+    private boolean sendAllOnCho = true;
     private String cannedHandoverText = "KKK";
     private String cannedDisconnectText = "SK";
     /** Listen CQ body. Repeated {@link #cqRepeat} times, then {@link #cannedCqFooter}. */

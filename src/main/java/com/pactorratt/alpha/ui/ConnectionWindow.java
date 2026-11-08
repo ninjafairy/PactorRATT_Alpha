@@ -437,6 +437,7 @@ public final class ConnectionWindow extends JFrame {
             return;
         }
         StringBuilder pending = new StringBuilder();
+        int completedLines = 0;
         for (int i = 0; i < normalized.length(); i++) {
             char c = normalized.charAt(i);
             if (c == BACKSPACE) {
@@ -451,17 +452,9 @@ public final class ConnectionWindow extends JFrame {
                     backspaceCurrentTranscriptLine();
                 }
             } else if (c == '\n') {
-                String line = inboundLine.toString();
                 finishInboundLine();
-                if (shouldDropConnectFrame(line)) {
-                    int paintedBody = line.length() - unpaintedTailLength(pending);
-                    dropUnpaintedLineTail(pending);
-                    if (paintedBody > 0) {
-                        deletePaintedConnectPrefix(paintedBody);
-                    }
-                } else {
-                    pending.append(c);
-                }
+                pending.append(c);
+                completedLines++;
             } else {
                 inboundLine.append(c);
                 pending.append(c);
@@ -470,62 +463,76 @@ public final class ConnectionWindow extends JFrame {
         if (pending.length() > 0) {
             appendTranscript(pending.toString(), incomingColor());
         }
-    }
-
-    /** FEC only, and only when the setting is on. The Connect list still hears the line. */
-    private boolean shouldDropConnectFrame(String line) {
-        return kind == Kind.LISTEN
-                && app.config().isSuppressConnectFrames()
-                && CallsignLineParser.connectToken(line) != null;
-    }
-
-    /** Characters of the current line still waiting in {@code pending}. */
-    private static int unpaintedTailLength(StringBuilder pending) {
-        int nl = pending.lastIndexOf("\n");
-        return nl >= 0 ? pending.length() - (nl + 1) : pending.length();
-    }
-
-    /** Drop this line's characters that have not been painted yet. */
-    private static void dropUnpaintedLineTail(StringBuilder pending) {
-        int nl = pending.lastIndexOf("\n");
-        if (nl >= 0) {
-            pending.delete(nl + 1, pending.length());
-        } else {
-            pending.setLength(0);
+        if (completedLines > 0) {
+            removeNewestConnectLines(completedLines);
         }
     }
 
     /**
-     * Remove {@code bodyChars} of the connect frame already painted at the end of the
-     * document, plus a timestamp sitting immediately in front of them. Does not cross
-     * onto the previous line.
+     * FEC only, and only while Suppress connect frames is on. Checks the lines this
+     * chunk just finished, not lines already in the transcript. A line whose text ends
+     * with {@code <C>} is deleted, including its newline and any timestamp.
+     * The Connect list already heard the raw line in {@link #finishInboundLine}.
      */
-    private void deletePaintedConnectPrefix(int bodyChars) {
+    private void removeNewestConnectLines(int completedLines) {
+        if (completedLines <= 0 || kind != Kind.LISTEN || !app.config().isSuppressConnectFrames()) {
+            return;
+        }
         StyledDocument doc = transcript.getStyledDocument();
         int len = doc.getLength();
-        if (len <= 0 || bodyChars <= 0) {
+        if (len <= 0) {
             return;
         }
         try {
-            String existing = doc.getText(0, len);
-            int lineStart = existing.lastIndexOf('\n');
-            lineStart = lineStart < 0 ? 0 : lineStart + 1;
-            int lineLen = len - lineStart;
-            int removeBody = Math.min(bodyChars, lineLen);
-            int removeFrom = len - removeBody;
-            while (removeFrom > lineStart) {
-                AttributeSet attrs = doc.getCharacterElement(removeFrom - 1).getAttributes();
-                if (!Boolean.TRUE.equals(attrs.getAttribute(TIMESTAMP_MARK))) {
+            String text = doc.getText(0, len);
+            int start = startOfNewestLines(text, completedLines);
+            boolean removed = false;
+            int seen = 0;
+            while (start < text.length() && seen < completedLines) {
+                int nl = text.indexOf('\n', start);
+                if (nl < 0) {
                     break;
                 }
-                removeFrom--;
+                seen++;
+                if (endsWithConnectMark(text.substring(start, nl))) {
+                    doc.remove(start, nl + 1 - start);
+                    removed = true;
+                    text = doc.getText(0, doc.getLength());
+                } else {
+                    start = nl + 1;
+                }
             }
-            if (removeFrom < len) {
-                doc.remove(removeFrom, len - removeFrom);
+            if (removed) {
                 transcript.setCaretPosition(doc.getLength());
             }
         } catch (BadLocationException ignored) {
         }
+    }
+
+    /** Index of the first line among the last {@code completedLines} finished lines. */
+    private static int startOfNewestLines(String text, int completedLines) {
+        int nl = text.length();
+        for (int n = 0; n < completedLines; n++) {
+            int prev = text.lastIndexOf('\n', nl - 1);
+            if (prev < 0) {
+                return 0;
+            }
+            if (n == completedLines - 1) {
+                int before = prev == 0 ? -1 : text.lastIndexOf('\n', prev - 1);
+                return before < 0 ? 0 : before + 1;
+            }
+            nl = prev;
+        }
+        return 0;
+    }
+
+    /** True when {@code line} ends with {@code <C>}, ignoring trailing spaces. */
+    private static boolean endsWithConnectMark(String line) {
+        int end = line.length();
+        while (end > 0 && line.charAt(end - 1) == ' ') {
+            end--;
+        }
+        return end >= 3 && line.startsWith("<C>", end - 3);
     }
 
     private void finishInboundLine() {
@@ -2544,8 +2551,8 @@ public final class ConnectionWindow extends JFrame {
             if (choice == 0) {
                 abortSession();
             } else {
-                stubAction("Disconnect");
-                app.markArqDead(this);
+                app.arqCloseDisconnect(this);
+                return;
             }
         }
         rememberBounds();

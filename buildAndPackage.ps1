@@ -1,5 +1,5 @@
 # Package the shaded jar and copy it to Builds\Most Recent Build.
-# mvn package runs initialize and increments build.number.properties.
+# exec.skip leaves build.number.properties unchanged. The jar still records the current number.
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
@@ -8,7 +8,7 @@ if (-not (Test-Path $mvn)) {
     Write-Error "Maven not found at $mvn"
 }
 
-& $mvn -q package
+& $mvn -q package "-Dexec.skip=true"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

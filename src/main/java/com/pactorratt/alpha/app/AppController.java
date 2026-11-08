@@ -92,6 +92,15 @@ public final class AppController {
     /** Inclusive dwell for three 100-baud passes of 32 bytes. */
     private static final long PD_BUG_OK_MIN_MS = 11_000;
     private static final long PD_BUG_OK_MAX_MS = 13_000;
+    /** UBIT 10 *w* byte for Pactor Idle. */
+    private static final int LINK_STATUS_IDLE = 0x33;
+    /** Wait after IRS+Idle becomes true before the first cycle check. */
+    private static final int IRS_IDLE_ARM_MS = 200;
+    /** Normal-path PACTOR cycle. */
+    private static final int IRS_IDLE_CYCLE_MS = 1_250;
+    /** Long-path PACTOR cycle. ARQ title ends with this when {@code CONNECTED to … via LONGPATH}. */
+    private static final int IRS_IDLE_LONGPATH_CYCLE_MS = 1_400;
+    private static final String LONGPATH_TITLE_SUFFIX = "via LONGPATH";
 
     private final Path portableRoot;
     private final ConfigStore configStore;
@@ -180,10 +189,12 @@ public final class AppController {
     /** Serializes UBIT 10–triggered {@code OP}; extra {@code $50 n} queues one follow-up. */
     private final AtomicBoolean ubit10OpInFlight = new AtomicBoolean(false);
     private final AtomicBoolean ubit10OpFollowup = new AtomicBoolean(false);
-    /*
-     * UBIT 10 does not report *x*, so an Idle changeover can miss OP if *w* stays $33.
-     * Put the 1-second IRS OP poll back if users report random hangs at idle or on changeover.
+    /**
+     * While the ARQ window is IRS and Idle, UBIT 10 will not see an Idle changeover
+     * ({@code *w*} stays {@code $33}). After {@link #IRS_IDLE_ARM_MS}, solicit {@code OP}
+     * once per air cycle until the role leaves IRS or the link leaves Idle.
      */
+    private Timer irsIdleOpTimer;
 
     public AppController(Path portableRoot) {
         this.portableRoot = Objects.requireNonNull(portableRoot);
@@ -1002,6 +1013,38 @@ public final class AppController {
                     hostDataWithControl(pending, RECEIVE_CHAR_CTRL_D),
                     ARQ_HOST_TIMEOUT_MS);
         }, null, notice::get, null);
+    }
+
+    /**
+     * Close-dialog Disconnect. IRS seizes first ({@code AG}, wait for ack) so the
+     * sign-off can go out; a failed seize does not {@code TC} or send. Then {@code TC},
+     * then {@code de &lt;call&gt; SK} plus {@code $04} in one ch0 block.
+     */
+    public void arqCloseDisconnect(ConnectionWindow window) {
+        if (window == null || window.kind() != ConnectionWindow.Kind.ARQ || !window.isSessionActive()) {
+            return;
+        }
+        boolean seize = window.isLocalIrs();
+        String signoff = closeSignoffText();
+        runArqHostAction(window, "Disconnect", session -> {
+            if (seize) {
+                sendHostOk(session, "AG");
+            }
+            sendHostOk(session, "TC");
+            session.sendData(0, hostDataWithControl(signoff, RECEIVE_CHAR_CTRL_D), ARQ_HOST_TIMEOUT_MS);
+            runOnEdt(() -> paintCannedIfPresent(window, signoff));
+        }, null, seize
+                ? "Disconnect — sent AG, TC, then " + signoff + " + CTRL-D ($04)."
+                : "Disconnect — sent TC, then " + signoff + " + CTRL-D ($04).");
+    }
+
+    /** Program callsign, or the TNC {@code MYCALL} when Program is blank. */
+    private String closeSignoffText() {
+        String call = ownCallsign();
+        if (call.isEmpty() && tncMycall != null) {
+            call = tncMycall.trim().toUpperCase(Locale.ROOT);
+        }
+        return call.isEmpty() ? "de SK" : "de " + call + " SK";
     }
 
     /**
@@ -2225,25 +2268,29 @@ public final class AppController {
         if (decoded == null) {
             return;
         }
-        if (statusMonitorWindow != null && statusMonitorWindow.isDisplayable()) {
-            statusMonitorWindow.setModeLine(decoded.statusLine());
-        }
-        ConnectionWindow arq = activeArqWindow;
-        if (arq == null || !arq.isSessionActive()) {
-            applyMainModeFromOpmode(decoded);
-            return;
-        }
-        if (decoded.standby) {
-            String w = decoded.wLabel != null ? decoded.wLabel : "Standby";
-            arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
-            if (arq.hasSeenLiveOpmode()) {
-                markArqDead(arq);
-                noticeArq(arq, "ARQ ended — OPMODE " + w + " (no $50 DISCONNECTED).");
+        try {
+            if (statusMonitorWindow != null && statusMonitorWindow.isDisplayable()) {
+                statusMonitorWindow.setModeLine(decoded.statusLine());
             }
-            return;
+            ConnectionWindow arq = activeArqWindow;
+            if (arq == null || !arq.isSessionActive()) {
+                applyMainModeFromOpmode(decoded);
+                return;
+            }
+            if (decoded.standby) {
+                String w = decoded.wLabel != null ? decoded.wLabel : "Standby";
+                arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
+                if (arq.hasSeenLiveOpmode()) {
+                    markArqDead(arq);
+                    noticeArq(arq, "ARQ ended — OPMODE " + w + " (no $50 DISCONNECTED).");
+                }
+                return;
+            }
+            arq.markOpmodeLive();
+            arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
+        } finally {
+            syncIrsIdleOpWatch();
         }
-        arq.markOpmodeLive();
-        arq.applyOpmodeLink(decoded.hasDirection() ? decoded.transmit : null, decoded.pactorBaud);
     }
 
     /** Map a Pactor OPMODE reply onto the main-window Mode label when no ARQ window is live. */
@@ -2311,6 +2358,70 @@ public final class AppController {
         worker.start();
     }
 
+    /**
+     * IRS+Idle changeover watch. EDT. A running timer is left alone so a later
+     * {@code OP} reply or repeated Idle paint does not restart the 200 ms wait.
+     */
+    private void syncIrsIdleOpWatch() {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            runOnEdt(this::syncIrsIdleOpWatch);
+            return;
+        }
+        if (!irsIdleWatchWanted()) {
+            stopIrsIdleOpWatch();
+            return;
+        }
+        if (irsIdleOpTimer != null && irsIdleOpTimer.isRunning()) {
+            return;
+        }
+        int cycle = irsIdleCycleMs();
+        if (irsIdleOpTimer == null) {
+            irsIdleOpTimer = new Timer(cycle, e -> onIrsIdleOpTick());
+            irsIdleOpTimer.setRepeats(true);
+        }
+        irsIdleOpTimer.setDelay(cycle);
+        irsIdleOpTimer.setInitialDelay(IRS_IDLE_ARM_MS + cycle);
+        irsIdleOpTimer.start();
+    }
+
+    private void stopIrsIdleOpWatch() {
+        if (irsIdleOpTimer != null) {
+            irsIdleOpTimer.stop();
+        }
+    }
+
+    private void onIrsIdleOpTick() {
+        if (!irsIdleWatchWanted()) {
+            stopIrsIdleOpWatch();
+            return;
+        }
+        if (isDebugMonitorOpen()) {
+            debugMonitorWindow.appendNote("idle watchdog");
+        }
+        requestOpFromUbit10();
+    }
+
+    /** Active ARQ, IRS, and last *w* Idle. The opening wait and every cycle check use this. */
+    private boolean irsIdleWatchWanted() {
+        ConnectionWindow arq = activeArqWindow;
+        return tncConnected
+                && arq != null
+                && arq.isSessionActive()
+                && !arq.isLinkStatusFrozen()
+                && arq.isLocalIrs()
+                && lastLinkStatusN != null
+                && lastLinkStatusN == LINK_STATUS_IDLE;
+    }
+
+    private int irsIdleCycleMs() {
+        ConnectionWindow arq = activeArqWindow;
+        String title = arq == null ? null : arq.getTitle();
+        if (title != null && title.endsWith(LONGPATH_TITLE_SUFFIX)) {
+            return IRS_IDLE_LONGPATH_CYCLE_MS;
+        }
+        return IRS_IDLE_CYCLE_MS;
+    }
+
     /** ARQ active wins; else active Listen window. */
     private ConnectionWindow inboundTranscriptTarget() {
         if (activeArqWindow != null && activeArqWindow.isSessionActive()) {
@@ -2330,6 +2441,7 @@ public final class AppController {
             failPdBug("Host session closed.");
         }
         runOnEdt(() -> {
+            syncIrsIdleOpWatch();
             if (mainWindow != null) {
                 mainWindow.refreshConnectionState();
             }
@@ -3103,6 +3215,7 @@ public final class AppController {
                     }
                     lastLinkStatusN = n;
                     window.showLinkByte(n);
+                    syncIrsIdleOpWatch();
                 });
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -3122,6 +3235,7 @@ public final class AppController {
         if (target != null) {
             target.showLinkByte(n);
         }
+        syncIrsIdleOpWatch();
     }
 
     private void applyRememberedLinkStatus(ConnectionWindow window) {
@@ -3588,6 +3702,7 @@ public final class AppController {
         boolean tracked = window == activeArqWindow;
         if (tracked) {
             activeArqWindow = null;
+            syncIrsIdleOpWatch();
         }
         deadArqWindows.remove(window);
         if (tracked || window.restoresFecOnClose() || window.reopensListenOnClose()) {
@@ -3653,6 +3768,7 @@ public final class AppController {
                 mainWindow.refreshModeLabel();
             }
             restoreListenAfterArq();
+            syncIrsIdleOpWatch();
         }
     }
 
