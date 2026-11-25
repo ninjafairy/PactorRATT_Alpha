@@ -1,6 +1,7 @@
 package com.pactorratt.alpha.config;
 
 import java.awt.Color;
+import java.util.Locale;
 
 /**
  * Portable program settings. Defaults match PtRa_specification.
@@ -95,7 +96,7 @@ public final class AppConfig {
     }
 
     public void setCallsign(String callsign) {
-        this.callsign = callsign == null ? "" : callsign.trim().toUpperCase();
+        this.callsign = callsign == null ? "" : callsign.trim().toUpperCase(Locale.ROOT);
     }
 
     public String getComPort() {

@@ -478,17 +478,19 @@ public final class HostSession implements AutoCloseable {
         if (count <= 0) {
             return new byte[0];
         }
-        // Host AE takes a decimal integer address no space between (e.g. $0006 → "AE6"), not hex digits.
-        String addrCmd = "AE" + (address & 0xFFFF);
-        CommandResponse ae = sendCommand(addrCmd, timeoutMs);
-        if (!ae.ok()) {
-            throw new IOException("ADDRESS failed, status=0x" + Integer.toHexString(ae.statusCode));
+        synchronized (hostIoLock) {
+            // Host AE takes a decimal integer address no space between (e.g. $0006 → "AE6"), not hex digits.
+            String addrCmd = "AE" + (address & 0xFFFF);
+            CommandResponse ae = sendCommand(addrCmd, timeoutMs);
+            if (!ae.ok()) {
+                throw new IOException("ADDRESS failed, status=0x" + Integer.toHexString(ae.statusCode));
+            }
+            byte[] out = new byte[count];
+            for (int i = 0; i < count; i++) {
+                out[i] = (byte) readMemoryByte(timeoutMs);
+            }
+            return out;
         }
-        byte[] out = new byte[count];
-        for (int i = 0; i < count; i++) {
-            out[i] = (byte) readMemoryByte(timeoutMs);
-        }
-        return out;
     }
 
     /** 8536 CIO parallel port B (mode/status decoders + SEND). Tech ref §4.9.3. */
@@ -626,6 +628,7 @@ public final class HostSession implements AutoCloseable {
         } catch (IOException e) {
             if (running.get()) {
                 debugLog.host("ERR", "Reader I/O: " + e.getMessage());
+                serial.close();
                 fire(HostEvent.error(e.getMessage()));
             }
         } finally {

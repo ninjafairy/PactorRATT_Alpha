@@ -1,6 +1,7 @@
 package com.pactorratt.alpha.ui;
 
 import com.pactorratt.alpha.app.AppController;
+import com.pactorratt.alpha.app.BuildInfo;
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.CommitMode;
 import com.pactorratt.alpha.config.MacroFile;
@@ -110,6 +111,14 @@ public final class ConnectionWindow extends JFrame {
     private static final int ABORT_AGAIN_MS = 600;
     private static final String ABORT_COMPLETE_LINE =
             "[Abort sequence complete, unsent data cleared]";
+    private static final String ABORT_ATTEMPTED_LINE = "[Abort attempted]";
+    private static final String ABORT_RETRY_LINE = "[Abort failed retrying...]";
+    private static final String ABORT_SUCCESS_LINE = "[Abort successful]";
+    private static final String ABORT_FAILURE_LINE =
+            "[Abort Failure] [Abort Failure] [Abort Failure]";
+    private static final int ABORT_FAILURE_LINES = 5;
+    /** Dark green: bright green is hard to read on the white transcript. */
+    private static final Color ABORT_SUCCESS_GREEN = new Color(0, 128, 0);
     private static final DateTimeFormatter TRANSCRIPT_DATE = DateTimeFormatter.ofPattern("MM-dd-yy");
     private static final DateTimeFormatter STAMP_HM = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter STAMP_DATE = DateTimeFormatter.ofPattern("dd-MM-yy HH:mm");
@@ -213,7 +222,9 @@ public final class ConnectionWindow extends JFrame {
     private int popupClickPos;
 
     public ConnectionWindow(AppController app, Kind kind, String titleCall) {
-        super(kind == Kind.LISTEN ? "PtR FEC" : "PtR ARQ — " + titleCall);
+        super(kind == Kind.LISTEN
+                ? "PtR FEC" + BuildInfo.titleTag()
+                : "PtR ARQ" + BuildInfo.titleTag() + " — " + titleCall);
         this.app = app;
         this.kind = kind;
         this.titleCall = titleCall;
@@ -1842,9 +1853,36 @@ public final class ConnectionWindow extends JFrame {
         }
     }
 
-    /** Red transcript line after both abort acks. EDT. */
+    /** Red transcript line after both abort acks, before the OPMODE check. EDT. */
+    public void paintAbortAttempted() {
+        paintAbortTranscript(ABORT_ATTEMPTED_LINE, Color.RED);
+    }
+
+    /** Red transcript line before another {@code TC}/{@code RC} try. EDT. */
+    public void paintAbortRetrying() {
+        paintAbortTranscript(ABORT_RETRY_LINE, Color.RED);
+    }
+
+    /** Dark-green transcript line once OPMODE shows the link is down. EDT. */
+    public void paintAbortSuccessful() {
+        paintAbortTranscript(ABORT_SUCCESS_LINE, ABORT_SUCCESS_GREEN);
+    }
+
+    /** Five red lines after the tenth failed abort try. EDT. */
+    public void paintAbortFailureBanner() {
+        for (int i = 0; i < ABORT_FAILURE_LINES; i++) {
+            paintAbortTranscript(ABORT_FAILURE_LINE, Color.RED);
+        }
+    }
+
+    /** Red transcript line after a cleared abort. EDT. */
     public void paintAbortSequenceComplete() {
-        String line = ABORT_COMPLETE_LINE + "\n";
+        paintAbortTranscript(ABORT_COMPLETE_LINE, Color.RED);
+    }
+
+    /** One transcript line, with a leading newline when the document does not already end on one. */
+    private void paintAbortTranscript(String text, Color color) {
+        String line = text + "\n";
         try {
             StyledDocument doc = transcript.getStyledDocument();
             int len = doc.getLength();
@@ -1853,7 +1891,7 @@ public final class ConnectionWindow extends JFrame {
             }
         } catch (BadLocationException ignored) {
         }
-        appendTranscript(line, Color.RED);
+        appendTranscript(line, color);
     }
 
     private void populateDoubleClickedCallsign() {
@@ -2308,10 +2346,10 @@ public final class ConnectionWindow extends JFrame {
             statusPrefix.setText(String.format(" %s | ", role));
         }
         if (kind == Kind.ARQ && directionArrow != null) {
-            statusBeforeCall.setText(String.format(" | speed %s | quality -- | retries -- | ", speed));
+            statusBeforeCall.setText(String.format(" | speed %s | ", speed));
             mycallLabel.setText(mycallText() + " ");
             peerLabel.setText(" " + peerText());
-            statusSuffix.setText(String.format(" | ticker: (stub) | TNC %s", tnc));
+            statusSuffix.setText(String.format(" | TNC %s", tnc));
             if (!statusPreview) {
                 directionArrow.setStepMillis(DirectionArrow.stepMillisForBaud(opmodeBaud));
                 directionArrow.setTowardLocal(localIsIrs);
@@ -2319,7 +2357,7 @@ public final class ConnectionWindow extends JFrame {
             }
         } else {
             statusSuffix.setText(String.format(
-                    " | speed %s | quality -- | retries -- | call %s | ticker: (stub) | TNC %s",
+                    " | speed %s | call %s | TNC %s",
                     speed, titleCall, tnc));
         }
     }

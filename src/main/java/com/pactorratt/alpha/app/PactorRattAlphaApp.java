@@ -23,7 +23,7 @@ public final class PactorRattAlphaApp {
             } catch (Exception ignored) {
                 // Keep default L&F.
             }
-            if (!StartupWarningDialog.confirmContinue()) {
+            if (!StartupWarningDialog.confirmContinue(portableRoot)) {
                 System.exit(0);
                 return;
             }

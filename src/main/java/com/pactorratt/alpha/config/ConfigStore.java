@@ -478,7 +478,7 @@ public final class ConfigStore {
 
     private static String stripQuotes(String s) {
         if (s.length() >= 2 && s.startsWith("\"") && s.endsWith("\"")) {
-            return s.substring(1, s.length() - 1).replace("\\\"", "\"").replace("\\\\", "\\");
+            return s.substring(1, s.length() - 1);
         }
         return s;
     }

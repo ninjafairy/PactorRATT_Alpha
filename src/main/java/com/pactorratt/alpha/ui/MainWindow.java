@@ -2,6 +2,7 @@ package com.pactorratt.alpha.ui;
 
 import com.pactorratt.alpha.app.AppController;
 import com.pactorratt.alpha.app.AppMode;
+import com.pactorratt.alpha.app.BuildInfo;
 import com.pactorratt.alpha.config.AppConfig;
 import com.pactorratt.alpha.config.Buddy;
 
@@ -124,7 +125,7 @@ public final class MainWindow extends JFrame {
     private boolean connectExpanded = true;
 
     public MainWindow(AppController app) {
-        super("PactorRATT_Alpha");
+        super("PactorRATT_Alpha" + BuildInfo.titleTag());
         this.app = app;
         root.add(buddiesNode);
         root.add(heardNode);

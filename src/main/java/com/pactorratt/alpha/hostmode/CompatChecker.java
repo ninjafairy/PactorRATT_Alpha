@@ -25,12 +25,13 @@ public final class CompatChecker {
             "93 03 05 C2", "supported v7.0",
             "93 12 01 C2", "supported v7.0a",
             "95 09 13 C2", "supported v7.1",
-            "98 08 10 C2", "supported v7.2"
+            "98 08 10 C2", "supported v7.2",
+            "93 03 05 E3", "supported PK-900 v7.0" //thanks Alan AA6DW
     );
 
     /** Starred label from Compat_Memory_Map (*in testing …*). */
     private static final Map<String, String> IN_TESTING = linkedMap(
-            "93 03 05 E3", "in testing PK-900"
+            "96 03 07 E3", "in testing PK-900" //thanks Bob KI7QI
     );
 
     private static final Map<String, String> WARN_HK = linkedMap(
@@ -56,7 +57,7 @@ public final class CompatChecker {
                         "Unsupported",
                         fp,
                         "This TNC firmware is not supported (fingerprint " + hex + "). "
-                                + "PactorRATT Alpha cannot connect to this device.");
+                                + "Pactor mode not available on this firmware or TNC type.");
             }
         }
 

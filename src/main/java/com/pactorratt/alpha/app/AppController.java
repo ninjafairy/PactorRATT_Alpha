@@ -54,6 +54,10 @@ import java.util.Locale;
 import java.util.Objects;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,6 +71,10 @@ import java.util.function.Supplier;
 public final class AppController {
 
     private static final long ARQ_HOST_TIMEOUT_MS = 2000;
+    /** Pause after a {@code TC} ack and again after an {@code RC} ack before the next abort step. */
+    private static final long ABORT_POST_ACK_MS = 500;
+    /** Failed {@code TC}, {@code RC}, or {@code OP} attempts before the abort-failure banner. */
+    private static final int ABORT_MAX_TRIES = 10;
     /**
      * Fallback outbound-call UI timer. TNC ARQTMO default is 60 s and reports
      * {@code $50 Timeout} (no {@code DISCONNECTED:}) when the call dies; this timer
@@ -131,6 +139,12 @@ public final class AppController {
     private final List<ConnectionWindow> deadArqWindows = new ArrayList<>();
 
     private volatile HostSession hostSession;
+    /** ARQ ch0 text and text+control sends run here in FIFO order so they cannot overtake each other. */
+    private final ExecutorService arqTxExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "arq-tx");
+        t.setDaemon(true);
+        return t;
+    });
     private final AtomicBoolean tncBusy = new AtomicBoolean(false);
     /** Guards overlapping Listen FEC / End TX. */
     private final AtomicBoolean fecBusy = new AtomicBoolean(false);
@@ -1012,7 +1026,7 @@ public final class AppController {
             session.sendData(0,
                     hostDataWithControl(pending, RECEIVE_CHAR_CTRL_D),
                     ARQ_HOST_TIMEOUT_MS);
-        }, null, notice::get, null);
+        }, null, notice::get, null, true);
     }
 
     /**
@@ -1026,6 +1040,9 @@ public final class AppController {
         }
         boolean seize = window.isLocalIrs();
         String signoff = closeSignoffText();
+        String doneNotice = seize
+                ? "Disconnect — sent AG, TC, then " + signoff + " + CTRL-D ($04)."
+                : "Disconnect — sent TC, then " + signoff + " + CTRL-D ($04).";
         runArqHostAction(window, "Disconnect", session -> {
             if (seize) {
                 sendHostOk(session, "AG");
@@ -1033,9 +1050,7 @@ public final class AppController {
             sendHostOk(session, "TC");
             session.sendData(0, hostDataWithControl(signoff, RECEIVE_CHAR_CTRL_D), ARQ_HOST_TIMEOUT_MS);
             runOnEdt(() -> paintCannedIfPresent(window, signoff));
-        }, null, seize
-                ? "Disconnect — sent AG, TC, then " + signoff + " + CTRL-D ($04)."
-                : "Disconnect — sent TC, then " + signoff + " + CTRL-D ($04).");
+        }, null, () -> doneNotice, null, true);
     }
 
     /** Program callsign, or the TNC {@code MYCALL} when Program is blank. */
@@ -1128,7 +1143,7 @@ public final class AppController {
                         + "controls locked, typed text queued until ISS again.");
             }
             sendCh0Control(session, PTOVER_CHAR_CTRL_Z);
-        }, window::unlockHandoverControls, notice::get, null);
+        }, window::unlockHandoverControls, notice::get, null, true);
     }
 
     /** Seize — Host {@code AG} (AChg). */
@@ -1137,8 +1152,8 @@ public final class AppController {
     }
 
     /**
-     * Abort — {@code TC}, wait for ack, then {@code RC}, wait for ack.
-     * {@link #markArqDead} runs only after both acks.
+     * Abort — up to 10 tries of {@code TC}, 500 ms, {@code RC}, 500 ms, then {@code OP}.
+     * A decoded OPMODE other than {@code PG} marks the link dead.
      */
     public void arqAbort(ConnectionWindow window) {
         arqAbort(window, null);
@@ -1146,17 +1161,19 @@ public final class AppController {
 
     /**
      * Same as {@link #arqAbort(ConnectionWindow, Runnable, Runnable)} with no failure callback.
-     * {@code onDone} runs on the EDT after the link is aborted, or immediately when there is
-     * nothing to abort. A failed {@code TC} or {@code RC} does not call {@code onDone}.
+     * {@code onDone} runs on the EDT after OPMODE shows the link is down, or immediately when
+     * there is nothing to abort. Ten failed tries, or an interrupt, do not call {@code onDone}.
      */
     public void arqAbort(ConnectionWindow window, Runnable onDone) {
         arqAbort(window, onDone, null);
     }
 
     /**
-     * {@code TC} then {@code RC}, each waited for its ack. {@code onSuccess} runs on the EDT
-     * after the link is marked dead, or immediately when there is nothing to abort.
-     * A failed command leaves the link up and runs {@code onFailure} instead.
+     * Up to 10 tries of {@code TC}, 500 ms, {@code RC}, 500 ms, then {@code OP}.
+     * {@code onSuccess} runs on the EDT after a decoded OPMODE is not {@code PG}, or immediately
+     * when there is nothing to abort. Ten failures paint the banner and run {@code onFailure}
+     * without marking the link dead. An interrupt runs {@code onFailure} and does not paint
+     * the banner.
      */
     public void arqAbort(ConnectionWindow window, Runnable onSuccess, Runnable onFailure) {
         Runnable finished = () -> {
@@ -1195,41 +1212,14 @@ public final class AppController {
             return;
         }
 
-        Thread worker = new Thread(() -> {
-            String failure = null;
-            try {
-                sendHostOk(session, "TC");
-                sendHostOk(session, "RC");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                failure = "Abort — interrupted.";
-                debugLog.info("ARQ Abort interrupted");
-            } catch (IOException e) {
-                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                failure = "Abort — " + msg;
-                debugLog.info("ARQ Abort failed: " + msg);
-            }
-            final String error = failure;
-            runOnEdt(() -> {
-                if (error != null) {
-                    noticeArq(window, error);
-                    failed.run();
-                } else {
-                    finishAbortLink(window);
-                    noticeArq(window, "Abort — sent TC then RC.");
-                    finished.run();
-                }
-            });
-        }, "arq-abort");
-        worker.setDaemon(true);
-        worker.start();
+        startAbortWorker(window, session, false, finished, failed);
     }
 
     /**
      * One-press FEC abort kept for callers that are not the control button.
-     * The FEC Abort button uses {@link #confirmLinkAbort} ({@code TC} then {@code RC}).
-     * This path sends the same {@code TC} then {@code RC}, leaves the window open,
-     * and refuses while an ARQ link is up. Listen is restored after both acks.
+     * The FEC Abort button uses {@link #confirmLinkAbort}. Both use the same retry loop.
+     * This path refuses while an ARQ link is up. Listen is restored only after OPMODE
+     * leaves {@code PD}.
      */
     public void fecAbort(ConnectionWindow window) {
         if (window == null || window.kind() != ConnectionWindow.Kind.LISTEN) {
@@ -1248,41 +1238,18 @@ public final class AppController {
             runOnEdt(() -> noticeWindow(window, "Abort — no open Host session."));
             return;
         }
-        Thread worker = new Thread(() -> {
-            String failure = null;
-            try {
-                sendHostOk(session, "TC");
-                sendHostOk(session, "RC");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                failure = "Abort — interrupted.";
-                debugLog.info("FEC Abort interrupted");
-            } catch (IOException e) {
-                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                failure = "Abort — " + msg;
-                debugLog.info("FEC Abort failed: " + msg);
-            }
-            final String error = failure;
-            runOnEdt(() -> {
-                if (error != null) {
-                    noticeWindow(window, error);
-                } else {
-                    noticeWindow(window, "Abort — sent TC then RC.");
-                    restoreListenAfterArq();
-                }
-            });
-        }, "fec-abort");
-        worker.setDaemon(true);
-        worker.start();
+        startAbortWorker(window, session, true, null, null);
     }
 
     /**
      * Two-press abort from the ARQ or FEC control button.
-     * {@code TC}, wait for ack, then {@code RC}, wait for ack. Both acks paint the red
-     * transcript line. An ARQ link is then marked dead, which restores Listen.
+     * Up to 10 tries of {@code TC}, 500 ms, {@code RC}, 500 ms, then {@code OP}.
+     * ARQ is still linked on {@code PG}; FEC is still linked on {@code PD}.
+     * A decoded mode that is not still linked paints the green and red transcript lines.
+     * An ARQ link that is still the active window is then marked dead, which restores Listen.
      * FEC, and an ARQ window already closed, restore Listen without marking a live window dead.
-     * Failure leaves the link up and reports on the notice line. {@code onDone} runs on the EDT
-     * either way so the button can return to faint Abort.
+     * Ten failures paint the banner and leave the link up. {@code onDone} runs on the EDT
+     * after success, the banner, or an interrupt so the button can return to faint Abort.
      */
     public void confirmLinkAbort(ConnectionWindow window, Runnable onDone) {
         Runnable finished = () -> {
@@ -1330,33 +1297,123 @@ public final class AppController {
             return;
         }
 
-        Thread worker = new Thread(() -> {
-            String error = null;
-            try {
-                sendHostOk(session, "TC");
-                sendHostOk(session, "RC");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                error = "Abort — interrupted.";
-                debugLog.info("Abort sequence interrupted");
-            } catch (IOException e) {
-                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
-                error = "Abort — " + msg;
-                debugLog.info("Abort sequence failed: " + msg);
-            }
-            final String failure = error;
-            runOnEdt(() -> {
-                if (failure != null) {
-                    noticeWindow(window, failure);
-                } else {
-                    window.paintAbortSequenceComplete();
-                    finishAbortLink(window);
-                }
-                finished.run();
-            });
-        }, fec ? "fec-abort" : "arq-abort");
+        startAbortWorker(window, session, fec, finished, finished);
+    }
+
+    /**
+     * Shared abort worker for the close dialog, the FEC one-press path, and both control buttons.
+     * Thread name stays {@code arq-abort} or {@code fec-abort}.
+     */
+    private void startAbortWorker(ConnectionWindow window, HostSession session, boolean fec,
+                                  Runnable onSuccess, Runnable onFailure) {
+        Thread worker = new Thread(() -> runAbortSequence(window, session, fec, onSuccess, onFailure),
+                fec ? "fec-abort" : "arq-abort");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    /**
+     * One thread, up to {@link #ABORT_MAX_TRIES} tries. A try that gets both acks waits
+     * {@link #ABORT_POST_ACK_MS} after each ack, paints {@code [Abort attempted]}, then polls
+     * {@code OP}. ARQ is still linked on {@code PG}. FEC is still linked on {@code PD}.
+     * A missing decode, a timeout, or a bad status counts as a failed try. An interrupt stops
+     * immediately. When an ARQ window is already dead, one {@code OP} before {@code TC} can
+     * clear the link without sending {@code TC}/{@code RC}; a {@code PG} reply or a failed
+     * poll does not consume a try.
+     */
+    private void runAbortSequence(ConnectionWindow window, HostSession session, boolean fec,
+                                  Runnable onSuccess, Runnable onFailure) {
+        int failures = 0;
+        while (failures < ABORT_MAX_TRIES) {
+            try {
+                if (abortAlreadyDown(window, session, fec, onSuccess)) {
+                    return;
+                }
+                sendHostOk(session, "TC");
+                Thread.sleep(ABORT_POST_ACK_MS);
+                sendHostOk(session, "RC");
+                Thread.sleep(ABORT_POST_ACK_MS);
+                runOnEdt(window::paintAbortAttempted);
+                OpmodeParser.Decoded decoded = queryOpmode(session);
+                if (decoded != null && !abortStillLinked(decoded, fec)) {
+                    finishAbortCleared(window, onSuccess);
+                    return;
+                }
+                failures++;
+                debugLog.info("Abort sequence still linked or OPMODE missing (try " + failures + ")");
+            } catch (InterruptedException e) {
+                abortInterrupted(window, onFailure);
+                return;
+            } catch (IOException e) {
+                failures++;
+                String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+                debugLog.info("Abort sequence failed: " + msg + " (try " + failures + ")");
+            }
+            if (failures >= ABORT_MAX_TRIES) {
+                runOnEdt(() -> {
+                    window.paintAbortFailureBanner();
+                    if (onFailure != null) {
+                        onFailure.run();
+                    }
+                });
+                return;
+            }
+            runOnEdt(window::paintAbortRetrying);
+        }
+    }
+
+    /**
+     * ARQ only. When this window is no longer {@code activeArqWindow}, poll {@code OP} before
+     * {@code TC}. A decoded mode other than {@code PG} clears the abort. {@code PG}, a missing
+     * decode, or an I/O error falls through and does not count as a try.
+     *
+     * @return {@code true} when the sequence already finished
+     */
+    private boolean abortAlreadyDown(ConnectionWindow window, HostSession session, boolean fec,
+                                     Runnable onSuccess) throws InterruptedException {
+        if (fec || window == activeArqWindow) {
+            return false;
+        }
+        OpmodeParser.Decoded decoded;
+        try {
+            decoded = queryOpmode(session);
+        } catch (IOException e) {
+            String msg = e.getMessage() == null ? "Host I/O failed" : e.getMessage();
+            debugLog.info("Abort pre-check OP failed: " + msg);
+            return false;
+        }
+        if (decoded != null && !decoded.isPactorArq()) {
+            finishAbortCleared(window, onSuccess);
+            return true;
+        }
+        return false;
+    }
+
+    /** {@code PG} for ARQ, {@code PD} for FEC. */
+    private static boolean abortStillLinked(OpmodeParser.Decoded decoded, boolean fec) {
+        return fec ? decoded.isPactorFec() : decoded.isPactorArq();
+    }
+
+    private void finishAbortCleared(ConnectionWindow window, Runnable onSuccess) {
+        runOnEdt(() -> {
+            window.paintAbortSuccessful();
+            window.paintAbortSequenceComplete();
+            finishAbortLink(window);
+            if (onSuccess != null) {
+                onSuccess.run();
+            }
+        });
+    }
+
+    private void abortInterrupted(ConnectionWindow window, Runnable onFailure) {
+        Thread.currentThread().interrupt();
+        debugLog.info("Abort sequence interrupted");
+        runOnEdt(() -> {
+            noticeWindow(window, "Abort — interrupted.");
+            if (onFailure != null) {
+                onFailure.run();
+            }
+        });
     }
 
     /**
@@ -1417,7 +1474,7 @@ public final class AppController {
                 onEdt(() -> paintCannedIfPresent(window, canned));
             }
             session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS);
-        }, null, notice::get, sendComposeFirst ? null : () -> paintCannedIfPresent(window, canned));
+        }, null, notice::get, sendComposeFirst ? null : () -> paintCannedIfPresent(window, canned), true);
     }
 
     /**
@@ -1440,7 +1497,7 @@ public final class AppController {
             noticeWindow(window, "ISS outbound — no open Host session (transcript only).");
             return;
         }
-        Thread worker = new Thread(() -> {
+        arqTxExecutor.execute(() -> {
             try {
                 byte[] bytes = toHostDataBytes(payloadText);
                 if (bytes.length == 0) {
@@ -1451,7 +1508,6 @@ public final class AppController {
                 runOnEdt(() -> noticeWindow(window,
                         "ISS outbound — sent " + chars + " char(s) to TNC."));
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
                 debugLog.info("ISS outbound interrupted");
                 runOnEdt(() -> noticeWindow(window, "ISS outbound — interrupted."));
             } catch (IOException e) {
@@ -1459,9 +1515,7 @@ public final class AppController {
                 debugLog.info("ISS outbound failed: " + msg);
                 runOnEdt(() -> noticeWindow(window, "ISS outbound — " + msg));
             }
-        }, "iss-outbound");
-        worker.setDaemon(true);
-        worker.start();
+        });
     }
 
     public List<MacroFile.Macro> loadMacros() {
@@ -1688,7 +1742,26 @@ public final class AppController {
         if (bytes.length == 0) {
             return;
         }
-        session.sendData(0, bytes, ARQ_HOST_TIMEOUT_MS);
+        Future<?> queued = arqTxExecutor.submit(() -> {
+            session.sendData(0, bytes, ARQ_HOST_TIMEOUT_MS);
+            return null;
+        });
+        try {
+            queued.get();
+        } catch (InterruptedException e) {
+            queued.cancel(true);
+            throw e;
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IOException io) {
+                throw io;
+            }
+            if (cause instanceof InterruptedException ie) {
+                throw ie;
+            }
+            String msg = cause == null || cause.getMessage() == null ? "Host send failed." : cause.getMessage();
+            throw new IOException(msg, cause);
+        }
         debugLog.info("Macro outbound sent " + bytes.length + " char(s).");
     }
 
@@ -2048,11 +2121,15 @@ public final class AppController {
 
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
             Runnable onFailure, String successNotice, Runnable onDispatch) {
-        runArqHostAction(window, actionName, work, onFailure, () -> successNotice, onDispatch);
+        runArqHostAction(window, actionName, work, onFailure, () -> successNotice, onDispatch, false);
     }
 
+    /**
+     * @param ordered true for text / text+control sends: run on {@link #arqTxExecutor} behind
+     *                earlier chat so the control byte cannot overtake queued text
+     */
     private void runArqHostAction(ConnectionWindow window, String actionName, ArqHostWork work,
-            Runnable onFailure, Supplier<String> successNotice, Runnable onDispatch) {
+            Runnable onFailure, Supplier<String> successNotice, Runnable onDispatch, boolean ordered) {
         if (!tncConnected) {
             noticeWindow(window, actionName + " — TNC not connected.");
             if (onFailure != null) {
@@ -2071,7 +2148,7 @@ public final class AppController {
         if (onDispatch != null) {
             onDispatch.run();
         }
-        Thread worker = new Thread(() -> {
+        Runnable body = () -> {
             try {
                 work.run(session);
                 String notice = successNotice == null ? "" : successNotice.get();
@@ -2095,7 +2172,12 @@ public final class AppController {
                     noticeWindow(window, actionName + " — " + msg);
                 });
             }
-        }, "arq-" + actionName.replaceAll("\\s+", "-").toLowerCase());
+        };
+        if (ordered) {
+            arqTxExecutor.execute(body);
+            return;
+        }
+        Thread worker = new Thread(body, "arq-" + actionName.replaceAll("\\s+", "-").toLowerCase());
         worker.setDaemon(true);
         worker.start();
     }
@@ -2132,7 +2214,7 @@ public final class AppController {
             }
             session.sendData(0, payload, ARQ_HOST_TIMEOUT_MS);
         }, window::unlockHandoverControls, notice::get,
-                sendComposeFirst ? null : () -> paintCannedIfPresent(window, canned));
+                sendComposeFirst ? null : () -> paintCannedIfPresent(window, canned), true);
     }
 
     /**
@@ -2204,6 +2286,11 @@ public final class AppController {
         if (event == null) {
             return;
         }
+        if (event.type() == HostEvent.Type.ERROR) {
+            String msg = event.message();
+            runOnEdt(() -> onSerialFailure(msg));
+            return;
+        }
         if (event.type() == HostEvent.Type.COMMAND_RESPONSE) {
             OpmodeParser.Decoded decoded = OpmodeParser.decode(event.frame());
             if (decoded != null) {
@@ -2255,6 +2342,35 @@ public final class AppController {
                         + String.format("%02X", frame.ctl) + " len=" + frame.payload.length);
             }
         });
+    }
+
+    /**
+     * Host reader I/O failure (e.g. USB adapter unplugged). The port is already closed;
+     * treat it as a TNC disconnect. EDT.
+     */
+    private void onSerialFailure(String message) {
+        HostSession s = hostSession;
+        if (s == null) {
+            return;
+        }
+        detachHostEventListener(s);
+        hostSession = null;
+        String detail = message == null || message.isBlank() ? "serial read failed" : message;
+        debugLog.info("TNC serial connection lost: " + detail);
+        ConnectionWindow arq = activeArqWindow;
+        if (arq != null && arq.isSessionActive()) {
+            markArqDead(arq);
+            noticeArq(arq, "ARQ ended — serial port error.");
+        }
+        stopCallingUi();
+        setTncConnected(false);
+        Thread closer = new Thread(() -> tncInitializer.abort(s), "tnc-serial-lost");
+        closer.setDaemon(true);
+        closer.start();
+        JOptionPane.showMessageDialog(mainWindow,
+                "TNC serial connection lost: " + detail,
+                "TNC connection lost",
+                JOptionPane.ERROR_MESSAGE);
     }
 
     /**
@@ -2471,6 +2587,7 @@ public final class AppController {
             return;
         }
         connectCancelled.set(false);
+        final HostSession retained = pendingSession;
         pendingSession = null;
         if (mainWindow != null) {
             mainWindow.refreshConnectionState();
@@ -2479,6 +2596,7 @@ public final class AppController {
         Thread worker = new Thread(() -> {
             HostSession localPending = null;
             try {
+                tncInitializer.abort(retained);
                 TncInitializer.InitResult result = tncInitializer.connect(config);
                 if (result.session != null) {
                     localPending = result.session;
@@ -3318,7 +3436,7 @@ public final class AppController {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-        String call = remoteCallsign == null ? "" : remoteCallsign.trim().toUpperCase();
+        String call = remoteCallsign == null ? "" : remoteCallsign.trim().toUpperCase(Locale.ROOT);
         if (call.isEmpty()) {
             JOptionPane.showMessageDialog(mainWindow,
                     "Enter a remote callsign.",
@@ -3775,6 +3893,7 @@ public final class AppController {
     public void shutdown() {
         rememberOpenConnectionBounds();
         disconnectTnc(true);
+        arqTxExecutor.shutdownNow();
         if (debugMonitorWindow != null) {
             debugMonitorWindow.dispose();
             debugMonitorWindow = null;

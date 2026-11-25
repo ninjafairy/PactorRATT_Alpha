@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 
 /**
  * Scan a completed Listen inbound line for Heard ({@code de CALL}), Mentioned (bare CALL),
- * and connect frames ({@code ?>… <C>}).
+ * and connect frames ({@code >… <C>}, or {@code ?>… <C>} when the CTL byte is still in the text).
  * Callsign: 1–2 letters, 1 digit, 1–3 letters, not glued to a letter or digit on either
  * side (space, {@code >}, other punctuation, or end of line are all OK). {@code de} is a
  * whole word (not the end of {@code aside}/{@code made}).
@@ -27,8 +27,13 @@ public final class CallsignLineParser {
             "(?i)(?<!" + NOT_ALNUM + ")de (" + CALL_BODY + ")(?!" + NOT_ALNUM + ")");
     private static final Pattern BARE_CALL = Pattern.compile(
             "(?i)(?<!" + NOT_ALNUM + ")(" + CALL_BODY + ")(?!" + NOT_ALNUM + ")");
-    /** Entire line: {@code ?>} raw-token space {@code <C>}. Token may be truncated. */
-    private static final Pattern CONNECT_FRAME = Pattern.compile("^\\?>(.*) <C>$");
+    /**
+     * Entire line: optional {@code ?} then {@code >}, raw token, space, {@code <C>}.
+     * Hardware PTL delivers {@code >CALL <C>}; the {@code ?} is Host CTL {@code 0x3F} and is not
+     * in the payload. The debug monitor prints that CTL in front of the payload, so a capture
+     * looks like {@code ?>CALL <C>}. Token may be truncated.
+     */
+    private static final Pattern CONNECT_FRAME = Pattern.compile("^\\??>(.*) <C>$");
 
     public static final int CONNECT_STREAK = 3;
     public static final int CONNECT_WINDOW = 5;
@@ -40,7 +45,7 @@ public final class CallsignLineParser {
         public final List<String> heard;
         public final List<String> mentioned;
         /**
-         * Raw text between {@code ?>} and {@code  <C>}, uppercased, or {@code null}
+         * Raw text between the leading {@code >} and {@code  <C>}, uppercased, or {@code null}
          * if this line is not a connect frame. Empty string if the wrappers were present
          * with nothing in the middle.
          */
@@ -80,7 +85,8 @@ public final class CallsignLineParser {
     }
 
     /**
-     * Raw token inside a connect frame, or {@code null} if the line is not {@code ?>… <C>}.
+     * Raw token inside a connect frame, or {@code null} if the line is not {@code >… <C>}
+     * (optional leading {@code ?}).
      */
     public static String connectToken(String line) {
         if (line == null || line.isEmpty()) {

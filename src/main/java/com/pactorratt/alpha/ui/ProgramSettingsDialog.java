@@ -21,6 +21,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeListener;
 import java.awt.BorderLayout;
@@ -29,6 +30,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Window;
@@ -91,8 +93,9 @@ public final class ProgramSettingsDialog extends JDialog {
         JTextField wrap = new JTextField(Integer.toString(config.getWrapColumns()), 4);
 
         cqRepeatSpinner = new JSpinner(new SpinnerNumberModel(config.getCqRepeat(), 1, 10, 1));
+        narrowSpinner(cqRepeatSpinner);
         cqRepeatSpinner.setToolTipText("How many copies of the canned CQ block to send. 1–10.");
-        JPanel cqRepeatRow = labeled("Repeat", cqRepeatSpinner);
+        JPanel cqRepeatRow = compactLabeled("Repeat", cqRepeatSpinner);
 
         Color originalOutgoing = config.getOutgoingText();
         Color originalIncoming = config.getIncomingText();
@@ -113,6 +116,7 @@ public final class ProgramSettingsDialog extends JDialog {
         });
         JSpinner textSize = new JSpinner(new SpinnerNumberModel(
                 originalTextSize, AppConfig.MIN_TEXT_SIZE, AppConfig.MAX_TEXT_SIZE, 1));
+        narrowSpinner(textSize);
         textSize.setToolTipText("Monospaced size for the transcript, compose, and App TX buffer.");
         textSize.addChangeListener(e -> {
             config.setTextSize((Integer) textSize.getValue());
@@ -127,15 +131,12 @@ public final class ProgramSettingsDialog extends JDialog {
         addRow(form, sideBySide(
                 new JLabel("Text outgoing color"), outgoingSwatch,
                 new JLabel("Text incoming color"), incomingSwatch));
-        addRow(form, autoConnectTnc);
-        addRow(form, listenOnStart);
-        addRow(form, sendAllOnCho);
-        addRow(form, suppressConnect);
-        addRow(form, onlyOneArqWindow);
-        addRow(form, closeFecOnArqLink);
+        addRow(form, checkboxColumns(
+                autoConnectTnc, listenOnStart,
+                sendAllOnCho, suppressConnect,
+                onlyOneArqWindow, closeFecOnArqLink));
         addRow(form, sideBySide(new JLabel("Transcript timestamps"), stampOff, stampHm, stampDate));
-        addRow(form, labeled("Text size", textSize));
-        addRow(form, labeled("Wrap", wrap));
+        addRow(form, sideBySide(compactLabeled("Text size", textSize), compactLabeled("Wrap", wrap)));
 
         JPanel canned = section("Canned text");
         addRow(canned, labeled("Handover", handover));
@@ -263,6 +264,34 @@ public final class ProgramSettingsDialog extends JDialog {
         p.add(new JLabel(label), BorderLayout.WEST);
         p.add(field, BorderLayout.CENTER);
         return p;
+    }
+
+    /**
+     * Two columns. The left checkbox stays at the left edge. The right checkbox starts
+     * at the midpoint, so its box sits on the center of the settings form.
+     */
+    private static JPanel checkboxColumns(JCheckBox... boxes) {
+        JPanel grid = new JPanel(new GridLayout(0, 2, 16, 2));
+        for (JCheckBox box : boxes) {
+            box.setHorizontalAlignment(SwingConstants.LEADING);
+            grid.add(box);
+        }
+        return grid;
+    }
+
+    /** Label plus a field that keeps its preferred width instead of stretching across the row. */
+    private static JPanel compactLabeled(String label, Component field) {
+        JPanel p = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        p.add(new JLabel(label));
+        p.add(field);
+        return p;
+    }
+
+    /** Keep a numeric spinner about three digits wide. */
+    private static void narrowSpinner(JSpinner spinner) {
+        if (spinner.getEditor() instanceof JSpinner.DefaultEditor editor) {
+            editor.getTextField().setColumns(3);
+        }
     }
 
     /** Palette (swatches) plus HSB saturation. Null when the chooser is cancelled. */

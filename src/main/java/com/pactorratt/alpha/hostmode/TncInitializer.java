@@ -128,7 +128,10 @@ public final class TncInitializer {
             // Leave session open if port came up — AppController decides retain vs close.
             return failed(session, e.getMessage());
         } catch (InterruptedException e) {
-            // Do not close here; AppController retains for Debug Monitor or aborts on disconnect.
+            // The caller never receives this session on interrupt, so it cannot retain or close it.
+            if (session != null && session.isOpen()) {
+                session.close();
+            }
             throw e;
         }
     }

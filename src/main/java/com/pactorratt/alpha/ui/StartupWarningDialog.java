@@ -1,7 +1,11 @@
 package com.pactorratt.alpha.ui;
 
+import com.pactorratt.alpha.app.BuildInfo;
+import com.pactorratt.alpha.config.ConfigStore;
+
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -14,13 +18,17 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Frame;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Enumeration;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.LinearGradientPaint;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.font.GlyphVector;
+import java.nio.file.Path;
+import java.util.Locale;
 
 /**
  * Blocking experimental-build warning shown before the main window.
@@ -31,7 +39,7 @@ public final class StartupWarningDialog extends JDialog {
 
     private boolean continueLaunch;
 
-    private StartupWarningDialog() {
+    private StartupWarningDialog(Path portableRoot) {
         super((Frame) null, "PactorRATT_Alpha — Warning", true);
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 
@@ -51,25 +59,31 @@ public final class StartupWarningDialog extends JDialog {
         flash.start();
 
         JTextArea body = new JTextArea("""
-                You have gotten your hands on an untested experimental build of PactoRATT_Alpha
+                PactorRATT_Alpha is in active development.
                 It WILL: Wipe all your settings on your PK-232
-                             Leave your PK-232 in HOSTMODE
                 It MAY:  Leave your radio in transmit, dont use unattended
-                it probly WONT: Do a proper ARQ link yet, Work, do your taxes, mow your lawn
+                it probly WONT: Do anything terrible.
 
-                Use the debug terminal to exit host mode
-                Cmd: HO Payload: N
+                The program should properly exit host mode when closed normally.
                 """);
         body.setEditable(false);
         body.setFocusable(false);
         body.setOpaque(false);
         body.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
         body.setForeground(Color.BLACK);
-        body.setBorder(BorderFactory.createEmptyBorder(8, 28, 16, 28));
+
+        String thanks = testerThanksLine(portableRoot);
+        body.setBorder(BorderFactory.createEmptyBorder(8, 28, thanks.isEmpty() ? 16 : 4, 28));
+
+        TesterGlintLabel thanksLabel = null;
+        if (!thanks.isEmpty()) {
+            thanksLabel = new TesterGlintLabel(thanks);
+        }
+        final Timer glint = startTesterGlint(thanksLabel);
 
         JLabel runtimeInfo = new JLabel(
                 "Java: " + javaVersion()
-                        + "    |    Build: " + jarBuildNumber() + "  " + jarBuildTime(),
+                        + "    |    Build: " + BuildInfo.buildNumber() + "  " + BuildInfo.buildTime(),
                 SwingConstants.CENTER);
         runtimeInfo.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         runtimeInfo.setForeground(Color.DARK_GRAY);
@@ -80,6 +94,9 @@ public final class StartupWarningDialog extends JDialog {
         riskIt.addActionListener(e -> {
             continueLaunch = true;
             flash.stop();
+            if (glint != null) {
+                glint.stop();
+            }
             dispose();
         });
 
@@ -88,6 +105,9 @@ public final class StartupWarningDialog extends JDialog {
         bailOut.addActionListener(e -> {
             continueLaunch = false;
             flash.stop();
+            if (glint != null) {
+                glint.stop();
+            }
             dispose();
         });
 
@@ -96,9 +116,20 @@ public final class StartupWarningDialog extends JDialog {
         buttons.add(bailOut);
         buttons.add(riskIt);
 
+        JPanel textBlock = new JPanel(new BorderLayout());
+        textBlock.setOpaque(false);
+        textBlock.add(body, BorderLayout.NORTH);
+        if (thanksLabel != null) {
+            textBlock.add(thanksLabel, BorderLayout.SOUTH);
+        }
+
+        JPanel message = new JPanel(new BorderLayout());
+        message.setOpaque(false);
+        message.add(textBlock, BorderLayout.NORTH);
+
         JPanel center = new JPanel(new BorderLayout());
         center.add(warning, BorderLayout.NORTH);
-        center.add(body, BorderLayout.CENTER);
+        center.add(message, BorderLayout.CENTER);
         center.add(runtimeInfo, BorderLayout.SOUTH);
 
         setLayout(new BorderLayout());
@@ -111,10 +142,113 @@ public final class StartupWarningDialog extends JDialog {
     }
 
     /** Shows the modal warning. Returns true to continue launch, false to exit. */
-    public static boolean confirmContinue() {
-        StartupWarningDialog dialog = new StartupWarningDialog();
+    public static boolean confirmContinue(Path portableRoot) {
+        StartupWarningDialog dialog = new StartupWarningDialog(portableRoot);
         dialog.setVisible(true);
         return dialog.continueLaunch;
+    }
+
+    /**
+     * Extra line for known testers. Callsign is {@code callsign} in {@code config/settings.json}.
+     */
+    private static String testerThanksLine(Path portableRoot) {
+        String call = new ConfigStore(portableRoot).load().getCallsign();
+        if (call == null || call.isBlank()) {
+            return "";
+        }
+        return switch (call.trim().toUpperCase(Locale.ROOT)) {
+            case "AA6DW" -> "Thanks for testing Alan";
+            case "KI6QI" -> "Thanks for testing Bob";
+            case "KJ7RBS" -> "Christ is King!";
+            default -> "";
+        };
+    }
+
+    /** Gold thank-you line, two points above the 14-pt body, with a 0.5 Hz glint sweep. */
+    private static Timer startTesterGlint(TesterGlintLabel label) {
+        if (label == null) {
+            return null;
+        }
+        long startNanos = System.nanoTime();
+        Timer timer = new Timer(40, e -> {
+            float cycles = (System.nanoTime() - startNanos) * 0.5f / 1_000_000_000f;
+            label.setPhase(cycles - (float) Math.floor(cycles));
+        });
+        timer.setRepeats(true);
+        timer.start();
+        return timer;
+    }
+
+    /** Gold text with a bright band that crosses once every two seconds. */
+    private static final class TesterGlintLabel extends JComponent {
+        private static final Color GOLD = new Color(0xFF, 0xD7, 0x00);
+        private static final int BODY_POINT_SIZE = 14;
+
+        private final String text;
+        private float phase;
+
+        TesterGlintLabel(String text) {
+            this.text = text;
+            setFont(new Font(Font.SERIF, Font.BOLD, 40));
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder(0, 28, 12, 28));
+        }
+
+        void setPhase(float phase) {
+            this.phase = phase;
+            repaint();
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            FontMetrics fm = getFontMetrics(getFont());
+            Insets in = getInsets();
+            return new Dimension(
+                    fm.stringWidth(text) + in.left + in.right,
+                    fm.getHeight() + in.top + in.bottom);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                g2.setFont(getFont());
+                FontMetrics fm = g2.getFontMetrics();
+                Insets in = getInsets();
+                int textW = fm.stringWidth(text);
+                int x = in.left + Math.max(0, (getWidth() - in.left - in.right - textW) / 2);
+                int y = in.top + (getHeight() - in.top - in.bottom - fm.getHeight()) / 2 + fm.getAscent();
+
+                g2.setColor(GOLD);
+                g2.drawString(text, x, y);
+
+                if (textW <= 0) {
+                    return;
+                }
+                GlyphVector glyphs = getFont().createGlyphVector(g2.getFontRenderContext(), text);
+                Shape outline = glyphs.getOutline(x, y);
+                g2.setClip(outline);
+                float band = Math.max(22f, textW * 0.28f);
+                float center = x - band + phase * (textW + band * 2f);
+                float x0 = center - band;
+                float x1 = center + band;
+                if (x1 <= x0) {
+                    return;
+                }
+                g2.setPaint(new LinearGradientPaint(
+                        x0, 0f, x1, 0f,
+                        new float[] {0f, 0.5f, 1f},
+                        new Color[] {
+                                new Color(255, 255, 255, 0),
+                                new Color(255, 255, 236, 230),
+                                new Color(255, 255, 255, 0)
+                        }));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            } finally {
+                g2.dispose();
+            }
+        }
     }
 
     private static String javaVersion() {
@@ -127,84 +261,5 @@ public final class StartupWarningDialog extends JDialog {
             return version + " (" + vendor + ")";
         }
         return version;
-    }
-
-    /** Reads sequential build number (Maven initialize increments {@code build.number.properties}). */
-    private static String jarBuildNumber() {
-        String fromResource = readBuildInfoProperty("buildNumber");
-        if (fromResource != null) {
-            return fromResource;
-        }
-        String fromManifest = readManifestValue("Build-Number");
-        if (fromManifest != null && !fromManifest.contains("${")) {
-            return fromManifest;
-        }
-        return "?";
-    }
-
-    /** Reads package timestamp. */
-    private static String jarBuildTime() {
-        String fromResource = readBuildInfoProperty("buildTime");
-        if (fromResource != null) {
-            return fromResource;
-        }
-        String fromManifest = readManifestValue("Build-Time");
-        if (fromManifest != null && !fromManifest.contains("${")) {
-            return fromManifest;
-        }
-        return "unknown (not a packaged jar)";
-    }
-
-    private static String readBuildInfoProperty(String key) {
-        try (InputStream in = StartupWarningDialog.class.getResourceAsStream("/build-info.properties")) {
-            if (in == null) {
-                return null;
-            }
-            java.util.Properties props = new java.util.Properties();
-            props.load(in);
-            String value = props.getProperty(key);
-            if (value == null || value.isBlank() || value.contains("${")) {
-                return null;
-            }
-            return value.trim();
-        } catch (IOException ignored) {
-            return null;
-        }
-    }
-
-    private static String readManifestValue(String key) {
-        try {
-            Enumeration<URL> resources = StartupWarningDialog.class.getClassLoader()
-                    .getResources("META-INF/MANIFEST.MF");
-            while (resources.hasMoreElements()) {
-                URL url = resources.nextElement();
-                try (InputStream in = url.openStream()) {
-                    Manifest mf = new Manifest(in);
-                    Attributes attrs = mf.getMainAttributes();
-                    // Prefer our shaded app jar (has Main-Class).
-                    String mainClass = attrs.getValue(Attributes.Name.MAIN_CLASS);
-                    String value = attrs.getValue(key);
-                    if (value != null && !value.isBlank()
-                            && mainClass != null
-                            && mainClass.contains("PactorRattAlphaApp")) {
-                        return value.trim();
-                    }
-                }
-            }
-            // Fallback: first manifest that has Build-Time.
-            resources = StartupWarningDialog.class.getClassLoader()
-                    .getResources("META-INF/MANIFEST.MF");
-            while (resources.hasMoreElements()) {
-                try (InputStream in = resources.nextElement().openStream()) {
-                    String value = new Manifest(in).getMainAttributes().getValue(key);
-                    if (value != null && !value.isBlank() && !value.contains("${")) {
-                        return value.trim();
-                    }
-                }
-            }
-        } catch (IOException ignored) {
-            // Fall through.
-        }
-        return null;
     }
 }
